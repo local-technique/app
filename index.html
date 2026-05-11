@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Copro Website Demo</title>
+    <style>
+      :root {
+        --page-bg: #f5f8f7;
+        --page-fg: #1d2a25;
+        --muted-fg: #5a6a63;
+        --app-surface: linear-gradient(140deg, #f5f8f7 0%, #eef5f3 50%, #f7faf9 100%);
+        --panel-bg: rgba(255, 255, 255, 0.9);
+        --border-color: #d4dfdb;
+        --control-bg: #ffffff;
+        --control-border: #9fb4ad;
+        --control-fg: #1d2a25;
+        --overlay-bg: rgba(4, 9, 7, 0.35);
+      }
+
+      html[data-theme="dark"],
+      html[data-theme="system"][data-resolved-theme="dark"] {
+        --page-bg: #0f1714;
+        --page-fg: #e6eeea;
+        --muted-fg: #9bb1a9;
+        --app-surface: linear-gradient(140deg, #0f1714 0%, #15201c 55%, #1a2621 100%);
+        --panel-bg: rgba(12, 19, 16, 0.92);
+        --border-color: #2c3d36;
+        --control-bg: #12211b;
+        --control-border: #3a5047;
+        --control-fg: #e6eeea;
+        --overlay-bg: rgba(4, 9, 7, 0.55);
+      }
+
+      html,
+      body,
+      #app {
+        min-height: 100%;
+      }
+
+      body {
+        margin: 0;
+        background: var(--page-bg);
+        color: var(--page-fg);
+      }
+    </style>
+    <script>
+      (function () {
+        var storageKey = "copro-theme";
+        var mode = localStorage.getItem(storageKey);
+        var prefersDark =
+          typeof window.matchMedia === "function" &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches;
+
+        var resolved = "light";
+        if (mode === "dark" || mode === "light") {
+          resolved = mode;
+        } else if (mode === "system" || mode === null) {
+          resolved = prefersDark ? "dark" : "light";
+        }
+
+        document.documentElement.dataset.theme = mode === "dark" || mode === "light" || mode === "system" ? mode : "system";
+        document.documentElement.dataset.resolvedTheme = resolved;
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

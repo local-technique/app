@@ -1,0 +1,274 @@
+<script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
+import MobileBottomNav from "./common/components/MobileBottomNav.vue";
+import MobileMenu from "./common/components/MobileMenu.vue";
+import SidebarNav from "./common/components/SidebarNav.vue";
+import { getStoredLocale, setStoredLocale, type LocaleCode } from "./common/i18n";
+import { applyTheme, getStoredTheme, prefersDarkMode, setStoredTheme, type ThemeMode } from "./common/theme";
+
+const { locale } = useI18n();
+
+const selectedLocale = ref<LocaleCode>(getStoredLocale());
+const selectedTheme = ref<ThemeMode>(getStoredTheme());
+const mobileMenuOpen = ref(false);
+
+let mediaQuery: MediaQueryList | null = null;
+let mediaQueryListener: (() => void) | null = null;
+
+function getPrefersDark(): boolean {
+  return prefersDarkMode();
+}
+
+function syncTheme(): void {
+  applyTheme(selectedTheme.value, { prefersDark: getPrefersDark() });
+}
+
+locale.value = selectedLocale.value;
+syncTheme();
+
+watch(selectedLocale, (value) => {
+  locale.value = value;
+  setStoredLocale(value);
+});
+
+watch(selectedTheme, (value) => {
+  setStoredTheme(value);
+  syncTheme();
+});
+
+onMounted(() => {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return;
+  }
+
+  mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  mediaQueryListener = () => {
+    if (selectedTheme.value === "system") {
+      syncTheme();
+    }
+  };
+
+  mediaQuery.addEventListener("change", mediaQueryListener);
+});
+
+onBeforeUnmount(() => {
+  if (mediaQuery && mediaQueryListener) {
+    mediaQuery.removeEventListener("change", mediaQueryListener);
+  }
+});
+</script>
+
+<template>
+  <div class="app-root">
+    <div class="app-shell">
+      <aside class="desktop-sidebar">
+        <div class="desktop-brand">CoPro</div>
+        <SidebarNav
+          :locale="selectedLocale"
+          :theme="selectedTheme"
+          @update:locale="selectedLocale = $event"
+          @update:theme="selectedTheme = $event"
+        />
+      </aside>
+
+      <main class="app-main">
+        <RouterView />
+      </main>
+    </div>
+
+    <MobileMenu
+      :open="mobileMenuOpen"
+      :locale="selectedLocale"
+      :theme="selectedTheme"
+      @close="mobileMenuOpen = false"
+      @navigate="mobileMenuOpen = false"
+      @update:locale="selectedLocale = $event"
+      @update:theme="selectedTheme = $event"
+    />
+
+    <MobileBottomNav @open-more="mobileMenuOpen = true" />
+  </div>
+</template>
+
+<style scoped>
+.app-root {
+  min-height: 100vh;
+  background: var(--app-surface);
+  color: var(--page-fg);
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 276px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.desktop-sidebar {
+  border-right: 1px solid var(--border-color);
+  background: var(--panel-bg);
+}
+
+.desktop-brand {
+  padding: 1.1rem 1rem 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.app-main {
+  padding: 1.6rem 1.35rem 2.2rem;
+}
+
+:deep(.page-wrap) {
+  width: min(960px, 100%);
+}
+
+:deep(.page-title) {
+  margin: 0;
+  font-size: clamp(1.45rem, 2vw, 2rem);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+}
+
+:deep(.search-bar) {
+  margin-top: 1rem;
+  margin-bottom: 1.15rem;
+  display: grid;
+  gap: 0.42rem;
+  max-width: 420px;
+}
+
+:deep(.search-bar label) {
+  font-size: 0.8rem;
+  color: var(--muted-fg);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+:deep(.search-bar input) {
+  border: 1px solid var(--control-border);
+  border-radius: 0.72rem;
+  min-height: 2.35rem;
+  padding: 0 0.7rem;
+  background: var(--control-bg);
+  color: var(--control-fg);
+}
+
+:deep(.timeline-section) {
+  margin-top: 1.05rem;
+}
+
+:deep(section[data-status="past"]) {
+  opacity: 0.64;
+}
+
+:deep(section[data-status="past"] .timeline-card),
+:deep(.timeline-card-past) {
+  background: color-mix(in srgb, var(--panel-bg) 70%, transparent);
+}
+
+:deep(section[data-status="past"] .timeline-card-title a),
+:deep(.timeline-card-past .timeline-card-title a) {
+  color: color-mix(in srgb, var(--page-fg) 66%, var(--muted-fg));
+}
+
+:deep(section[data-status="past"] .timeline-card-title a:visited),
+:deep(section[data-status="past"] .timeline-card-title a:hover),
+:deep(section[data-status="past"] .timeline-card-title a:active),
+:deep(.timeline-card-past .timeline-card-title a:visited),
+:deep(.timeline-card-past .timeline-card-title a:hover),
+:deep(.timeline-card-past .timeline-card-title a:active) {
+  color: color-mix(in srgb, var(--page-fg) 66%, var(--muted-fg));
+}
+
+:deep(section[data-status="past"] .timeline-meta),
+:deep(.timeline-card-past .timeline-meta) {
+  color: color-mix(in srgb, var(--muted-fg) 92%, #7d8796);
+}
+
+:deep(.timeline-section > h2) {
+  margin: 0 0 0.68rem;
+  font-size: 1.2rem;
+  letter-spacing: -0.01em;
+}
+
+:deep(.timeline-list) {
+  display: grid;
+  gap: 0.66rem;
+}
+
+:deep(.timeline-card) {
+  display: grid;
+  gap: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.92rem;
+  padding: 0.86rem 0.95rem;
+  background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+:deep(.timeline-card-title) {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+:deep(.timeline-card-title a) {
+  color: var(--page-fg);
+  text-decoration: none;
+}
+
+:deep(.timeline-card-title a:hover) {
+  text-decoration: underline;
+}
+
+:deep(a) {
+  color: #4f9fff;
+}
+
+:deep(a:hover) {
+  color: #77b3ff;
+}
+
+:deep(.timeline-meta) {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted-fg);
+}
+
+:deep(.timeline-warning) {
+  margin: 0;
+  font-size: 0.89rem;
+  font-weight: 700;
+  color: #f35a67;
+}
+
+:deep(.empty-state) {
+  margin-top: 1.2rem;
+  padding: 0.9rem 1rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 0.85rem;
+  color: var(--muted-fg);
+}
+
+@media (max-width: 960px) {
+  .app-shell {
+    display: block;
+    min-height: calc(100vh - 58px);
+  }
+
+  .desktop-sidebar {
+    display: none;
+  }
+
+  .app-main {
+    padding: 1.1rem 0.85rem 5rem;
+  }
+
+  :deep(.timeline-card) {
+    padding: 0.8rem 0.82rem;
+  }
+}
+</style>
