@@ -1,3 +1,9 @@
 node_modules/
 dist/
 test-results/
+.vite/
+front/node_modules/
+front/dist/
+front/test-results/
+front/.vite/
+back/target/

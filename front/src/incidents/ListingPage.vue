@@ -50,7 +50,7 @@ watch(query, async (nextValue) => {
     return;
   }
 
-  const nextQuery = { ...route.query } as Record<string, unknown>;
+  const nextQuery = { ...route.query };
   if (trimmed) {
     nextQuery.q = trimmed;
   } else {
