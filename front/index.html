@@ -3,6 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-eval'; connect-src 'self' https://app-86eq.onrender.com http://localhost:8080 http://127.0.0.1:8080; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self';"
+    />
     <title>Copro Website Demo</title>
     <style>
       :root {
@@ -44,25 +48,7 @@
         color: var(--page-fg);
       }
     </style>
-    <script>
-      (function () {
-        var storageKey = "copro-theme";
-        var mode = localStorage.getItem(storageKey);
-        var prefersDark =
-          typeof window.matchMedia === "function" &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-        var resolved = "light";
-        if (mode === "dark" || mode === "light") {
-          resolved = mode;
-        } else if (mode === "system" || mode === null) {
-          resolved = prefersDark ? "dark" : "light";
-        }
-
-        document.documentElement.dataset.theme = mode === "dark" || mode === "light" || mode === "system" ? mode : "system";
-        document.documentElement.dataset.resolvedTheme = resolved;
-      })();
-    </script>
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="app"></div>

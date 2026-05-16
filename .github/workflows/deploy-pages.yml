@@ -38,7 +38,7 @@ jobs:
       - name: Build site
         working-directory: front
         env:
-          VITE_API_BASE_URL: https://local-technique.leapcell.app
+          VITE_API_BASE_URL: https://app-86eq.onrender.com
         run: npm run build -- --base="/${{ github.event.repository.name }}/"
 
       - name: Upload Pages artifact

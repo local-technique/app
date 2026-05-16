@@ -10,18 +10,41 @@ type SessionPayload = {
 type RefreshResponse = {
   access_token?: string;
   expires_at_unix?: number;
+  refresh_token?: string;
 };
 
 type ExchangeResponse = {
   access_token?: string;
   expires_at_unix?: number;
+  refresh_token?: string;
   redirect?: string;
 };
 
 const REFRESH_SKEW_SECONDS = 30;
+const REFRESH_TOKEN_STORAGE_KEY = "copro-refresh-token";
 
 let memoryAccessToken = "";
 let memoryExpiresAtUnix = 0;
+
+function readRefreshToken(): string {
+  try {
+    return sessionStorage.getItem(REFRESH_TOKEN_STORAGE_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function writeRefreshToken(value: string): void {
+  try {
+    sessionStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, value);
+  } catch {}
+}
+
+function clearRefreshToken(): void {
+  try {
+    sessionStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+  } catch {}
+}
 
 function apiBaseUrl(): string {
   return import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
@@ -55,6 +78,7 @@ export function setSession(payload: SessionPayload): void {
 export function clearSession(): void {
   memoryAccessToken = "";
   memoryExpiresAtUnix = 0;
+  clearRefreshToken();
 }
 
 export function getAccessToken(): string {
@@ -69,10 +93,19 @@ export function isAccessTokenUsable(): boolean {
 }
 
 export async function refreshAccessToken(): Promise<boolean> {
+  const refreshToken = readRefreshToken();
+  if (!refreshToken) {
+    clearSession();
+    return false;
+  }
+
   try {
     const response = await fetch(`${apiBaseUrl()}/auth/refresh`, {
       method: "POST",
-      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ refresh_token: refreshToken }),
     });
 
     if (!response.ok) {
@@ -81,7 +114,7 @@ export async function refreshAccessToken(): Promise<boolean> {
     }
 
     const payload = (await response.json()) as RefreshResponse;
-    if (!payload.access_token) {
+    if (!payload.access_token || !payload.refresh_token) {
       clearSession();
       return false;
     }
@@ -90,6 +123,7 @@ export async function refreshAccessToken(): Promise<boolean> {
       accessToken: payload.access_token,
       expiresAtUnix: payload.expires_at_unix,
     });
+    writeRefreshToken(payload.refresh_token);
 
     return true;
   } catch {
@@ -101,7 +135,6 @@ export async function exchangeCallbackCode(code: string): Promise<{ ok: boolean;
   try {
     const response = await fetch(`${apiBaseUrl()}/auth/exchange`, {
       method: "POST",
-      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
@@ -114,7 +147,7 @@ export async function exchangeCallbackCode(code: string): Promise<{ ok: boolean;
     }
 
     const payload = (await response.json()) as ExchangeResponse;
-    if (!payload.access_token) {
+    if (!payload.access_token || !payload.refresh_token) {
       clearSession();
       return { ok: false, redirect: "/events" };
     }
@@ -123,6 +156,7 @@ export async function exchangeCallbackCode(code: string): Promise<{ ok: boolean;
       accessToken: payload.access_token,
       expiresAtUnix: payload.expires_at_unix,
     });
+    writeRefreshToken(payload.refresh_token);
 
     const redirect = typeof payload.redirect === "string" ? sanitizeRedirectPath(payload.redirect) : "/events";
     return { ok: true, redirect };
@@ -148,17 +182,19 @@ export function providerStartUrl(provider: Provider, requestedPath: string): str
 
 export async function logout(): Promise<void> {
   const token = getAccessToken();
+  const refreshToken = readRefreshToken();
 
   try {
     const headers: Record<string, string> = {};
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
+    headers["Content-Type"] = "application/json";
 
     await fetch(`${apiBaseUrl()}/auth/logout`, {
       method: "POST",
-      credentials: "include",
       headers,
+      body: JSON.stringify({ refresh_token: refreshToken || undefined }),
     });
   } finally {
     clearSession();

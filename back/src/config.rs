@@ -4,6 +4,7 @@ use serde::Deserialize;
 pub struct Config {
     pub app_base_url: String,
     pub frontend_origin: String,
+    pub frontend_base_url: Option<String>,
     pub google_client_id: String,
     pub google_client_secret: String,
     pub facebook_client_id: String,

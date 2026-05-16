@@ -55,7 +55,8 @@ impl FromRef<AppState> for Key {
 struct Session {
     provider: Provider,
     email: String,
-    refresh_token: String,
+    current_refresh_token_hash: String,
+    used_refresh_token_hashes: Vec<String>,
     refresh_expires_at: SystemTime,
 }
 
@@ -70,6 +71,7 @@ struct ExchangeCode {
     session_id: String,
     created_at: SystemTime,
     redirect_to: String,
+    refresh_token: String,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -124,10 +126,6 @@ fn oauth_cookie_name(provider: Provider) -> &'static str {
     }
 }
 
-fn refresh_cookie_name() -> &'static str {
-    "refresh_token"
-}
-
 fn oauth_state_cookie(provider: Provider, value: String, secure: bool) -> Cookie<'static> {
     Cookie::build((oauth_cookie_name(provider), value))
         .path("/")
@@ -148,40 +146,16 @@ fn oauth_state_delete_cookie(provider: Provider, secure: bool) -> Cookie<'static
         .build()
 }
 
-fn refresh_cookie(value: String, secure: bool) -> Cookie<'static> {
-    let same_site = if secure {
-        SameSite::None
-    } else {
-        SameSite::Lax
-    };
-
-    Cookie::build((refresh_cookie_name(), value))
-        .path("/")
-        .http_only(true)
-        .same_site(same_site)
-        .secure(secure)
-        .max_age(CookieDuration::seconds(REFRESH_SESSION_TTL.as_secs() as i64))
-        .build()
-}
-
-fn refresh_delete_cookie(secure: bool) -> Cookie<'static> {
-    let same_site = if secure {
-        SameSite::None
-    } else {
-        SameSite::Lax
-    };
-
-    Cookie::build((refresh_cookie_name(), ""))
-        .path("/")
-        .http_only(true)
-        .same_site(same_site)
-        .secure(secure)
-        .max_age(CookieDuration::seconds(0))
-        .build()
-}
-
 fn is_https_url(url: &str) -> bool {
     url.starts_with("https://")
+}
+
+fn frontend_callback_base(config: &Config) -> String {
+    let raw = config
+        .frontend_base_url
+        .as_deref()
+        .unwrap_or(config.frontend_origin.as_str());
+    raw.trim_end_matches('/').to_string()
 }
 
 #[derive(Deserialize)]
@@ -205,13 +179,25 @@ pub struct ExchangeRequest {
 pub struct ExchangeResponse {
     pub access_token: String,
     pub expires_at_unix: u64,
+    pub refresh_token: String,
     pub redirect: String,
+}
+
+#[derive(Deserialize)]
+pub struct RefreshRequest {
+    pub refresh_token: String,
 }
 
 #[derive(Serialize)]
 pub struct RefreshResponse {
     pub access_token: String,
     pub expires_at_unix: u64,
+    pub refresh_token: String,
+}
+
+#[derive(Deserialize)]
+pub struct LogoutRequest {
+    pub refresh_token: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -296,7 +282,6 @@ pub async fn oauth_callback(
         .code
         .ok_or_else(|| AppError::bad_request("missing oauth code"))?;
 
-    let secure_cookie = is_https_url(&state.config.app_base_url);
     let cookie_name = oauth_cookie_name(provider);
     let cookie_value = jar
         .get(cookie_name)
@@ -339,7 +324,8 @@ pub async fn oauth_callback(
             Session {
                 provider,
                 email,
-                refresh_token: refresh_token.clone(),
+                current_refresh_token_hash: hash_token(&refresh_token),
+                used_refresh_token_hashes: Vec::new(),
                 refresh_expires_at,
             },
         );
@@ -355,19 +341,18 @@ pub async fn oauth_callback(
                 session_id,
                 created_at: SystemTime::now(),
                 redirect_to: state_cookie.redirect_to,
+                refresh_token,
             },
         );
     }
 
     let frontend_callback = format!(
         "{}/#/auth/callback?code={}",
-        state.config.frontend_origin,
+        frontend_callback_base(&state.config),
         url_encode(&exchange_code)
     );
 
-    let jar = jar
-        .remove(oauth_state_delete_cookie(provider, secure_cookie))
-        .add(refresh_cookie(refresh_token, secure_cookie));
+    let jar = jar.remove(oauth_state_delete_cookie(provider, is_https_url(&state.config.app_base_url)));
 
     Ok((jar, Redirect::to(&frontend_callback)))
 }
@@ -401,6 +386,7 @@ pub async fn exchange_session(
         Json(ExchangeResponse {
             access_token,
             expires_at_unix: unix_ts(expires_at)?,
+            refresh_token: exchange.refresh_token,
             redirect: exchange.redirect_to,
         }),
     ))
@@ -408,32 +394,61 @@ pub async fn exchange_session(
 
 pub async fn refresh(
     State(state): State<AppState>,
-    jar: PrivateCookieJar,
     headers: HeaderMap,
-) -> Result<(PrivateCookieJar, Json<RefreshResponse>), AppError> {
+    Json(payload): Json<RefreshRequest>,
+) -> Result<Json<RefreshResponse>, AppError> {
     if is_https_url(&state.config.app_base_url) {
         validate_refresh_origin(&headers, &state.config.frontend_origin)?;
     }
 
-    let refresh_token = jar
-        .get(refresh_cookie_name())
-        .map(|c| c.value().to_string())
-        .ok_or_else(|| AppError::unauthorized("missing refresh token"))?;
-
-    let secure = is_https_url(&state.config.app_base_url);
+    if payload.refresh_token.is_empty() {
+        return Err(AppError::unauthorized("missing refresh token"));
+    }
+    let incoming_hash = hash_token(&payload.refresh_token);
 
     let (session_id, next_refresh_token) = {
         let mut sessions = state.sessions.lock().await;
         sessions.retain(|_, session| !is_expired(session.refresh_expires_at, Duration::ZERO));
-        let session_id = sessions
-            .iter()
-            .find(|(_, session)| session.refresh_token == refresh_token)
-            .map(|(id, _)| id.clone())
-            .ok_or_else(|| AppError::unauthorized("invalid refresh token"))?;
 
+        let current_session_id = sessions
+            .iter()
+            .find(|(_, session)| session.current_refresh_token_hash == incoming_hash)
+            .map(|(id, _)| id.clone());
+
+        if current_session_id.is_none() {
+            if let Some(reused_session_id) = sessions
+                .iter()
+                .find(|(_, session)| {
+                    session
+                        .used_refresh_token_hashes
+                        .iter()
+                        .any(|used_hash| used_hash == &incoming_hash)
+                })
+                .map(|(id, _)| id.clone())
+            {
+                sessions.remove(&reused_session_id);
+                drop(sessions);
+                revoke_access_for_session(&state, &reused_session_id).await;
+                return Err(AppError::unauthorized("refresh token reuse detected"));
+            }
+
+            return Err(AppError::unauthorized("invalid refresh token"));
+        }
+
+        let session_id = if let Some(value) = current_session_id {
+            value
+        } else {
+            return Err(AppError::unauthorized("invalid refresh token"));
+        };
         let next_refresh_token = random_urlsafe(48);
         if let Some(target) = sessions.get_mut(&session_id) {
-            target.refresh_token = next_refresh_token.clone();
+            target
+                .used_refresh_token_hashes
+                .push(target.current_refresh_token_hash.clone());
+            if target.used_refresh_token_hashes.len() > 8 {
+                target.used_refresh_token_hashes.remove(0);
+            }
+            target.current_refresh_token_hash = hash_token(&next_refresh_token);
             target.refresh_expires_at = SystemTime::now() + REFRESH_SESSION_TTL;
         }
 
@@ -441,15 +456,12 @@ pub async fn refresh(
     };
 
     let (access_token, expires_at) = issue_access_token(&state, &session_id).await?;
-    let jar = jar.add(refresh_cookie(next_refresh_token, secure));
 
-    Ok((
-        jar,
-        Json(RefreshResponse {
-            access_token,
-            expires_at_unix: unix_ts(expires_at)?,
-        }),
-    ))
+    Ok(Json(RefreshResponse {
+        access_token,
+        expires_at_unix: unix_ts(expires_at)?,
+        refresh_token: next_refresh_token,
+    }))
 }
 
 pub async fn me(State(state): State<AppState>, headers: HeaderMap) -> Result<Json<MeResponse>, AppError> {
@@ -472,14 +484,28 @@ pub async fn me(State(state): State<AppState>, headers: HeaderMap) -> Result<Jso
 
 pub async fn logout(
     State(state): State<AppState>,
-    jar: PrivateCookieJar,
     headers: HeaderMap,
-) -> Result<(PrivateCookieJar, StatusCode), AppError> {
-    let refresh_from_cookie = jar.get(refresh_cookie_name()).map(|c| c.value().to_string());
+    Json(payload): Json<LogoutRequest>,
+) -> Result<StatusCode, AppError> {
+    let refresh_from_payload = payload
+        .refresh_token
+        .as_deref()
+        .filter(|value| !value.is_empty())
+        .map(hash_token);
 
     let session_id_from_bearer = match bearer_from_headers(&headers) {
         Ok(token) => validate_access_token(&state, &token).await.ok(),
         Err(_) => None,
+    };
+
+    let session_id_from_refresh = if let Some(refresh_hash) = refresh_from_payload {
+        let sessions = state.sessions.lock().await;
+        sessions
+            .iter()
+            .find(|(_, session)| session.current_refresh_token_hash == refresh_hash)
+            .map(|(id, _)| id.clone())
+    } else {
+        None
     };
 
     {
@@ -489,28 +515,32 @@ pub async fn logout(
             sessions.remove(&session_id);
         }
 
-        if let Some(refresh_token) = refresh_from_cookie
-            && let Some(session_id) = sessions
-                .iter()
-                .find(|(_, session)| session.refresh_token == refresh_token)
-                .map(|(id, _)| id.clone())
-        {
+        if let Some(session_id) = session_id_from_refresh.clone() {
             sessions.remove(&session_id);
         }
     }
 
     {
         let mut access = state.access_index.lock().await;
-        if let Some(session_id) = session_id_from_bearer {
-            access.retain(|_, v| v.session_id != session_id);
-        } else {
-            access.retain(|_, v| !is_expired(v.expires_at, Duration::ZERO));
+        match (session_id_from_bearer.as_deref(), session_id_from_refresh.as_deref()) {
+            (Some(bearer_id), Some(refresh_id)) if bearer_id != refresh_id => {
+                access.retain(|_, v| v.session_id != bearer_id && v.session_id != refresh_id);
+            }
+            (Some(session_id), _) | (None, Some(session_id)) => {
+                access.retain(|_, v| v.session_id != session_id);
+            }
+            (None, None) => {
+                access.retain(|_, v| !is_expired(v.expires_at, Duration::ZERO));
+            }
         }
     }
 
-    let secure = is_https_url(&state.config.app_base_url);
-    let jar = jar.remove(refresh_delete_cookie(secure));
-    Ok((jar, StatusCode::NO_CONTENT))
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn revoke_access_for_session(state: &AppState, session_id: &str) {
+    let mut access = state.access_index.lock().await;
+    access.retain(|_, v| v.session_id != session_id);
 }
 
 async fn issue_access_token(state: &AppState, session_id: &str) -> Result<(String, SystemTime), AppError> {
@@ -720,6 +750,11 @@ fn unix_ts(t: SystemTime) -> Result<u64, AppError> {
 
 fn url_encode(value: &str) -> String {
     url::form_urlencoded::byte_serialize(value.as_bytes()).collect()
+}
+
+fn hash_token(token: &str) -> String {
+    let digest = Sha256::digest(token.as_bytes());
+    URL_SAFE_NO_PAD.encode(digest)
 }
 
 fn bearer_from_headers(headers: &HeaderMap) -> Result<String, AppError> {
