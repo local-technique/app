@@ -1,9 +1,11 @@
-node_modules/
-dist/
-test-results/
-.vite/
+# Front
 front/node_modules/
 front/dist/
 front/test-results/
 front/.vite/
+
+# Back
 back/target/
+
+# Sensitive
+.env

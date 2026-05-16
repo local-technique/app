@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { useRoute, useRouter } from "vue-router";
+import AuthGuard from "./auth/AuthGuard.vue";
 import MobileBottomNav from "./common/components/MobileBottomNav.vue";
 import MobileMenu from "./common/components/MobileMenu.vue";
 import SidebarNav from "./common/components/SidebarNav.vue";
@@ -8,10 +10,13 @@ import { getStoredLocale, setStoredLocale, type LocaleCode } from "./common/i18n
 import { applyTheme, getStoredTheme, prefersDarkMode, setStoredTheme, type ThemeMode } from "./common/theme";
 
 const { locale } = useI18n();
+const route = useRoute();
+const router = useRouter();
 
 const selectedLocale = ref<LocaleCode>(getStoredLocale());
 const selectedTheme = ref<ThemeMode>(getStoredTheme());
 const mobileMenuOpen = ref(false);
+const routerReady = ref(router.currentRoute.value.matched.length > 0);
 
 let mediaQuery: MediaQueryList | null = null;
 let mediaQueryListener: (() => void) | null = null;
@@ -38,6 +43,10 @@ watch(selectedTheme, (value) => {
 });
 
 onMounted(() => {
+  router.isReady().finally(() => {
+    routerReady.value = true;
+  });
+
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
     return;
   }
@@ -60,9 +69,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="app-root">
+  <div v-if="routerReady" class="app-root">
     <div class="app-shell">
-      <aside class="desktop-sidebar">
+      <aside class="desktop-sidebar" v-if="route.path !== '/login'">
         <div class="desktop-brand">CoPro</div>
         <SidebarNav
           :locale="selectedLocale"
@@ -73,11 +82,14 @@ onBeforeUnmount(() => {
       </aside>
 
       <main class="app-main">
-        <RouterView />
+        <AuthGuard>
+          <RouterView />
+        </AuthGuard>
       </main>
     </div>
 
     <MobileMenu
+      v-if="route.path !== '/login'"
       :open="mobileMenuOpen"
       :locale="selectedLocale"
       :theme="selectedTheme"
@@ -87,7 +99,7 @@ onBeforeUnmount(() => {
       @update:theme="selectedTheme = $event"
     />
 
-    <MobileBottomNav @open-more="mobileMenuOpen = true" />
+    <MobileBottomNav v-if="route.path !== '/login'" @open-more="mobileMenuOpen = true" />
   </div>
 </template>
 
