@@ -1,0 +1,31 @@
+repository_full_name = "your-org-or-user/your-repo"
+
+database_project_name         = "local-technique-db"
+database_region_id            = "aws-eu-west-3"
+database_name                 = "local-technique-db"
+database_role_name            = "app"
+
+app_name              = "local-technique-backend"
+app_service_name      = ""
+app_source_repository = "local-technique/app"
+app_source_branch     = "main"
+app_port              = 3000
+deployment_region     = "frankfurt"
+deployment_plan       = "starter"
+app_root_directory    = "back"
+app_runtime           = "rust"
+app_build_command     = "cargo build --release"
+app_start_command     = "./target/release/back"
+render_owner_id             = ""
+health_monitor_name         = "local-technique api health"
+app_healthcheck_url            = ""
+
+app_plain_env_vars = {
+  NODE_ENV = "production"
+}
+
+# Provide at runtime through environment variables or CI secrets.
+# repository_token        = ""
+# neon_api_token          = ""
+# Deployment platform token is read from RENDER_API_KEY.
+# Monitoring platform token is read from BETTERUPTIME_API_TOKEN.

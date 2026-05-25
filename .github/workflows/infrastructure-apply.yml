@@ -1,0 +1,53 @@
+name: Apply
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - infrastructure/**
+      - .github/workflows/infrastructure-apply.yml
+
+permissions:
+  actions: write
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_CLI_ARGS: "-no-color"
+  TF_VAR_repository_full_name: ${{ github.repository }}
+  TF_VAR_repository_token: ${{ github.token }}
+  TF_VAR_neon_api_token: ${{ secrets.TF_VAR_NEON_API_TOKEN }}
+  TF_VAR_render_owner_id: ${{ vars.RENDER_OWNER_ID }}
+  RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+  BETTERUPTIME_API_TOKEN: ${{ secrets.BETTERUPTIME_API_TOKEN }}
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infrastructure
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Restore Terraform state cache
+        uses: actions/cache/restore@v4
+        with:
+          path: infrastructure/terraform.tfstate
+          key: terraform-local-state-main
+
+      - name: Apply
+        run: make apply-ci
+
+      - name: Save Terraform state cache
+        uses: actions/cache/save@v4
+        with:
+          path: infrastructure/terraform.tfstate
+          key: terraform-local-state-main
