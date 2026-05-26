@@ -1,4 +1,4 @@
-name: Apply
+name: 🏗️ Infrastructure - Apply
 
 on:
   workflow_dispatch:
@@ -16,9 +16,16 @@ permissions:
 env:
   TF_IN_AUTOMATION: "true"
   TF_CLI_ARGS: "-no-color"
+  TF_VAR_app_secret_env_values: |
+    {
+      "GOOGLE_CLIENT_ID": "${{ secrets.GOOGLE_CLIENT_ID }}",
+      "GOOGLE_CLIENT_SECRET": "${{ secrets.GOOGLE_CLIENT_SECRET }}",
+      "FACEBOOK_CLIENT_ID": "${{ secrets.FACEBOOK_CLIENT_ID }}",
+      "FACEBOOK_CLIENT_SECRET": "${{ secrets.FACEBOOK_CLIENT_SECRET }}"
+    }
   TF_VAR_repository_full_name: ${{ github.repository }}
-  TF_VAR_repository_token: ${{ github.token }}
   TF_VAR_neon_api_token: ${{ secrets.TF_VAR_NEON_API_TOKEN }}
+  TF_VAR_neon_org_id: ${{ vars.NEON_ORG_ID }}
   TF_VAR_render_owner_id: ${{ vars.RENDER_OWNER_ID }}
   RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
   BETTERUPTIME_API_TOKEN: ${{ secrets.BETTERUPTIME_API_TOKEN }}
@@ -34,20 +41,49 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Generate GitHub App token for Terraform
+        id: gh_app_token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.CICD_AUTOMATION_GH_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CICD_AUTOMATION_GH_APP_PK }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Export GitHub provider token
+        run: echo "TF_VAR_repository_token=${{ steps.gh_app_token.outputs.token }}" >> "$GITHUB_ENV"
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Restore Terraform state cache
         uses: actions/cache/restore@v4
         with:
-          path: infrastructure/terraform.tfstate
-          key: terraform-local-state-main
+          path: |
+            infrastructure/terraform.tfstate
+            infrastructure/terraform.tfstate.backup
+          key: terraform-local-state-main-${{ github.run_id }}
+          restore-keys: |
+            terraform-local-state-main-
 
       - name: Apply
         run: make apply-ci
 
+      - name: Trigger Render deploy to refresh env group vars
+        run: |
+          SERVICE_ID=$(terraform output -raw app_service_id)
+          curl --fail --silent --show-error --request POST \
+            --url "https://api.render.com/v1/services/${SERVICE_ID}/deploys" \
+            --header "Authorization: Bearer ${RENDER_API_KEY}" \
+            --header "Content-Type: application/json" \
+            --data '{"deployMode":"deploy_only"}'
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
       - name: Save Terraform state cache
+        if: always()
         uses: actions/cache/save@v4
         with:
-          path: infrastructure/terraform.tfstate
-          key: terraform-local-state-main
+          path: |
+            infrastructure/terraform.tfstate
+            infrastructure/terraform.tfstate.backup
+          key: terraform-local-state-main-${{ github.run_id }}

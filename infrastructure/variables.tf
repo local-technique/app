@@ -1,5 +1,5 @@
 variable "repository_token" {
-  description = "Token used to manage repository Actions secrets. In CI this can be the workflow GITHUB_TOKEN; for local runs set TF_VAR_repository_token to a PAT or app token."
+  description = "Token used to manage repository Actions secrets."
   type        = string
   sensitive   = true
 }
@@ -30,7 +30,7 @@ variable "deployment_region" {
 variable "deployment_plan" {
   description = "Service plan/tier for the application deployment."
   type        = string
-  default     = "starter"
+  default     = "free"
 }
 
 variable "app_root_directory" {
@@ -76,9 +76,8 @@ variable "app_port" {
 }
 
 variable "render_owner_id" {
-  description = "Optional Render owner/team id. Empty means Render default owner context."
+  description = "Render owner/team id (usr-* or tea-*), required by the Render provider."
   type        = string
-  default     = ""
 }
 
 variable "health_monitor_name" {
@@ -97,14 +96,27 @@ variable "app_plain_env_vars" {
   description = "Non-secret application environment variables as map of key to value."
   type        = map(string)
   default = {
-    NODE_ENV = "production"
+    ADMIN_EMAILS = "ledoyen.loic@gmail.com"
+    RUST_LOG     = "debug"
   }
+}
+
+variable "app_secret_env_values" {
+  description = "Secret values mapped by env var key, sourced from CI secrets."
+  type        = map(string)
+  sensitive   = true
+  default     = {}
 }
 
 variable "neon_api_token" {
   description = "Neon API token."
   type        = string
   sensitive   = true
+}
+
+variable "neon_org_id" {
+  description = "Neon organization id used to create projects."
+  type        = string
 }
 
 variable "database_project_name" {
@@ -116,7 +128,7 @@ variable "database_project_name" {
 variable "database_region_id" {
   description = "Database region id, for example aws-eu-west-3."
   type        = string
-  default     = "aws-eu-west-3"
+  default     = "aws-eu-west-2"
 }
 
 variable "database_branch_name" {
@@ -129,6 +141,12 @@ variable "database_engine_major_version" {
   description = "PostgreSQL major version for the database project."
   type        = number
   default     = 17
+}
+
+variable "database_history_retention_seconds" {
+  description = "Neon PITR history retention in seconds. Must be within organization limits."
+  type        = number
+  default     = 21600
 }
 
 variable "database_name" {

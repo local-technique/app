@@ -27,3 +27,9 @@ output "app_health_monitor_id" {
   description = "Better Stack monitor identifier for the app health endpoint."
   value       = betteruptime_monitor.api_health.id
 }
+
+output "database_url" {
+  description = "Application database connection URL from Neon."
+  value       = data.neon_connection_uri.app_db.uri
+  sensitive   = true
+}

@@ -16,6 +16,13 @@ resource "render_web_service" "api" {
     }
   }
 
-  num_instances = 1
-  env_vars      = local.app_env_vars_render
+  env_vars = {
+    TF_MANAGED_PLACEHOLDER = {
+      value = "1"
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [maintenance_mode, env_vars]
+  }
 }

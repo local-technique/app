@@ -1,4 +1,4 @@
-name: CI
+name: 🏗️ Infrastructure - CI
 
 on:
   workflow_dispatch:
@@ -15,9 +15,16 @@ permissions:
 env:
   TF_IN_AUTOMATION: "true"
   TF_CLI_ARGS: "-no-color"
+  TF_VAR_app_secret_env_values: |
+    {
+      "GOOGLE_CLIENT_ID": "${{ secrets.GOOGLE_CLIENT_ID }}",
+      "GOOGLE_CLIENT_SECRET": "${{ secrets.GOOGLE_CLIENT_SECRET }}",
+      "FACEBOOK_CLIENT_ID": "${{ secrets.FACEBOOK_CLIENT_ID }}",
+      "FACEBOOK_CLIENT_SECRET": "${{ secrets.FACEBOOK_CLIENT_SECRET }}"
+    }
   TF_VAR_repository_full_name: ${{ github.repository }}
-  TF_VAR_repository_token: ${{ github.token }}
   TF_VAR_neon_api_token: ${{ secrets.TF_VAR_NEON_API_TOKEN }}
+  TF_VAR_neon_org_id: ${{ vars.NEON_ORG_ID }}
   TF_VAR_render_owner_id: ${{ vars.RENDER_OWNER_ID }}
   RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
   BETTERUPTIME_API_TOKEN: ${{ secrets.BETTERUPTIME_API_TOKEN }}
@@ -33,6 +40,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Generate GitHub App token for Terraform
+        id: gh_app_token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.CICD_AUTOMATION_GH_APP_CLIENT_ID }}
+          private-key: ${{ secrets.CICD_AUTOMATION_GH_APP_PK }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Export GitHub provider token
+        run: echo "TF_VAR_repository_token=${{ steps.gh_app_token.outputs.token }}" >> "$GITHUB_ENV"
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
@@ -42,8 +60,12 @@ jobs:
       - name: Restore Terraform state cache
         uses: actions/cache/restore@v4
         with:
-          path: infrastructure/terraform.tfstate
-          key: terraform-local-state-main
+          path: |
+            infrastructure/terraform.tfstate
+            infrastructure/terraform.tfstate.backup
+          key: terraform-local-state-main-${{ github.run_id }}
+          restore-keys: |
+            terraform-local-state-main-
 
       - name: Terraform fmt check
         run: make fmt
@@ -53,29 +75,6 @@ jobs:
 
       - name: Plan
         run: make init plan show-plan
-
-      - name: Plan diagnostics on failure
-        if: failure()
-        run: |
-          terraform version
-          echo "--- terraform providers ---"
-          terraform providers
-          echo "--- terraform state list (if any) ---"
-          terraform state list || true
-          echo "--- retry plan with debug logging ---"
-          export TF_LOG=DEBUG
-          export TF_LOG_PATH=tf-debug.log
-          terraform plan -out=tfplan-debug || true
-          echo "--- last 200 lines of tf-debug.log ---"
-          tail -n 200 tf-debug.log || true
-
-      - name: Upload Terraform debug log
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: terraform-debug-log
-          path: infrastructure/tf-debug.log
-          if-no-files-found: ignore
 
       - name: Post sticky plan diff
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4

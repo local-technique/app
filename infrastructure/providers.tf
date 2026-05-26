@@ -4,7 +4,7 @@ provider "github" {
 }
 
 provider "render" {
-  owner_id = var.render_owner_id != "" ? var.render_owner_id : null
+  owner_id = var.render_owner_id
 }
 
 provider "neon" {
