@@ -5,6 +5,10 @@ on:
   push:
     branches:
       - main
+    paths:
+      - front/**
+      - back/**
+      - .github/workflows/ci.yml
 
 jobs:
   frontend:

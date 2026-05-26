@@ -18,6 +18,7 @@ env:
   TF_VAR_repository_full_name: ${{ github.repository }}
   TF_VAR_repository_token: ${{ github.token }}
   TF_VAR_neon_api_token: ${{ secrets.TF_VAR_NEON_API_TOKEN }}
+  TF_VAR_neon_org_id: ${{ vars.NEON_ORG_ID }}
   TF_VAR_render_owner_id: ${{ vars.RENDER_OWNER_ID }}
   RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
   BETTERUPTIME_API_TOKEN: ${{ secrets.BETTERUPTIME_API_TOKEN }}
@@ -53,29 +54,6 @@ jobs:
 
       - name: Plan
         run: make init plan show-plan
-
-      - name: Plan diagnostics on failure
-        if: failure()
-        run: |
-          terraform version
-          echo "--- terraform providers ---"
-          terraform providers
-          echo "--- terraform state list (if any) ---"
-          terraform state list || true
-          echo "--- retry plan with debug logging ---"
-          export TF_LOG=DEBUG
-          export TF_LOG_PATH=tf-debug.log
-          terraform plan -out=tfplan-debug || true
-          echo "--- last 200 lines of tf-debug.log ---"
-          tail -n 200 tf-debug.log || true
-
-      - name: Upload Terraform debug log
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: terraform-debug-log
-          path: infrastructure/tf-debug.log
-          if-no-files-found: ignore
 
       - name: Post sticky plan diff
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4

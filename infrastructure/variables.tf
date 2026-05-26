@@ -107,6 +107,11 @@ variable "neon_api_token" {
   sensitive   = true
 }
 
+variable "neon_org_id" {
+  description = "Neon organization id used to create projects."
+  type        = string
+}
+
 variable "database_project_name" {
   description = "Database project name."
   type        = string
@@ -116,7 +121,7 @@ variable "database_project_name" {
 variable "database_region_id" {
   description = "Database region id, for example aws-eu-west-3."
   type        = string
-  default     = "aws-eu-west-3"
+  default     = "aws-eu-west-2"
 }
 
 variable "database_branch_name" {
@@ -129,6 +134,12 @@ variable "database_engine_major_version" {
   description = "PostgreSQL major version for the database project."
   type        = number
   default     = 17
+}
+
+variable "database_history_retention_seconds" {
+  description = "Neon PITR history retention in seconds. Must be within organization limits."
+  type        = number
+  default     = 21600
 }
 
 variable "database_name" {

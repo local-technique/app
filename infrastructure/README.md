@@ -34,6 +34,7 @@ Use **Secrets** for sensitive values and **Variables** for non-sensitive values.
 | --- | --- | --- | --- | --- |
 | Repository full name | inferred | none | Repository to manage in `owner/name` format. | Automatically set from `${{ github.repository }}` in CI. |
 | Render owner id | variable | `RENDER_OWNER_ID` | Selects Render owner/team where resources are created (`usr-*` or `tea-*`). | Copy from Render dashboard URL for your user/team settings. |
+| Neon organization id | variable | `NEON_ORG_ID` | Organization id required to create Neon projects. | Copy from Neon organization settings page (`org-...`). |
 
 ### CI workflow token behavior
 
@@ -49,7 +50,8 @@ Do not create GitHub entries for these unless you want to override defaults.
 | Input | What it does | Default |
 | --- | --- | --- |
 | `database_project_name` | Neon project name. | `local-technique-db` |
-| `database_region_id` | Neon region for the project (France). | `aws-eu-west-3` |
+| `database_region_id` | Neon region for the project (closest available to France). | `aws-eu-west-2` |
+| `database_history_retention_seconds` | Neon project history retention in seconds (respect org limits). | `21600` |
 | `database_name` | Postgres database name in Neon. | `local-technique-db` |
 | `database_role_name` | Postgres role used by app URI. | `app` |
 | `app_name` | Render service name prefix. | `local-technique-backend` |

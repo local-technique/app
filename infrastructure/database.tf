@@ -1,6 +1,8 @@
 resource "neon_project" "app_db" {
   name      = var.database_project_name
   region_id = var.database_region_id
+  org_id    = var.neon_org_id
+  history_retention = var.database_history_retention_seconds
 
   branch = {
     name      = var.database_branch_name
