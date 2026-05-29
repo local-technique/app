@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { CalendarClock, TriangleAlert } from "lucide-vue-next";
+import { CalendarClock, TriangleAlert } from "@lucide/vue";
 import { useRoute } from "vue-router";
 import type { LocaleCode } from "../i18n";
 import type { ThemeMode } from "../theme";
