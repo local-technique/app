@@ -10,6 +10,9 @@ pub struct Config {
     pub facebook_client_id: String,
     pub facebook_client_secret: String,
     pub cookie_key_base64: String,
+    pub access_token_jwt_secret: String,
+    pub database_url: String,
+    pub admin_emails: Option<String>,
     pub listen_addr: Option<String>,
 }
 

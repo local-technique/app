@@ -7,14 +7,15 @@ import AttachmentList from "../common/components/AttachmentList.vue";
 import AttachmentPreview from "../common/components/AttachmentPreview.vue";
 import type { AttachmentItem } from "../common/attachments";
 import type { LocaleCode } from "../common/localeContent";
-import { mockEventsRepository } from "./repositories/mockEventsRepository";
+import { apiEventsRepository } from "./repositories/apiEventsRepository";
 import { toEventViewModel } from "./utils";
 
 const { t, locale } = useI18n();
 
 const route = useRoute();
 const eventId = ref(typeof route.params.id === "string" ? route.params.id : "");
-const event = ref<Awaited<ReturnType<typeof mockEventsRepository.byId>>>(null);
+const event = ref<Awaited<ReturnType<typeof apiEventsRepository.byId>>>(null);
+const loadFailed = ref(false);
 const selectedAttachmentId = ref("");
 
 function activeLocale(): LocaleCode {
@@ -22,7 +23,13 @@ function activeLocale(): LocaleCode {
 }
 
 async function loadEvent(): Promise<void> {
-  event.value = await mockEventsRepository.byId(eventId.value, activeLocale());
+  try {
+    event.value = await apiEventsRepository.byId(eventId.value, activeLocale());
+    loadFailed.value = false;
+  } catch {
+    event.value = null;
+    loadFailed.value = true;
+  }
   selectedAttachmentId.value = event.value?.attachments[0]?.id ?? "";
 }
 
@@ -89,6 +96,15 @@ function handleAttachmentSelect(item: AttachmentItem): void {
     />
     <AttachmentPreview v-if="selectedAttachment" :attachment="selectedAttachment" />
 
+    <p class="back-link">
+      <RouterLink class="back-link-ui" :to="{ path: '/events', query: backQuery }">
+        <ArrowLeft :size="15" :stroke-width="2" />
+        <span>{{ t("labels.backToEvents") }}</span>
+      </RouterLink>
+    </p>
+  </main>
+  <main class="page-wrap" v-else-if="loadFailed">
+    <h1 class="page-title">{{ t("labels.eventLoadFailed") }}</h1>
     <p class="back-link">
       <RouterLink class="back-link-ui" :to="{ path: '/events', query: backQuery }">
         <ArrowLeft :size="15" :stroke-width="2" />

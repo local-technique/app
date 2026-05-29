@@ -2,31 +2,31 @@
 
 Local-technique is a lightweight demo web app for co-owners to track building events, maintenance, and incidents with bilingual support and modern responsive navigation.
 
-## Backend auth configuration
+## Hosting
 
-For split hosting (GitHub Pages frontend + separate backend), configure both frontend values:
+- Frontend: [GitHub Pages](https://local-technique.github.io/app)
+- Backend: [Render.com](https://dashboard.render.com)
+- Database: [Neon](https://console.neon.tech/app)
+- Monitoring: [BetterStack](https://uptime.betterstack.com)
 
-- `FRONTEND_ORIGIN`: browser origin allowed by CORS and refresh origin checks (for this app: `https://local-technique.github.io`).
-- `FRONTEND_BASE_URL`: full frontend base URL used for post-OAuth callback redirects (for this app: `https://local-technique.github.io/app`).
+## OAuth clients configuration
 
-## Persistent auth model (cross-site hosting)
+- Google Console: https://console.cloud.google.com
 
-The app uses rotating refresh tokens returned in JSON (not cookie-dependent) to stay logged in across reloads in the same browser tab/session when frontend/backend are on different sites.
+## Environment variables
 
-- `POST /auth/exchange` returns `access_token` + `refresh_token`.
-- Frontend stores refresh token in `sessionStorage` and refreshes via `POST /auth/refresh`.
-- Backend stores hashed refresh tokens, rotates on each refresh, and detects token reuse.
-- On reuse detection, backend revokes that session and its access tokens.
-
-Security hardening in frontend:
-
-- Strict CSP in `front/index.html` (script-src `self`, no inline scripts).
-- Theme bootstrap moved to `front/public/theme-init.js` to avoid inline script exceptions.
-- `img-src` constrained to `'self' data:` to reduce exfiltration channels.
-- Development runs through Vite currently require `'unsafe-eval'` in `script-src`; keep that token in dev and remove it in production header-level CSP when serving built assets.
-
-Note: CSP is currently enforced through a meta tag in `front/index.html`. For stronger protection, also set the same CSP as an HTTP response header at the hosting/CDN layer when possible.
-
-## Oauth clients configuration
-
-* https://console.cloud.google.com
+| Name                    | Description                                      | Default                        | Misc |
+|-------------------------|--------------------------------------------------|--------------------------------|------|
+| `APP_BASE_URL`          | Required. Backend public base URL.               | none                           | Local: `http://localhost:8080` |
+| `FRONTEND_ORIGIN`       | Required. Allowed browser origin for CORS.       | none                           | Local: `http://localhost:5173` |
+| `FRONTEND_BASE_URL`     | Optional. Frontend base URL for OAuth redirect.  | `FRONTEND_ORIGIN`              | Use when frontend runs under `/app`. |
+| `GOOGLE_CLIENT_ID`      | Required. Google OAuth client ID.                | none                           | From Google Console. |
+| `GOOGLE_CLIENT_SECRET`  | Required. Google OAuth client secret.            | none                           | Keep secret. |
+| `FACEBOOK_CLIENT_ID`    | Required. Facebook OAuth app ID.                 | none                           | From Meta developer portal. |
+| `FACEBOOK_CLIENT_SECRET`| Required. Facebook OAuth app secret.             | none                           | Keep secret. |
+| `COOKIE_KEY_BASE64`     | Required. Cookie key, base64 (>=64 decoded bytes). | none                         | PowerShell: `[Convert]::ToBase64String((1..64 \| ForEach-Object { Get-Random -Maximum 256 }))`; Bash: `openssl rand -base64 64` |
+| `ACCESS_TOKEN_JWT_SECRET` | Required. JWT signing secret (`HS256`, 32 or 64 bytes random key are both acceptable). | none | PowerShell: `[Convert]::ToBase64String((1..64 \| ForEach-Object { Get-Random -Maximum 256 }))`; Bash: `openssl rand -base64 64` |
+| `DATABASE_URL`          | Required. PostgreSQL DSN.                        | none                           | Local Docker: `postgres://postgres:example@localhost:5432/postgres` |
+| `ADMIN_EMAILS`          | Optional. Comma-separated auto-admin emails.     | empty                          | Applied only for Google users. |
+| `LISTEN_ADDR`           | Optional. Backend bind address.                  | `0.0.0.0:8080`                 | Example: `127.0.0.1:8080` |
+| `RUST_LOG`              | Optional. Rust log level/filter.                 | `info`                         | Example: `debug` |

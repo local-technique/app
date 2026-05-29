@@ -1,0 +1,94 @@
+use std::collections::HashSet;
+
+use crate::common::error::AppError;
+use crate::common::i18n::locale_chain;
+use crate::common::validation::{
+    ensure_field_key_allowed, ensure_locale_enabled, load_enabled_locales, normalize_field_key, normalize_locale,
+    normalize_text_value,
+};
+use crate::maintenances::model::{
+    MaintenanceDetail, MaintenanceListItem, MaintenanceTranslationMatrixRow, MaintenanceTranslationValue,
+    MaintenanceUpsertRequest,
+};
+use crate::maintenances::repository;
+
+const MAINTENANCE_TRANSLATION_FIELD_KEYS: [&str; 5] =
+    ["title", "warning", "short_description", "long_description", "location"];
+
+pub async fn list(
+    db: &sqlx::PgPool,
+    requested_locale: Option<&str>,
+    query: Option<&str>,
+) -> Result<Vec<MaintenanceListItem>, AppError> {
+    let chain = locale_chain(requested_locale);
+    repository::list(db, &chain, query).await
+}
+
+pub async fn by_id(
+    db: &sqlx::PgPool,
+    maintenance_id: &str,
+    requested_locale: Option<&str>,
+) -> Result<Option<MaintenanceDetail>, AppError> {
+    let chain = locale_chain(requested_locale);
+    repository::by_id(db, maintenance_id, &chain).await
+}
+
+pub async fn list_translations(
+    db: &sqlx::PgPool,
+    maintenance_id: &str,
+) -> Result<Vec<MaintenanceTranslationMatrixRow>, AppError> {
+    repository::list_translations(db, maintenance_id).await
+}
+
+pub async fn replace_translations(
+    db: &sqlx::PgPool,
+    maintenance_id: &str,
+    values: &[MaintenanceTranslationValue],
+) -> Result<(), AppError> {
+    let enabled_locales = load_enabled_locales(db).await?;
+    let validated = values
+        .iter()
+        .map(|value| validate_translation_value(value, &enabled_locales))
+        .collect::<Result<Vec<_>, AppError>>()?;
+
+    repository::replace_translations(db, maintenance_id, &validated).await
+}
+
+pub async fn upsert(db: &sqlx::PgPool, payload: &MaintenanceUpsertRequest) -> Result<(), AppError> {
+    let enabled_locales = load_enabled_locales(db).await?;
+    let validated = MaintenanceUpsertRequest {
+        id: payload.id.clone(),
+        category_code: payload.category_code.clone(),
+        start_utc: payload.start_utc.clone(),
+        end_utc: payload.end_utc.clone(),
+        notified_at_utc: payload.notified_at_utc.clone(),
+        translations: payload
+            .translations
+            .iter()
+            .map(|value| validate_translation_value(value, &enabled_locales))
+            .collect::<Result<Vec<_>, AppError>>()?,
+    };
+
+    repository::upsert(db, &validated).await
+}
+
+pub async fn delete(db: &sqlx::PgPool, maintenance_id: &str) -> Result<bool, AppError> {
+    repository::delete_by_code(db, maintenance_id).await
+}
+
+fn validate_translation_value(
+    value: &MaintenanceTranslationValue,
+    enabled_locales: &HashSet<String>,
+) -> Result<MaintenanceTranslationValue, AppError> {
+    let locale = normalize_locale(&value.locale)?;
+    ensure_locale_enabled(&locale, enabled_locales)?;
+
+    let field_key = normalize_field_key(&value.field_key)?;
+    ensure_field_key_allowed(&field_key, &MAINTENANCE_TRANSLATION_FIELD_KEYS)?;
+
+    Ok(MaintenanceTranslationValue {
+        locale,
+        field_key,
+        field_value: normalize_text_value(&value.field_value),
+    })
+}

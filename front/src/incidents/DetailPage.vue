@@ -7,14 +7,15 @@ import AttachmentList from "../common/components/AttachmentList.vue";
 import AttachmentPreview from "../common/components/AttachmentPreview.vue";
 import type { AttachmentItem } from "../common/attachments";
 import type { LocaleCode } from "../common/localeContent";
-import { mockIncidentsRepository } from "./repositories/mockIncidentsRepository";
+import { apiIncidentsRepository } from "./repositories/apiIncidentsRepository";
 import { toIncidentViewModel } from "./utils";
 
 const { t, locale } = useI18n();
 
 const route = useRoute();
 const incidentId = ref(typeof route.params.id === "string" ? route.params.id : "");
-const incident = ref<Awaited<ReturnType<typeof mockIncidentsRepository.byId>>>(null);
+const incident = ref<Awaited<ReturnType<typeof apiIncidentsRepository.byId>>>(null);
+const loadFailed = ref(false);
 const selectedAttachmentId = ref("");
 
 function activeLocale(): LocaleCode {
@@ -22,7 +23,13 @@ function activeLocale(): LocaleCode {
 }
 
 async function loadIncident(): Promise<void> {
-  incident.value = await mockIncidentsRepository.byId(incidentId.value, activeLocale());
+  try {
+    incident.value = await apiIncidentsRepository.byId(incidentId.value, activeLocale());
+    loadFailed.value = false;
+  } catch {
+    incident.value = null;
+    loadFailed.value = true;
+  }
   selectedAttachmentId.value = incident.value?.attachments[0]?.id ?? "";
 }
 
@@ -100,6 +107,15 @@ function handleAttachmentSelect(item: AttachmentItem): void {
       </div>
     </section>
 
+    <p class="back-link">
+      <RouterLink class="back-link-ui" :to="{ path: '/incidents', query: backQuery }">
+        <ArrowLeft :size="15" :stroke-width="2" />
+        <span>{{ t("labels.backToIncidents") }}</span>
+      </RouterLink>
+    </p>
+  </main>
+  <main class="page-wrap" v-else-if="loadFailed">
+    <h1 class="page-title">{{ t("labels.incidentLoadFailed") }}</h1>
     <p class="back-link">
       <RouterLink class="back-link-ui" :to="{ path: '/incidents', query: backQuery }">
         <ArrowLeft :size="15" :stroke-width="2" />

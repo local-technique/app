@@ -1,7 +1,6 @@
 use std::net::SocketAddr;
 
 use axum::{
-    routing::{get, post},
     Router,
 };
 use axum_extra::extract::cookie::Key;
@@ -12,8 +11,13 @@ use tower_http::cors::CorsLayer;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+mod app;
 mod auth;
+mod common;
 mod config;
+mod incidents;
+mod maintenances;
+mod translations;
 
 #[tokio::main]
 async fn main() {
@@ -34,7 +38,7 @@ async fn main() {
                 .expect("FRONTEND_ORIGIN must be a valid header value"),
         )
         .allow_credentials(true)
-        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
         .allow_headers([http::header::AUTHORIZATION, CONTENT_TYPE]);
 
     let key_bytes = STANDARD
@@ -43,18 +47,15 @@ async fn main() {
     let cookie_key = Key::try_from(key_bytes.as_slice())
         .expect("COOKIE_KEY_BASE64 must decode to at least 64 bytes");
 
-    let state = auth::AppState::new(config.clone(), cookie_key);
+    let db = common::db::connect(&config.database_url)
+        .await
+        .expect("failed to connect to database");
+    common::db::migrate(&db)
+        .await
+        .expect("failed to run database migrations");
 
-    let app = Router::new()
-        .route("/health", get(health))
-        .route("/auth/{provider}/start", get(auth::start_oauth))
-        .route("/auth/{provider}/callback", get(auth::oauth_callback))
-        .route("/auth/exchange", post(auth::exchange_session))
-        .route("/auth/refresh", post(auth::refresh))
-        .route("/auth/logout", post(auth::logout))
-        .route("/me", get(auth::me))
-        .layer(cors)
-        .with_state(state);
+    let state = app::state::AppState::new(config.clone(), cookie_key, db);
+    let app: Router = app::router::build(state, cors);
 
     let addr = config
         .listen_addr
@@ -71,8 +72,4 @@ async fn main() {
     axum::serve(listener, app)
         .await
         .expect("backend server failed");
-}
-
-async fn health() -> &'static str {
-    "ok"
 }

@@ -3,14 +3,15 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import type { LocaleCode } from "../common/localeContent";
-import { mockIncidentsRepository } from "./repositories/mockIncidentsRepository";
+import { apiIncidentsRepository } from "./repositories/apiIncidentsRepository";
 import { groupByStatus, toIncidentViewModel } from "./utils";
 
 const { t, locale } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const query = ref(typeof route.query.q === "string" ? route.query.q : "");
-const incidents = ref([] as Awaited<ReturnType<typeof mockIncidentsRepository.list>>);
+const incidents = ref([] as Awaited<ReturnType<typeof apiIncidentsRepository.list>>);
+const loadFailed = ref(false);
 let loadVersion = 0;
 
 function activeLocale(): LocaleCode {
@@ -19,9 +20,16 @@ function activeLocale(): LocaleCode {
 
 async function loadIncidents(value: string): Promise<void> {
   const requestVersion = ++loadVersion;
-  const result = await mockIncidentsRepository.list(activeLocale(), value);
-  if (requestVersion === loadVersion) {
-    incidents.value = result;
+  try {
+    const result = await apiIncidentsRepository.list(activeLocale(), value);
+    if (requestVersion === loadVersion) {
+      loadFailed.value = false;
+      incidents.value = result;
+    }
+  } catch {
+    if (requestVersion === loadVersion) {
+      loadFailed.value = true;
+    }
   }
 }
 
@@ -117,6 +125,7 @@ function hasSection(name: "current" | "past"): boolean {
       </div>
     </section>
 
-    <p class="empty-state" v-if="isSearchActive && !hasAnyMatch">{{ t("labels.noIncidentsMatch") }}</p>
+    <p class="empty-state" v-if="isSearchActive && !hasAnyMatch && !loadFailed">{{ t("labels.noIncidentsMatch") }}</p>
+    <p class="empty-state" v-if="loadFailed">{{ t("labels.incidentsLoadFailed") }}</p>
   </main>
 </template>
