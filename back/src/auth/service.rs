@@ -9,7 +9,7 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use chrono::{Duration as ChronoDuration, Utc};
 use cookie::time::Duration as CookieDuration;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
-use rand::RngCore;
+use rand::TryRngCore;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -432,7 +432,9 @@ fn normalize_origin(value: &str) -> &str {
 
 fn random_urlsafe(byte_len: usize) -> String {
     let mut bytes = vec![0_u8; byte_len];
-    OsRng.fill_bytes(&mut bytes);
+    OsRng
+        .try_fill_bytes(&mut bytes)
+        .expect("operating system random generator failed");
     URL_SAFE_NO_PAD.encode(bytes)
 }
 
