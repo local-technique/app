@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { CalendarClock, Shield, TriangleAlert } from "@lucide/vue";
+import { CalendarClock, FolderTree, Shield, TriangleAlert } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 
@@ -8,7 +8,7 @@ defineEmits<{
   openMore: [];
 }>();
 
-defineProps<{
+const props = defineProps<{
   showCoOwnerLinks: boolean;
   showAdminLink: boolean;
 }>();
@@ -17,7 +17,9 @@ const { t } = useI18n();
 const route = useRoute();
 const eventsActive = computed(() => route.path.startsWith("/events"));
 const incidentsActive = computed(() => route.path.startsWith("/incidents"));
-const adminActive = computed(() => route.path.startsWith("/admin"));
+const adminUsersActive = computed(() => route.path.startsWith("/admin/users"));
+const adminCategoriesActive = computed(() => route.path.startsWith("/admin/categories"));
+const blankSlotCount = computed(() => Math.max(0, 4 - (props.showCoOwnerLinks ? 2 : 0) - (props.showAdminLink ? 2 : 0)));
 </script>
 
 <template>
@@ -28,11 +30,13 @@ const adminActive = computed(() => route.path.startsWith("/admin"));
     <a v-if="showCoOwnerLinks" class="nav-item" :class="{ active: incidentsActive }" href="#/incidents" :aria-label="t('nav.incidents')">
       <TriangleAlert :size="18" :stroke-width="2" />
     </a>
-    <a v-if="showAdminLink" class="nav-item" :class="{ active: adminActive }" href="#/admin/users" :aria-label="t('nav.adminUsers')">
+    <a v-if="showAdminLink" class="nav-item" :class="{ active: adminUsersActive }" href="#/admin/users" :aria-label="t('nav.adminUsers')">
       <Shield :size="18" :stroke-width="2" />
     </a>
-    <span class="nav-item nav-item-blank" aria-hidden="true"></span>
-    <span class="nav-item nav-item-blank" aria-hidden="true"></span>
+    <a v-if="showAdminLink" class="nav-item" :class="{ active: adminCategoriesActive }" href="#/admin/categories" :aria-label="t('nav.adminCategories')">
+      <FolderTree :size="18" :stroke-width="2" />
+    </a>
+    <span v-for="index in blankSlotCount" :key="index" class="nav-item nav-item-blank" aria-hidden="true"></span>
     <button class="nav-item nav-item-more" type="button" :aria-label="t('labels.openMore')" @click="$emit('openMore')">
       ...
     </button>

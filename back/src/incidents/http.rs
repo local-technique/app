@@ -7,7 +7,7 @@ use crate::common::auth::Principal;
 use crate::common::error::AppError;
 use crate::common::role::Role;
 use crate::incidents::model::{
-    IncidentListQuery, IncidentTranslationsUpdateRequest, IncidentUpsertRequest,
+    IncidentListQuery, IncidentSaveRequest, IncidentTranslationsUpdateRequest,
 };
 use crate::incidents::service;
 
@@ -16,7 +16,7 @@ pub async fn list(
     State(state): State<AppState>,
     Query(query): Query<IncidentListQuery>,
 ) -> Result<Json<Vec<crate::incidents::model::IncidentListItem>>, AppError> {
-    principal.ensure_role(Role::CoOwner)?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwner, Role::CoOwnershipBoard])?;
     let values = service::list(&state.db, query.locale.as_deref(), query.q.as_deref()).await?;
     Ok(Json(values))
 }
@@ -27,8 +27,21 @@ pub async fn detail(
     Path(id): Path<String>,
     Query(query): Query<IncidentListQuery>,
 ) -> Result<Json<crate::incidents::model::IncidentDetail>, AppError> {
-    principal.ensure_role(Role::CoOwner)?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwner, Role::CoOwnershipBoard])?;
     let Some(value) = service::by_id(&state.db, &id, query.locale.as_deref()).await? else {
+        return Err(AppError::not_found("incident not found"));
+    };
+    Ok(Json(value))
+}
+
+pub async fn edit(
+    principal: Principal,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Query(query): Query<IncidentListQuery>,
+) -> Result<Json<crate::incidents::model::IncidentEditData>, AppError> {
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard])?;
+    let Some(value) = service::edit_data(&state.db, &id, query.locale.as_deref()).await? else {
         return Err(AppError::not_found("incident not found"));
     };
     Ok(Json(value))
@@ -58,10 +71,10 @@ pub async fn replace_translations(
 pub async fn create(
     principal: Principal,
     State(state): State<AppState>,
-    Json(payload): Json<IncidentUpsertRequest>,
+    Json(payload): Json<IncidentSaveRequest>,
 ) -> Result<StatusCode, AppError> {
-    principal.ensure_role(Role::Admin)?;
-    service::upsert(&state.db, &payload).await?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard])?;
+    service::save_partial(&state.db, &payload, principal.user_id).await?;
     Ok(StatusCode::CREATED)
 }
 
@@ -69,11 +82,11 @@ pub async fn update(
     principal: Principal,
     State(state): State<AppState>,
     Path(id): Path<String>,
-    Json(mut payload): Json<IncidentUpsertRequest>,
+    Json(mut payload): Json<IncidentSaveRequest>,
 ) -> Result<StatusCode, AppError> {
-    principal.ensure_role(Role::Admin)?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard])?;
     payload.id = id;
-    service::upsert(&state.db, &payload).await?;
+    service::save_partial(&state.db, &payload, principal.user_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 

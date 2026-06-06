@@ -4,7 +4,7 @@ use axum::{
 };
 
 use crate::app::state::AppState;
-use crate::{admin, auth, incidents, maintenances, translations};
+use crate::{admin, auth, categories, incidents, maintenances, translations};
 
 pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
     Router::new()
@@ -18,6 +18,12 @@ pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
         .route("/admin/roles", get(admin::http::roles))
         .route("/admin/users", get(admin::http::users))
         .route("/admin/users/{user_id}/roles", axum::routing::put(admin::http::update_user_roles))
+        .route("/categories", get(categories::http::list))
+        .route("/admin/categories", get(categories::http::admin_list).post(categories::http::create))
+        .route(
+            "/admin/categories/{id}",
+            axum::routing::put(categories::http::update).delete(categories::http::delete),
+        )
         .route("/incidents", get(incidents::http::list).post(incidents::http::create))
         .route(
             "/incidents/{id}",
@@ -26,6 +32,7 @@ pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
                 .delete(incidents::http::delete),
         )
         .route("/incidents/{id}/translations", get(incidents::http::translations))
+        .route("/incidents/{id}/edit", get(incidents::http::edit))
         .route(
             "/incidents/{id}/translations/replace",
             post(incidents::http::replace_translations),
@@ -41,6 +48,7 @@ pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
             "/maintenances/{id}/translations",
             get(maintenances::http::translations),
         )
+        .route("/maintenances/{id}/edit", get(maintenances::http::edit))
         .route(
             "/maintenances/{id}/translations/replace",
             post(maintenances::http::replace_translations),

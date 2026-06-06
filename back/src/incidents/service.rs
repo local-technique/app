@@ -7,8 +7,8 @@ use crate::common::validation::{
     normalize_text_value,
 };
 use crate::incidents::model::{
-    IncidentDetail, IncidentListItem, IncidentTranslationMatrixRow, IncidentTranslationValue,
-    IncidentUpsertRequest,
+    IncidentDetail, IncidentEditData, IncidentListItem, IncidentSaveRequest, IncidentTranslationMatrixRow,
+    IncidentTranslationValue,
 };
 use crate::incidents::repository;
 
@@ -40,6 +40,19 @@ pub async fn list_translations(
     repository::list_translations(db, incident_id).await
 }
 
+pub async fn edit_data(
+    db: &sqlx::PgPool,
+    incident_id: &str,
+    requested_locale: Option<&str>,
+) -> Result<Option<IncidentEditData>, AppError> {
+    let locale = normalize_locale(requested_locale.unwrap_or("en"))?;
+    let enabled_locales = load_enabled_locales(db).await?;
+    ensure_locale_enabled(&locale, &enabled_locales)?;
+    let mut enabled = enabled_locales.into_iter().collect::<Vec<_>>();
+    enabled.sort();
+    repository::edit_data(db, incident_id, &locale, &locale_chain(Some(&locale)), enabled).await
+}
+
 pub async fn replace_translations(
     db: &sqlx::PgPool,
     incident_id: &str,
@@ -54,37 +67,38 @@ pub async fn replace_translations(
     repository::replace_translations(db, incident_id, &validated).await
 }
 
-pub async fn upsert(db: &sqlx::PgPool, payload: &IncidentUpsertRequest) -> Result<(), AppError> {
+pub async fn save_partial(
+    db: &sqlx::PgPool,
+    payload: &IncidentSaveRequest,
+    user_id: uuid::Uuid,
+) -> Result<(), AppError> {
     let enabled_locales = load_enabled_locales(db).await?;
-    let mut validated = IncidentUpsertRequest {
-        id: payload.id.clone(),
-        category_code: payload.category_code.clone(),
-        start_utc: payload.start_utc.clone(),
-        end_utc: payload.end_utc.clone(),
-        translations: payload
-            .translations
-            .iter()
-            .map(|value| validate_translation_value(value, &enabled_locales, &INCIDENT_TRANSLATION_FIELD_KEYS))
-            .collect::<Result<Vec<_>, AppError>>()?,
-        timeline: Vec::with_capacity(payload.timeline.len()),
-    };
-
+    let locale = normalize_locale(&payload.locale)?;
+    ensure_locale_enabled(&locale, &enabled_locales)?;
+    let fields = validate_field_map(&payload.fields, &INCIDENT_TRANSLATION_FIELD_KEYS, &["title", "short_description", "long_description"])?;
+    let mut timeline = Vec::with_capacity(payload.timeline.len());
     for item in &payload.timeline {
-        validated.timeline.push(crate::incidents::model::IncidentTimelineUpsertItem {
-            id: item.id.clone(),
+        timeline.push(crate::incidents::model::IncidentTimelineSaveItem {
+            id: normalize_text_value(&item.id),
             at_utc: item.at_utc.clone(),
             sort_order: item.sort_order,
-            translations: item
-                .translations
-                .iter()
-                .map(|value| {
-                    validate_translation_value(value, &enabled_locales, &INCIDENT_TIMELINE_TRANSLATION_FIELD_KEYS)
-                })
-                .collect::<Result<Vec<_>, AppError>>()?,
+            fields: validate_field_map(&item.fields, &INCIDENT_TIMELINE_TRANSLATION_FIELD_KEYS, &["title"] )?,
         });
     }
-
-    repository::upsert(db, &validated).await
+    let validated = IncidentSaveRequest {
+        id: normalize_text_value(&payload.id),
+        category_id: normalize_text_value(&payload.category_id),
+        start_utc: payload.start_utc.clone(),
+        end_utc: payload.end_utc.clone(),
+        locale,
+        fields,
+        replace_timeline: payload.replace_timeline,
+        timeline,
+    };
+    if validated.id.is_empty() || validated.category_id.is_empty() {
+        return Err(AppError::bad_request("incident id and category_id are required"));
+    }
+    repository::save_partial(db, &validated, user_id).await
 }
 
 pub async fn delete(db: &sqlx::PgPool, incident_id: &str) -> Result<bool, AppError> {
@@ -107,4 +121,27 @@ fn validate_translation_value(
         field_key,
         field_value: normalize_text_value(&value.field_value),
     })
+}
+
+fn validate_field_map(
+    input: &std::collections::HashMap<String, String>,
+    allowed_field_keys: &[&str],
+    required_field_keys: &[&str],
+) -> Result<std::collections::HashMap<String, String>, AppError> {
+    let mut result = std::collections::HashMap::new();
+    for (field_key, field_value) in input {
+        let field_key = normalize_field_key(field_key)?;
+        ensure_field_key_allowed(&field_key, allowed_field_keys)?;
+        let value = normalize_text_value(field_value);
+        if required_field_keys.contains(&field_key.as_str()) && value.is_empty() {
+            return Err(AppError::bad_request("required localized fields cannot be empty"));
+        }
+        result.insert(field_key, value);
+    }
+    for required in required_field_keys {
+        if !result.contains_key(*required) {
+            return Err(AppError::bad_request("required localized fields are missing"));
+        }
+    }
+    Ok(result)
 }

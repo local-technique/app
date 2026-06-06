@@ -1,6 +1,14 @@
 import type { LocaleCode } from "../../common/localeContent";
 import { getAccessToken } from "../../auth/session";
-import type { IncidentItem, IncidentLocalizedText, IncidentTimelineEntry } from "../types";
+import type {
+  EditFieldValue,
+  IncidentEditData,
+  IncidentItem,
+  IncidentLocalizedText,
+  IncidentSavePayload,
+  IncidentTimelineEditItem,
+  IncidentTimelineEntry,
+} from "../types";
 import type { IncidentsRepository } from "./incidentsRepository";
 import { mockIncidentsRepository } from "./mockIncidentsRepository";
 
@@ -12,11 +20,13 @@ type ApiIncidentListItem = {
   location: string;
   start_utc: string;
   end_utc?: string;
+  timeline?: ApiIncidentTimelineItem[];
+  category?: { id: string; code: string; icon: string; label: string };
 };
 
 type ApiIncidentTimelineItem = {
   id: string;
-  at_utc: string;
+  at_utc: string | null;
   title: string;
   details: string;
 };
@@ -31,6 +41,35 @@ type ApiIncidentDetail = {
   start_utc: string;
   end_utc?: string;
   timeline: ApiIncidentTimelineItem[];
+  category?: { id: string; code: string; icon: string; label: string };
+  last_modified_at?: string | null;
+  last_modified_by?: { id: string; email: string } | null;
+};
+
+type ApiEditFieldValue = {
+  field_key: string;
+  value: string;
+  exact_value?: string | null;
+  fallback_locale?: string | null;
+  fallback_value?: string | null;
+};
+
+type ApiIncidentTimelineEditItem = {
+  id: string;
+  at_utc: string | null;
+  sort_order: number;
+  fields: ApiEditFieldValue[];
+};
+
+type ApiIncidentEditData = {
+  id: string;
+  category_id: string;
+  start_utc: string;
+  end_utc?: string;
+  locale: string;
+  enabled_locales: string[];
+  fields: ApiEditFieldValue[];
+  timeline: ApiIncidentTimelineEditItem[];
 };
 
 function apiBaseUrl(): string {
@@ -58,14 +97,49 @@ function toIncidentItem(locale: LocaleCode, value: ApiIncidentListItem | ApiInci
   return {
     id: value.id,
     categoryCode: value.category_code,
+    category: value.category,
     title: localized(locale, value.title ?? ""),
     shortDescription: localized(locale, value.short_description ?? ""),
     longDescription: localized(locale, "long_description" in value ? (value.long_description ?? "") : ""),
     location: localized(locale, value.location ?? ""),
     startUtc: value.start_utc,
     endUtc: value.end_utc,
-    timeline: "timeline" in value ? value.timeline.map((item) => toTimelineEntry(locale, item)) : [],
+    timeline: "timeline" in value ? (value.timeline ?? []).map((item) => toTimelineEntry(locale, item)) : [],
     attachments: [],
+    lastModifiedAt: "last_modified_at" in value ? (value.last_modified_at ?? undefined) : undefined,
+    lastModifiedBy: "last_modified_by" in value ? (value.last_modified_by ?? null) : undefined,
+  };
+}
+
+function toEditField(value: ApiEditFieldValue): EditFieldValue {
+  return {
+    fieldKey: value.field_key,
+    value: value.value,
+    exactValue: value.exact_value,
+    fallbackLocale: value.fallback_locale,
+    fallbackValue: value.fallback_value,
+  };
+}
+
+function toTimelineEditItem(value: ApiIncidentTimelineEditItem): IncidentTimelineEditItem {
+  return {
+    id: value.id,
+    atUtc: value.at_utc,
+    sortOrder: value.sort_order,
+    fields: value.fields.map(toEditField),
+  };
+}
+
+function toEditData(value: ApiIncidentEditData): IncidentEditData {
+  return {
+    id: value.id,
+    categoryId: value.category_id,
+    startUtc: value.start_utc,
+    endUtc: value.end_utc,
+    locale: value.locale,
+    enabledLocales: value.enabled_locales,
+    fields: value.fields.map(toEditField),
+    timeline: value.timeline.map(toTimelineEditItem),
   };
 }
 
@@ -98,6 +172,35 @@ async function fetchJsonOrNull<T>(url: string): Promise<T | null> {
   return (await response.json()) as T;
 }
 
+async function sendJson(url: string, method: string, body?: unknown): Promise<void> {
+  const response = await fetch(url, {
+    method,
+    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(`request failed with status ${response.status}`);
+  }
+}
+
+function toApiPayload(payload: IncidentSavePayload): Record<string, unknown> {
+  return {
+    id: payload.id,
+    category_id: payload.categoryId,
+    start_utc: payload.startUtc,
+    end_utc: payload.endUtc ?? null,
+    locale: payload.locale,
+    fields: payload.fields,
+    replace_timeline: payload.replaceTimeline ?? false,
+    timeline: payload.timeline.map((item) => ({
+      id: item.id,
+      at_utc: item.atUtc,
+      sort_order: item.sortOrder,
+      fields: item.fields,
+    })),
+  };
+}
+
 export class ApiIncidentsRepository implements IncidentsRepository {
   async list(preferredLanguage: LocaleCode, query: string): Promise<IncidentItem[]> {
     if (useMockData()) {
@@ -121,6 +224,50 @@ export class ApiIncidentsRepository implements IncidentsRepository {
     const params = new URLSearchParams({ locale: preferredLanguage });
     const payload = await fetchJsonOrNull<ApiIncidentDetail>(`${apiBaseUrl()}/incidents/${id}?${params.toString()}`);
     return payload ? toIncidentItem(preferredLanguage, payload) : null;
+  }
+
+  async editData(id: string, preferredLanguage: LocaleCode): Promise<IncidentEditData | null> {
+    if (useMockData()) {
+      const item = await mockIncidentsRepository.byId(id, preferredLanguage);
+      if (!item) return null;
+      return {
+        id: item.id,
+        categoryId: item.categoryCode,
+        startUtc: item.startUtc,
+        endUtc: item.endUtc,
+        locale: preferredLanguage,
+        enabledLocales: ["en", "fr"],
+        fields: [
+          { fieldKey: "title", value: item.title[preferredLanguage] ?? "" },
+          { fieldKey: "short_description", value: item.shortDescription[preferredLanguage] ?? "" },
+          { fieldKey: "long_description", value: item.longDescription[preferredLanguage] ?? "" },
+          { fieldKey: "location", value: item.location?.[preferredLanguage] ?? "" },
+        ],
+        timeline: item.timeline.map((entry, index) => ({
+          id: entry.id,
+          atUtc: entry.atUtc,
+          sortOrder: index + 1,
+          fields: [
+            { fieldKey: "title", value: entry.title[preferredLanguage] ?? "" },
+            { fieldKey: "details", value: entry.details?.[preferredLanguage] ?? "" },
+          ],
+        })),
+      };
+    }
+    const params = new URLSearchParams({ locale: preferredLanguage });
+    const payload = await fetchJsonOrNull<ApiIncidentEditData>(`${apiBaseUrl()}/incidents/${id}/edit?${params.toString()}`);
+    return payload ? toEditData(payload) : null;
+  }
+
+  async save(payload: IncidentSavePayload, existingId?: string): Promise<void> {
+    if (useMockData()) return;
+    const path = existingId ? `/incidents/${encodeURIComponent(existingId)}` : "/incidents";
+    await sendJson(`${apiBaseUrl()}${path}`, existingId ? "PUT" : "POST", toApiPayload(payload));
+  }
+
+  async delete(id: string): Promise<void> {
+    if (useMockData()) return;
+    await sendJson(`${apiBaseUrl()}/incidents/${encodeURIComponent(id)}`, "DELETE");
   }
 }
 

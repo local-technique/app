@@ -34,6 +34,18 @@ export const MOCK_INCIDENTS: IncidentItem[] = [
     endUtc: "2099-05-31T17:00:00Z",
     timeline: [
       {
+        id: "INC-001-T3",
+        atUtc: null,
+        title: {
+          en: "Awaiting valve replacement",
+          fr: "Remplacement de vanne en attente",
+        },
+        details: {
+          en: "Supplier confirmation is pending before final repair scheduling.",
+          fr: "La confirmation fournisseur est attendue avant la planification de la reparation finale.",
+        },
+      },
+      {
         id: "INC-001-T1",
         atUtc: "2020-05-01T07:05:00Z",
         title: {
