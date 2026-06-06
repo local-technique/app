@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { CalendarClock, Shield, TriangleAlert } from "@lucide/vue";
+import { CalendarClock, FolderTree, Shield, TriangleAlert } from "@lucide/vue";
 import { useRoute } from "vue-router";
 import type { LocaleCode } from "../i18n";
 import type { ThemeMode } from "../theme";
@@ -21,7 +21,8 @@ defineEmits<{
 const route = useRoute();
 const eventsActive = computed(() => route.path.startsWith("/events"));
 const incidentsActive = computed(() => route.path.startsWith("/incidents"));
-const adminActive = computed(() => route.path.startsWith("/admin"));
+const adminUsersActive = computed(() => route.path.startsWith("/admin/users"));
+const adminCategoriesActive = computed(() => route.path.startsWith("/admin/categories"));
 </script>
 
 <template>
@@ -35,9 +36,13 @@ const adminActive = computed(() => route.path.startsWith("/admin"));
         <TriangleAlert :size="16" :stroke-width="2" />
         <span>{{ $t("nav.incidents") }}</span>
       </a>
-      <a v-if="showAdminLink" href="#/admin/users" :class="{ active: adminActive }" @click="$emit('navigate')">
+      <a v-if="showAdminLink" href="#/admin/users" :class="{ active: adminUsersActive }" @click="$emit('navigate')">
         <Shield :size="16" :stroke-width="2" />
         <span>{{ $t("nav.adminUsers") }}</span>
+      </a>
+      <a v-if="showAdminLink" href="#/admin/categories" :class="{ active: adminCategoriesActive }" @click="$emit('navigate')">
+        <FolderTree :size="16" :stroke-width="2" />
+        <span>{{ $t("nav.adminCategories") }}</span>
       </a>
     </section>
 

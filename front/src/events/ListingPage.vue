@@ -2,6 +2,7 @@
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
+import { currentUserRoles, hasAnyRole } from "../auth/session";
 import type { LocaleCode } from "../common/localeContent";
 import { apiEventsRepository } from "./repositories/apiEventsRepository";
 import { groupByStatus, toEventViewModel } from "./utils";
@@ -79,6 +80,7 @@ const hasAnyMatch = computed(() => {
 });
 
 const isSearchActive = computed(() => query.value.trim().length > 0);
+const canCreate = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD"]));
 const detailQuery = computed(() => {
   const trimmed = query.value.trim();
   return trimmed ? { q: trimmed } : {};
@@ -92,6 +94,7 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
 <template>
   <main class="page-wrap">
     <h1 class="page-title">{{ t("nav.events") }}</h1>
+    <p v-if="canCreate"><RouterLink class="primary-action" to="/events/new">{{ t("labels.createEvent") }}</RouterLink></p>
 
     <div class="search-bar">
       <input id="events-search" v-model="query" type="search" :placeholder="t('labels.searchEvents')" />
@@ -143,3 +146,7 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
     <p class="empty-state" v-if="loadFailed">{{ t("labels.eventsLoadFailed") }}</p>
   </main>
 </template>
+
+<style scoped>
+.primary-action { display: inline-flex; margin-top: 0.8rem; border: 1px solid rgba(72, 144, 255, 0.7); border-radius: 0.55rem; padding: 0.55rem 0.8rem; background: rgba(72, 144, 255, 0.22); color: var(--control-fg); text-decoration: none; font-weight: 700; }
+</style>

@@ -21,6 +21,28 @@ describe("Incident detail", () => {
     expect(screen.getByText("Issue detected by monitoring system")).not.toBeNull();
   });
 
+  it("renders pending timeline entries before dated entries", async () => {
+    const router = createRouter({
+      history: createWebHashHistory(),
+      routes: [{ path: "/incidents/:id", component: IncidentDetailPage }],
+    });
+    await router.push("/incidents/INC-001");
+    await router.isReady();
+
+    render(IncidentDetailPage, { global: { plugins: [router, createAppI18n("en")] } });
+
+    const pendingBadge = await screen.findByText("Pending");
+    const pendingCard = pendingBadge.closest(".timeline-row");
+    const datedTitle = await screen.findByText("Issue detected by monitoring system");
+    const datedCard = datedTitle.closest(".timeline-row");
+
+    expect(pendingCard).not.toBeNull();
+    expect(datedCard).not.toBeNull();
+    expect(pendingCard?.compareDocumentPosition(datedCard as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(datedCard?.querySelector(".timeline-entry-icon")).not.toBeNull();
+    expect(screen.getByText("Temperature fell below threshold in two risers.").classList.contains("timeline-entry-details")).toBe(true);
+  });
+
   it("renders not found state", async () => {
     const router = createRouter({
       history: createWebHashHistory(),

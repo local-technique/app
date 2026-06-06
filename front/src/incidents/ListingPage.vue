@@ -2,6 +2,7 @@
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
+import { currentUserRoles, hasAnyRole } from "../auth/session";
 import type { LocaleCode } from "../common/localeContent";
 import { apiIncidentsRepository } from "./repositories/apiIncidentsRepository";
 import { groupByStatus, toIncidentViewModel } from "./utils";
@@ -79,6 +80,7 @@ const hasAnyMatch = computed(() => {
 });
 
 const isSearchActive = computed(() => query.value.trim().length > 0);
+const canCreate = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD"]));
 const detailQuery = computed(() => {
   const trimmed = query.value.trim();
   return trimmed ? { q: trimmed } : {};
@@ -92,6 +94,7 @@ function hasSection(name: "current" | "past"): boolean {
 <template>
   <main class="page-wrap">
     <h1 class="page-title">{{ t("nav.incidents") }}</h1>
+    <p v-if="canCreate"><RouterLink class="primary-action" to="/incidents/new">{{ t("labels.createIncident") }}</RouterLink></p>
 
     <div class="search-bar">
       <input id="incidents-search" v-model="query" type="search" :placeholder="t('labels.searchIncidents')" />
@@ -101,12 +104,21 @@ function hasSection(name: "current" | "past"): boolean {
       <h2>{{ t("labels.current") }}</h2>
       <div class="timeline-list">
         <article class="timeline-card" v-for="incident in grouped.current" :key="incident.id">
-          <p class="timeline-meta">{{ incident.raw.categoryCode }}</p>
-          <h3 class="timeline-card-title">
-            <RouterLink :to="{ path: `/incidents/${incident.id}`, query: detailQuery }">{{ incident.title }}</RouterLink>
-          </h3>
-          <p class="timeline-meta">{{ incident.dateLabel }}</p>
-          <p class="timeline-meta" v-if="incident.location">{{ incident.location }}</p>
+          <div class="incident-card-main">
+            <p class="timeline-meta">{{ incident.id }} - {{ incident.raw.categoryCode }}</p>
+            <h3 class="timeline-card-title">
+              <RouterLink :to="{ path: `/incidents/${incident.id}`, query: detailQuery }">{{ incident.title }}</RouterLink>
+            </h3>
+            <p class="timeline-meta">{{ incident.dateLabel }}</p>
+            <p class="timeline-meta" v-if="incident.location">{{ incident.location }}</p>
+          </div>
+          <aside v-if="incident.timeline[0]" class="latest-timeline-entry latest-timeline-entry-stretched">
+            <p class="timeline-meta" v-if="!incident.timeline[0].isPending">{{ incident.timeline[0].atLabel }}</p>
+            <p class="latest-timeline-title">
+              <span v-if="incident.timeline[0].isPending" class="pending-badge">{{ incident.timeline[0].atLabel }}</span>
+              <span>{{ incident.timeline[0].title }}</span>
+            </p>
+          </aside>
         </article>
       </div>
     </section>
@@ -115,12 +127,21 @@ function hasSection(name: "current" | "past"): boolean {
       <h2>{{ t("labels.past") }}</h2>
       <div class="timeline-list">
         <article class="timeline-card timeline-card-past" v-for="incident in grouped.past" :key="incident.id">
-          <p class="timeline-meta">{{ incident.raw.categoryCode }}</p>
-          <h3 class="timeline-card-title">
-            <RouterLink :to="{ path: `/incidents/${incident.id}`, query: detailQuery }">{{ incident.title }}</RouterLink>
-          </h3>
-          <p class="timeline-meta">{{ incident.dateLabel }}</p>
-          <p class="timeline-meta" v-if="incident.location">{{ incident.location }}</p>
+          <div class="incident-card-main">
+            <p class="timeline-meta">{{ incident.id }} - {{ incident.raw.categoryCode }}</p>
+            <h3 class="timeline-card-title">
+              <RouterLink :to="{ path: `/incidents/${incident.id}`, query: detailQuery }">{{ incident.title }}</RouterLink>
+            </h3>
+            <p class="timeline-meta">{{ incident.dateLabel }}</p>
+            <p class="timeline-meta" v-if="incident.location">{{ incident.location }}</p>
+          </div>
+          <aside v-if="incident.timeline[0]" class="latest-timeline-entry latest-timeline-entry-stretched">
+            <p class="timeline-meta" v-if="!incident.timeline[0].isPending">{{ incident.timeline[0].atLabel }}</p>
+            <p class="latest-timeline-title">
+              <span v-if="incident.timeline[0].isPending" class="pending-badge">{{ incident.timeline[0].atLabel }}</span>
+              <span>{{ incident.timeline[0].title }}</span>
+            </p>
+          </aside>
         </article>
       </div>
     </section>
@@ -129,3 +150,18 @@ function hasSection(name: "current" | "past"): boolean {
     <p class="empty-state" v-if="loadFailed">{{ t("labels.incidentsLoadFailed") }}</p>
   </main>
 </template>
+
+<style scoped>
+.primary-action { display: inline-flex; margin-top: 0.8rem; border: 1px solid rgba(72, 144, 255, 0.7); border-radius: 0.55rem; padding: 0.55rem 0.8rem; background: rgba(72, 144, 255, 0.22); color: var(--control-fg); text-decoration: none; font-weight: 700; }
+.timeline-card { grid-template-columns: minmax(0, 1fr); }
+.incident-card-main { display: grid; gap: 0.5rem; }
+.latest-timeline-entry { border-top: 1px solid var(--border-color); display: grid; gap: 0.3rem; padding-top: 0.55rem; }
+.latest-timeline-title { color: #77b3ff; display: block; margin: 0; font-size: 0.88rem; font-weight: 650; line-height: 1.25; }
+.latest-timeline-title .pending-badge { margin-right: 0.38rem; vertical-align: 0.08em; }
+.pending-badge { background: rgba(255, 139, 26, 0.2); border: 1px solid rgba(255, 139, 26, 0.62); border-radius: 999px; color: #ff8b1a; display: inline-flex; font-size: 0.78rem; line-height: 1.15; padding: 0.18rem 0.45rem; }
+
+@media (min-width: 760px) {
+  .timeline-card { align-items: stretch; grid-template-columns: minmax(0, 1fr) minmax(13rem, 30%); column-gap: 1.2rem; }
+  .latest-timeline-entry { align-content: start; border-left: 1px solid var(--border-color); border-top: 0; padding-left: 1rem; padding-top: 0; }
+}
+</style>

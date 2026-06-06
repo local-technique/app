@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { ArrowLeft } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
+import { currentUserRoles, hasAnyRole, hasRole } from "../auth/session";
 import AttachmentList from "../common/components/AttachmentList.vue";
 import AttachmentPreview from "../common/components/AttachmentPreview.vue";
 import type { AttachmentItem } from "../common/attachments";
@@ -65,9 +66,28 @@ const selectedAttachment = computed<AttachmentItem | null>(() => {
 
   return attachments.find((item) => item.id === selectedAttachmentId.value) ?? attachments[0] ?? null;
 });
+const canEdit = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD"]));
+const canDelete = computed(() => currentUserRoles.loaded && hasRole("ADMIN"));
+const auditLabel = computed(() => {
+  if (!event.value?.lastModifiedAt) return "";
+  return t("labels.lastModified", {
+    date: new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.value.lastModifiedAt)),
+    user: event.value.lastModifiedBy?.email ?? t("labels.unknownUser"),
+  });
+});
 
 function handleAttachmentSelect(item: AttachmentItem): void {
   selectedAttachmentId.value = item.id;
+}
+
+async function deleteEvent(): Promise<void> {
+  if (!window.confirm(t("labels.deleteEventConfirm"))) return;
+  try {
+    await apiEventsRepository.delete(eventId.value);
+    window.location.hash = "#/events";
+  } catch {
+    loadFailed.value = true;
+  }
 }
 </script>
 
@@ -80,10 +100,14 @@ function handleAttachmentSelect(item: AttachmentItem): void {
       </RouterLink>
     </p>
     <h1 class="page-title">{{ model.title }}</h1>
+    <p class="detail-actions"><RouterLink v-if="canEdit" class="secondary-button" :to="`/events/${model.id}/edit`">{{ t("labels.edit") }}</RouterLink><button v-if="canDelete" class="secondary-button" type="button" @click="deleteEvent">{{ t("labels.delete") }}</button></p>
     <p class="timeline-meta">ID: {{ model.id }}</p>
+    <p class="timeline-meta" v-if="model.raw.category">{{ model.raw.category.code }} - {{ model.raw.category.label }}</p>
+    <p class="timeline-meta" v-if="auditLabel">{{ auditLabel }}</p>
 
     <section class="timeline-card detail-block">
       <p class="timeline-meta">{{ model.dateLabel }}</p>
+      <p class="timeline-warning" v-if="model.warning">{{ t("labels.warningPrefix") }} {{ model.warning }}</p>
       <p class="timeline-meta" v-if="model.location">{{ model.location }}</p>
       <p>{{ model.shortDescription }}</p>
       <p>{{ model.longDescription }}</p>
@@ -150,4 +174,7 @@ function handleAttachmentSelect(item: AttachmentItem): void {
 .back-link-ui:hover {
   color: var(--page-fg);
 }
+
+.detail-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.secondary-button { border: 1px solid var(--control-border); border-radius: 0.55rem; padding: 0.45rem 0.7rem; background: var(--control-bg); color: var(--control-fg); cursor: pointer; text-decoration: none; }
 </style>

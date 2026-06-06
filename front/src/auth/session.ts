@@ -197,13 +197,17 @@ export function hasRole(role: string): boolean {
   return currentUserRoles.roles.includes(role);
 }
 
+export function hasAnyRole(roles: string[]): boolean {
+  return roles.some((role) => hasRole(role));
+}
+
 export function hasNoRoles(): boolean {
   return currentUserRoles.loaded && currentUserRoles.roles.length === 0;
 }
 
 export async function ensureCurrentUserRoles(): Promise<boolean> {
   if (useMockData()) {
-    currentUserRoles.roles = ["ADMIN", "CO_OWNER"];
+    currentUserRoles.roles = ["ADMIN", "CO_OWNER", "CO_OWNERSHIP_BOARD"];
     currentUserRoles.loaded = true;
     return true;
   }

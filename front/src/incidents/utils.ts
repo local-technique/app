@@ -1,4 +1,4 @@
-import { classifyEventStatus, formatLocalDateTime, parseUtc } from "../common/date";
+import { formatLocalDateTime, parseUtc } from "../common/date";
 import type { LocaleCode } from "../common/localeContent";
 import { resolveLocalized } from "../common/localeContent";
 import { fuzzyMatch } from "../common/search";
@@ -12,6 +12,9 @@ import type {
 export type IncidentTimelineEntryViewModel = {
   id: string;
   atLabel: string;
+  atDateLabel: string;
+  atTimeLabel: string;
+  isPending: boolean;
   title: string;
   details: string;
 };
@@ -36,8 +39,12 @@ function resolve(value: IncidentLocalizedText | undefined, locale: LocaleCode): 
 }
 
 function toIncidentStatus(input: IncidentItem): IncidentStatusSection {
-  const status = classifyEventStatus({ startUtc: input.startUtc, endUtc: input.endUtc });
-  return status === "current" ? "current" : "past";
+  const nowMs = Date.now();
+  const startMs = Date.parse(input.startUtc);
+  if (!input.endUtc) {
+    return nowMs >= startMs ? "current" : "past";
+  }
+  return nowMs >= startMs && nowMs <= Date.parse(input.endUtc) ? "current" : "past";
 }
 
 function formatIncidentDateLabel(incident: IncidentItem, locale: LocaleCode): string {
@@ -50,18 +57,20 @@ function formatIncidentDateLabel(incident: IncidentItem, locale: LocaleCode): st
 }
 
 function toTimelineEntryViewModel(entry: IncidentTimelineEntry, locale: LocaleCode): IncidentTimelineEntryViewModel {
+  const atDate = entry.atUtc ? parseUtc(entry.atUtc) : null;
   return {
     id: entry.id,
-    atLabel: formatLocalDateTime(parseUtc(entry.atUtc), locale),
+    atLabel: atDate ? formatLocalDateTime(atDate, locale) : "Pending",
+    atDateLabel: atDate ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(atDate) : "",
+    atTimeLabel: atDate ? new Intl.DateTimeFormat(locale, { timeStyle: "short" }).format(atDate) : "",
+    isPending: !entry.atUtc,
     title: resolve(entry.title, locale),
     details: resolve(entry.details, locale),
   };
 }
 
 export function toIncidentViewModel(incident: IncidentItem, locale: LocaleCode): IncidentViewModel {
-  const timeline = [...incident.timeline]
-    .sort((a, b) => Date.parse(a.atUtc) - Date.parse(b.atUtc))
-    .map((entry) => toTimelineEntryViewModel(entry, locale));
+  const timeline = incident.timeline.map((entry) => toTimelineEntryViewModel(entry, locale));
 
   return {
     id: incident.id,

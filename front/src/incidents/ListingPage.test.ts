@@ -18,7 +18,9 @@ describe("Incidents listing", () => {
     expect(await screen.findByRole("heading", { name: "Current" })).not.toBeNull();
     expect(screen.getByRole("heading", { name: "Past" })).not.toBeNull();
     expect(screen.queryByText("No incidents match your search.")).toBeNull();
-    expect(screen.queryByText("INC-001")).toBeNull();
+    expect(screen.getByText(/INC-001/)).not.toBeNull();
+    expect(screen.getByText("Awaiting valve replacement")).not.toBeNull();
+    expect(screen.getByText("Awaiting valve replacement").closest(".latest-timeline-entry")?.classList.contains("latest-timeline-entry-stretched")).toBe(true);
 
     const input = screen.getByPlaceholderText("Search incidents");
     await fireEvent.update(input, "generator");

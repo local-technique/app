@@ -11,12 +11,21 @@ use crate::common::role::Role;
 
 #[derive(Clone)]
 pub struct Principal {
+    pub user_id: Uuid,
     pub roles: Vec<String>,
 }
 
 impl Principal {
     pub fn ensure_role(&self, role: Role) -> Result<(), AppError> {
         if self.roles.iter().any(|value| value == role.code()) {
+            Ok(())
+        } else {
+            Err(AppError::forbidden("missing required role"))
+        }
+    }
+
+    pub fn ensure_any_role(&self, roles: &[Role]) -> Result<(), AppError> {
+        if roles.iter().any(|role| self.roles.iter().any(|value| value == role.code())) {
             Ok(())
         } else {
             Err(AppError::forbidden("missing required role"))
@@ -50,6 +59,7 @@ where
             .ok_or_else(|| AppError::unauthorized("invalid user"))?;
 
         Ok(Self {
+            user_id: user.id,
             roles: user.roles,
         })
     }
