@@ -7,16 +7,16 @@ use crate::app::state::AppState;
 use crate::auth::repository;
 use crate::auth::service;
 use crate::common::error::AppError;
+use crate::common::role::Role;
 
 #[derive(Clone)]
 pub struct Principal {
-    pub email: String,
     pub roles: Vec<String>,
 }
 
 impl Principal {
-    pub fn ensure_role(&self, role: &str) -> Result<(), AppError> {
-        if self.roles.iter().any(|value| value == role) {
+    pub fn ensure_role(&self, role: Role) -> Result<(), AppError> {
+        if self.roles.iter().any(|value| value == role.code()) {
             Ok(())
         } else {
             Err(AppError::forbidden("missing required role"))
@@ -45,13 +45,12 @@ where
             return Err(AppError::unauthorized("invalid session"));
         }
 
-        let _user = repository::get_user_by_id(&app_state.db, session.user_id)
+        let user = repository::get_user_by_id(&app_state.db, session.user_id)
             .await?
             .ok_or_else(|| AppError::unauthorized("invalid user"))?;
 
         Ok(Self {
-            email: claims.email,
-            roles: claims.roles,
+            roles: user.roles,
         })
     }
 }

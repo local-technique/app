@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { CalendarClock, TriangleAlert } from "@lucide/vue";
+import { CalendarClock, Shield, TriangleAlert } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 
@@ -8,19 +8,28 @@ defineEmits<{
   openMore: [];
 }>();
 
+defineProps<{
+  showCoOwnerLinks: boolean;
+  showAdminLink: boolean;
+}>();
+
 const { t } = useI18n();
 const route = useRoute();
 const eventsActive = computed(() => route.path.startsWith("/events"));
 const incidentsActive = computed(() => route.path.startsWith("/incidents"));
+const adminActive = computed(() => route.path.startsWith("/admin"));
 </script>
 
 <template>
   <nav class="mobile-bottom-nav" aria-label="Mobile primary navigation">
-    <a class="nav-item" :class="{ active: eventsActive }" href="#/events" :aria-label="t('nav.events')">
+    <a v-if="showCoOwnerLinks" class="nav-item" :class="{ active: eventsActive }" href="#/events" :aria-label="t('nav.events')">
       <CalendarClock :size="18" :stroke-width="2" />
     </a>
-    <a class="nav-item" :class="{ active: incidentsActive }" href="#/incidents" :aria-label="t('nav.incidents')">
+    <a v-if="showCoOwnerLinks" class="nav-item" :class="{ active: incidentsActive }" href="#/incidents" :aria-label="t('nav.incidents')">
       <TriangleAlert :size="18" :stroke-width="2" />
+    </a>
+    <a v-if="showAdminLink" class="nav-item" :class="{ active: adminActive }" href="#/admin/users" :aria-label="t('nav.adminUsers')">
+      <Shield :size="18" :stroke-width="2" />
     </a>
     <span class="nav-item nav-item-blank" aria-hidden="true"></span>
     <span class="nav-item nav-item-blank" aria-hidden="true"></span>

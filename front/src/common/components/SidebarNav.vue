@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { CalendarClock, TriangleAlert } from "@lucide/vue";
+import { CalendarClock, Shield, TriangleAlert } from "@lucide/vue";
 import { useRoute } from "vue-router";
 import type { LocaleCode } from "../i18n";
 import type { ThemeMode } from "../theme";
@@ -8,6 +8,8 @@ import type { ThemeMode } from "../theme";
 defineProps<{
   locale: LocaleCode;
   theme: ThemeMode;
+  showCoOwnerLinks: boolean;
+  showAdminLink: boolean;
 }>();
 
 defineEmits<{
@@ -19,18 +21,23 @@ defineEmits<{
 const route = useRoute();
 const eventsActive = computed(() => route.path.startsWith("/events"));
 const incidentsActive = computed(() => route.path.startsWith("/incidents"));
+const adminActive = computed(() => route.path.startsWith("/admin"));
 </script>
 
 <template>
   <nav class="sidebar-nav" aria-label="Main navigation">
     <section class="primary-links">
-      <a href="#/events" :class="{ active: eventsActive }" @click="$emit('navigate')">
+      <a v-if="showCoOwnerLinks" href="#/events" :class="{ active: eventsActive }" @click="$emit('navigate')">
         <CalendarClock :size="16" :stroke-width="2" />
         <span>{{ $t("nav.events") }}</span>
       </a>
-      <a href="#/incidents" :class="{ active: incidentsActive }" @click="$emit('navigate')">
+      <a v-if="showCoOwnerLinks" href="#/incidents" :class="{ active: incidentsActive }" @click="$emit('navigate')">
         <TriangleAlert :size="16" :stroke-width="2" />
         <span>{{ $t("nav.incidents") }}</span>
+      </a>
+      <a v-if="showAdminLink" href="#/admin/users" :class="{ active: adminActive }" @click="$emit('navigate')">
+        <Shield :size="16" :stroke-width="2" />
+        <span>{{ $t("nav.adminUsers") }}</span>
       </a>
     </section>
 

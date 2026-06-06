@@ -12,6 +12,7 @@ use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod app;
+mod admin;
 mod auth;
 mod common;
 mod config;

@@ -4,7 +4,7 @@ use axum::{
 };
 
 use crate::app::state::AppState;
-use crate::{auth, incidents, maintenances, translations};
+use crate::{admin, auth, incidents, maintenances, translations};
 
 pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
     Router::new()
@@ -15,6 +15,9 @@ pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
         .route("/auth/refresh", post(auth::http::refresh))
         .route("/auth/logout", post(auth::http::logout))
         .route("/me", get(auth::http::me))
+        .route("/admin/roles", get(admin::http::roles))
+        .route("/admin/users", get(admin::http::users))
+        .route("/admin/users/{user_id}/roles", axum::routing::put(admin::http::update_user_roles))
         .route("/incidents", get(incidents::http::list).post(incidents::http::create))
         .route(
             "/incidents/{id}",

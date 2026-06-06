@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { sanitizeRedirectPath } from "./redirect";
 import { ensureAuthenticated } from "./session";
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const checking = ref(false);
 
 const requiresAuth = computed(() => route.matched.some((entry) => entry.meta.requiresAuth === true));
@@ -34,7 +36,7 @@ watch(
 </script>
 
 <template>
-  <div v-if="checking" class="auth-guard-loading">Authenticating...</div>
+  <div v-if="checking" class="auth-guard-loading">{{ t("labels.authenticating") }}</div>
   <slot v-else />
 </template>
 
