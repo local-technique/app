@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import AuthGuard from "./auth/AuthGuard.vue";
+import { currentUserRoles, hasRole } from "./auth/session";
 import MobileBottomNav from "./common/components/MobileBottomNav.vue";
 import MobileMenu from "./common/components/MobileMenu.vue";
 import SidebarNav from "./common/components/SidebarNav.vue";
@@ -17,6 +18,8 @@ const selectedLocale = ref<LocaleCode>(getStoredLocale());
 const selectedTheme = ref<ThemeMode>(getStoredTheme());
 const mobileMenuOpen = ref(false);
 const routerReady = ref(router.currentRoute.value.matched.length > 0);
+const showCoOwnerLinks = computed(() => currentUserRoles.loaded && hasRole("CO_OWNER"));
+const showAdminLink = computed(() => currentUserRoles.loaded && hasRole("ADMIN"));
 
 let mediaQuery: MediaQueryList | null = null;
 let mediaQueryListener: (() => void) | null = null;
@@ -76,6 +79,8 @@ onBeforeUnmount(() => {
         <SidebarNav
           :locale="selectedLocale"
           :theme="selectedTheme"
+          :show-co-owner-links="showCoOwnerLinks"
+          :show-admin-link="showAdminLink"
           @update:locale="selectedLocale = $event"
           @update:theme="selectedTheme = $event"
         />
@@ -93,13 +98,20 @@ onBeforeUnmount(() => {
       :open="mobileMenuOpen"
       :locale="selectedLocale"
       :theme="selectedTheme"
+      :show-co-owner-links="showCoOwnerLinks"
+      :show-admin-link="showAdminLink"
       @close="mobileMenuOpen = false"
       @navigate="mobileMenuOpen = false"
       @update:locale="selectedLocale = $event"
       @update:theme="selectedTheme = $event"
     />
 
-    <MobileBottomNav v-if="route.path !== '/login'" @open-more="mobileMenuOpen = true" />
+    <MobileBottomNav
+      v-if="route.path !== '/login'"
+      :show-co-owner-links="showCoOwnerLinks"
+      :show-admin-link="showAdminLink"
+      @open-more="mobileMenuOpen = true"
+    />
   </div>
 </template>
 

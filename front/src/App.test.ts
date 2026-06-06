@@ -3,9 +3,12 @@ import { fireEvent, render, screen } from "@testing-library/vue";
 import { createRouter, createWebHashHistory } from "vue-router";
 import App from "./App.vue";
 import { createAppI18n } from "./common/i18n";
+import { currentUserRoles } from "./auth/session";
 
 async function renderApp() {
   localStorage.setItem("copro-locale", "en");
+  currentUserRoles.loaded = true;
+  currentUserRoles.roles = ["ADMIN", "CO_OWNER"];
   const router = createRouter({
     history: createWebHashHistory(),
     routes: [

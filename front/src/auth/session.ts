@@ -1,4 +1,5 @@
 import { sanitizeRedirectPath } from "./redirect";
+import { reactive } from "vue";
 
 type Provider = "google" | "facebook";
 
@@ -20,11 +21,22 @@ type ExchangeResponse = {
   redirect?: string;
 };
 
+type MeResponse = {
+  roles?: string[];
+};
+
+export const currentUserRoles = reactive({
+  loaded: false,
+  loading: false,
+  roles: [] as string[],
+});
+
 const REFRESH_SKEW_SECONDS = 30;
 const REFRESH_TOKEN_STORAGE_KEY = "copro-refresh-token";
 
 let memoryAccessToken = "";
 let memoryExpiresAtUnix = 0;
+let currentUserRolesRequest: Promise<boolean> | null = null;
 
 function readRefreshToken(): string {
   try {
@@ -48,6 +60,10 @@ function clearRefreshToken(): void {
 
 function apiBaseUrl(): string {
   return import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+}
+
+function useMockData(): boolean {
+  return import.meta.env.MODE === "test" || import.meta.env.VITE_USE_MOCK_DATA === "true";
 }
 
 function parseJwtExp(token: string): number | null {
@@ -78,6 +94,9 @@ export function setSession(payload: SessionPayload): void {
 export function clearSession(): void {
   memoryAccessToken = "";
   memoryExpiresAtUnix = 0;
+  currentUserRoles.loaded = false;
+  currentUserRoles.loading = false;
+  currentUserRoles.roles = [];
   clearRefreshToken();
 }
 
@@ -172,6 +191,65 @@ export async function ensureAuthenticated(): Promise<boolean> {
   }
 
   return refreshAccessToken();
+}
+
+export function hasRole(role: string): boolean {
+  return currentUserRoles.roles.includes(role);
+}
+
+export function hasNoRoles(): boolean {
+  return currentUserRoles.loaded && currentUserRoles.roles.length === 0;
+}
+
+export async function ensureCurrentUserRoles(): Promise<boolean> {
+  if (useMockData()) {
+    currentUserRoles.roles = ["ADMIN", "CO_OWNER"];
+    currentUserRoles.loaded = true;
+    return true;
+  }
+
+  if (currentUserRolesRequest) {
+    return currentUserRolesRequest;
+  }
+
+  currentUserRolesRequest = fetchCurrentUserRoles();
+  try {
+    return await currentUserRolesRequest;
+  } finally {
+    currentUserRolesRequest = null;
+  }
+}
+
+async function fetchCurrentUserRoles(): Promise<boolean> {
+  const authenticated = await ensureAuthenticated();
+  if (!authenticated) {
+    return false;
+  }
+
+  currentUserRoles.loading = true;
+  try {
+    const response = await fetch(`${apiBaseUrl()}/me`, {
+      headers: {
+        Authorization: `Bearer ${getAccessToken()}`,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        clearSession();
+      }
+      return false;
+    }
+
+    const payload = (await response.json()) as MeResponse;
+    currentUserRoles.roles = Array.isArray(payload.roles) ? payload.roles : [];
+    currentUserRoles.loaded = true;
+    return true;
+  } catch {
+    return false;
+  } finally {
+    currentUserRoles.loading = false;
+  }
 }
 
 export function providerStartUrl(provider: Provider, requestedPath: string): string {

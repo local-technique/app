@@ -7,6 +7,8 @@ defineProps<{
   open: boolean;
   locale: LocaleCode;
   theme: ThemeMode;
+  showCoOwnerLinks: boolean;
+  showAdminLink: boolean;
 }>();
 
 defineEmits<{
@@ -30,6 +32,8 @@ defineEmits<{
         <SidebarNav
           :locale="locale"
           :theme="theme"
+          :show-co-owner-links="showCoOwnerLinks"
+          :show-admin-link="showAdminLink"
           @navigate="$emit('navigate')"
           @update:locale="$emit('update:locale', $event)"
           @update:theme="$emit('update:theme', $event)"

@@ -196,6 +196,7 @@ pub async fn oauth_callback(
     if provider == Provider::Google && is_admin_email(state, &email) {
         repository::ensure_admin_role(&state.db, user.id).await?;
     }
+    repository::mark_user_login(&state.db, user.id).await?;
 
     let refresh_token = random_urlsafe(48);
     let refresh_expires_at = Utc::now() + ChronoDuration::seconds(REFRESH_SESSION_TTL.as_secs() as i64);
@@ -299,6 +300,7 @@ pub async fn refresh(
     let user = repository::get_user_by_id(&state.db, rotated.user_id)
         .await?
         .ok_or_else(|| AppError::unauthorized("invalid user"))?;
+    repository::mark_user_login(&state.db, rotated.user_id).await?;
 
     let (access_token, expires_at) = issue_access_token(state, rotated.id, &user)?;
     Ok(RefreshResponse {

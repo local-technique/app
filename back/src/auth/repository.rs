@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use crate::auth::model::Provider;
 use crate::common::error::AppError;
+use crate::common::role::Role;
 
 #[derive(Debug, Clone)]
 pub struct DbSession {
@@ -26,6 +27,14 @@ pub struct DbUser {
     pub provider: String,
     pub email: String,
     pub roles: Vec<String>,
+}
+
+pub async fn mark_user_login(db: &sqlx::PgPool, user_id: Uuid) -> Result<(), AppError> {
+    sqlx::query("UPDATE users SET last_login_at = now(), updated_at = now() WHERE id = $1")
+        .bind(user_id)
+        .execute(db)
+        .await?;
+    Ok(())
 }
 
 pub async fn find_or_create_user(
@@ -60,7 +69,7 @@ pub async fn ensure_admin_role(db: &sqlx::PgPool, user_id: Uuid) -> Result<(), A
         r#"
 UPDATE users
 SET roles = CASE
-  WHEN NOT ('ADMIN' = ANY(roles)) THEN array_append(roles, 'ADMIN')
+  WHEN NOT ($2 = ANY(roles)) THEN array_append(roles, $2)
   ELSE roles
 END,
 updated_at = now()
@@ -68,6 +77,7 @@ WHERE id = $1
 "#,
     )
     .bind(user_id)
+    .bind(Role::Admin.code())
     .execute(db)
     .await?;
 
