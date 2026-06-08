@@ -7,6 +7,7 @@ pub struct CategoryItem {
     pub id: String,
     pub code: String,
     pub icon: String,
+    pub color: String,
     pub label: String,
     pub labels: HashMap<String, String>,
 }
@@ -21,6 +22,7 @@ pub struct CategoryCreateRequest {
     pub id: String,
     pub code: String,
     pub icon: String,
+    pub color: String,
     pub labels: HashMap<String, String>,
 }
 
@@ -28,5 +30,6 @@ pub struct CategoryCreateRequest {
 pub struct CategoryUpdateRequest {
     pub code: String,
     pub icon: String,
+    pub color: String,
     pub labels: HashMap<String, String>,
 }

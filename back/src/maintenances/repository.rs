@@ -21,6 +21,7 @@ SELECT
   m.category_code,
   c.code AS category_display_code,
   c.icon AS category_icon,
+  c.color AS category_color,
   coalesce((
     SELECT ci.label
     FROM event_category_i18n ci
@@ -108,6 +109,7 @@ fn to_list_item(row: sqlx::postgres::PgRow) -> Result<MaintenanceListItem, AppEr
             id: row.try_get("category_code")?,
             code: row.try_get("category_display_code")?,
             icon: row.try_get("category_icon")?,
+            color: row.try_get("category_color")?,
             label: row.try_get("category_label")?,
         },
         title: row.try_get("title")?,
@@ -133,6 +135,7 @@ SELECT
   m.category_code,
   c.code AS category_display_code,
   c.icon AS category_icon,
+  c.color AS category_color,
   coalesce((
     SELECT ci.label
     FROM event_category_i18n ci
@@ -216,6 +219,7 @@ WHERE m.code = $1
             id: row.try_get("category_code")?,
             code: row.try_get("category_display_code")?,
             icon: row.try_get("category_icon")?,
+            color: row.try_get("category_color")?,
             label: row.try_get("category_label")?,
         },
         title: row.try_get("title")?,

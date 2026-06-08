@@ -10,6 +10,7 @@ function renderNav(path: string) {
     routes: [
       { path: "/admin/users", component: { template: "<div />" } },
       { path: "/admin/categories", component: { template: "<div />" } },
+      { path: "/projects", component: { template: "<div />" } },
     ],
   });
   return router.push(path).then(async () => {
@@ -27,5 +28,11 @@ describe("Sidebar navigation", () => {
 
     expect(screen.getByText("Categories").closest("a")?.classList.contains("active")).toBe(true);
     expect(screen.getByText("User roles").closest("a")?.classList.contains("active")).toBe(false);
+  });
+
+  it("includes and activates the projects link", async () => {
+    await renderNav("/projects");
+
+    expect(screen.getByText("Projects").closest("a")?.classList.contains("active")).toBe(true);
   });
 });

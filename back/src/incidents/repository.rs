@@ -22,6 +22,7 @@ SELECT
   i.category_code,
   c.code AS category_display_code,
   c.icon AS category_icon,
+  c.color AS category_color,
   coalesce((
     SELECT ci.label
     FROM event_category_i18n ci
@@ -134,6 +135,7 @@ fn to_list_item(row: sqlx::postgres::PgRow) -> Result<IncidentListItem, AppError
             id: row.try_get("category_code")?,
             code: row.try_get("category_display_code")?,
             icon: row.try_get("category_icon")?,
+            color: row.try_get("category_color")?,
             label: row.try_get("category_label")?,
         },
         title: row.try_get("title")?,
@@ -158,6 +160,7 @@ SELECT
   i.category_code,
   c.code AS category_display_code,
   c.icon AS category_icon,
+  c.color AS category_color,
   coalesce((
     SELECT ci.label
     FROM event_category_i18n ci
@@ -277,6 +280,7 @@ ORDER BY t.at_utc DESC NULLS FIRST, t.sort_order ASC
             id: row.try_get("category_code")?,
             code: row.try_get("category_display_code")?,
             icon: row.try_get("category_icon")?,
+            color: row.try_get("category_color")?,
             label: row.try_get("category_label")?,
         },
         title: row.try_get("title")?,

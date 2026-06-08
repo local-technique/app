@@ -1,5 +1,7 @@
 # Agent Rules
 
+Never commit, amend, or push changes unless the user explicitly asks for that exact git action.
+
 After any code change, run CI-equivalent checks:
 
 - Frontend (`front/`): `npm run lint`, `npm run test`, `npm run build`

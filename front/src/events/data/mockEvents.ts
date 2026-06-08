@@ -1,5 +1,14 @@
 import type { EventItem } from "../types";
 
+const categories = {
+  HEA: { id: "HEA", code: "HEA", icon: "flame", color: "#d73a49", label: "Heating" },
+  ELV: { id: "ELV", code: "ELV", icon: "arrow-up-down", color: "#0366d6", label: "Elevator" },
+  PLB: { id: "PLB", code: "PLB", icon: "droplets", color: "#0e8a16", label: "Plumbing" },
+  ELC: { id: "ELC", code: "ELC", icon: "zap", color: "#f9c513", label: "Electrical" },
+  GAR: { id: "GAR", code: "GAR", icon: "warehouse", color: "#6f42c1", label: "Garage" },
+  PMG: { id: "PMG", code: "PMG", icon: "building-2", color: "#005cc5", label: "Property management" },
+} as const;
+
 const invoicePdfUrl = new URL("../../common/assets/mock-files/invoice-2026-04.pdf", import.meta.url).href;
 const elevatorInterventionPdfUrl = new URL(
   "../../common/assets/mock-files/elevator-intervention-2026-02.pdf",
@@ -14,6 +23,7 @@ export const MOCK_EVENTS: EventItem[] = [
   {
     id: "HEA-001",
     categoryCode: "HEA",
+    category: categories.HEA,
     title: {
       en: "Heating maintenance in progress",
       fr: "Maintenance chauffage en cours",
@@ -51,6 +61,7 @@ export const MOCK_EVENTS: EventItem[] = [
   {
     id: "ELV-002",
     categoryCode: "ELV",
+    category: categories.ELV,
     title: {
       en: "Elevator annual maintenance",
       fr: "Maintenance annuelle ascenseur",
@@ -90,6 +101,7 @@ export const MOCK_EVENTS: EventItem[] = [
   {
     id: "PMG-003",
     categoryCode: "PMG",
+    category: categories.PMG,
     title: {
       en: "Property management site visit",
       fr: "Visite du syndic",
@@ -114,6 +126,7 @@ export const MOCK_EVENTS: EventItem[] = [
   {
     id: "ELC-004",
     categoryCode: "ELC",
+    category: categories.ELC,
     title: {
       en: "Electrical panel inspection completed",
       fr: "Controle tableau electrique termine",
@@ -137,6 +150,7 @@ export const MOCK_EVENTS: EventItem[] = [
   {
     id: "PLB-005",
     categoryCode: "PLB",
+    category: categories.PLB,
     title: {
       en: "Pipe descaling intervention finished",
       fr: "Intervention detartrage canalisations terminee",
@@ -160,6 +174,7 @@ export const MOCK_EVENTS: EventItem[] = [
   {
     id: "GAR-006",
     categoryCode: "GAR",
+    category: categories.GAR,
     title: {
       en: "Garage door motor replacement completed",
       fr: "Remplacement moteur porte de garage termine",

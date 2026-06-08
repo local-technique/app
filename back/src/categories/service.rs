@@ -15,8 +15,9 @@ pub async fn create(db: &sqlx::PgPool, payload: &CategoryCreateRequest) -> Resul
     let id = normalize_required(&payload.id, "category id is required")?;
     let code = normalize_required(&payload.code, "category code is required")?;
     let icon = normalize_required(&payload.icon, "category icon is required")?;
+    let color = normalize_color(&payload.color)?;
     let labels = validate_labels(&payload.labels, &enabled)?;
-    repository::create(db, &id, &code, &icon, &labels).await
+    repository::create(db, &id, &code, &icon, &color, &labels).await
 }
 
 pub async fn update(db: &sqlx::PgPool, id: &str, payload: &CategoryUpdateRequest) -> Result<(), AppError> {
@@ -24,8 +25,9 @@ pub async fn update(db: &sqlx::PgPool, id: &str, payload: &CategoryUpdateRequest
     let id = normalize_required(id, "category id is required")?;
     let code = normalize_required(&payload.code, "category code is required")?;
     let icon = normalize_required(&payload.icon, "category icon is required")?;
+    let color = normalize_color(&payload.color)?;
     let labels = validate_labels(&payload.labels, &enabled)?;
-    repository::update(db, &id, &code, &icon, &labels).await
+    repository::update(db, &id, &code, &icon, &color, &labels).await
 }
 
 pub async fn delete(db: &sqlx::PgPool, id: &str) -> Result<(), AppError> {
@@ -38,6 +40,18 @@ fn normalize_required(value: &str, message: &str) -> Result<String, AppError> {
         Err(AppError::bad_request(message))
     } else {
         Ok(value)
+    }
+}
+
+fn normalize_color(value: &str) -> Result<String, AppError> {
+    let value = normalize_text_value(value).to_lowercase();
+    let valid = value.len() == 7
+        && value.starts_with('#')
+        && value.chars().skip(1).all(|ch| ch.is_ascii_hexdigit());
+    if valid {
+        Ok(value)
+    } else {
+        Err(AppError::bad_request("category color must be a #RRGGBB hex value"))
     }
 }
 
@@ -58,4 +72,23 @@ fn validate_labels(
         result.insert(locale.clone(), value);
     }
     Ok(result)
+}
+
+#[cfg(test)]
+fn normalize_color_for_test(value: &str) -> Result<String, AppError> {
+    normalize_color(value)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn normalize_color_accepts_hex_and_lowercases_it() {
+        assert_eq!(super::normalize_color_for_test(" #9AAAB1 ").expect("valid color"), "#9aaab1");
+    }
+
+    #[test]
+    fn normalize_color_rejects_invalid_values() {
+        let error = super::normalize_color_for_test("blue").expect_err("invalid color");
+        assert_eq!(error.message, "category color must be a #RRGGBB hex value");
+    }
 }

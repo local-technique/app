@@ -32,9 +32,11 @@ describe("Events listing", () => {
     await router.push("/events");
     await router.isReady();
 
-    render(EventsListingPage, { global: { plugins: [router, createAppI18n("en")] } });
+    const { container } = render(EventsListingPage, { global: { plugins: [router, createAppI18n("en")] } });
 
     expect(await screen.findByRole("heading", { name: "Current" })).not.toBeNull();
+    expect(container.querySelector(".category-badge-rail")?.textContent).toContain("HEA");
+    expect(getComputedStyle(container.querySelector(".category-badge-rail") as Element).getPropertyValue("--category-color").trim()).toBe("#d73a49");
     expect(screen.getByRole("heading", { name: "To come" })).not.toBeNull();
     expect(screen.getByRole("heading", { name: "Past" })).not.toBeNull();
     expect(screen.queryByText("No events match your search.")).toBeNull();

@@ -21,7 +21,7 @@ type ApiIncidentListItem = {
   start_utc: string;
   end_utc?: string;
   timeline?: ApiIncidentTimelineItem[];
-  category?: { id: string; code: string; icon: string; label: string };
+  category?: { id: string; code: string; icon: string; color: string; label: string };
 };
 
 type ApiIncidentTimelineItem = {
@@ -41,7 +41,7 @@ type ApiIncidentDetail = {
   start_utc: string;
   end_utc?: string;
   timeline: ApiIncidentTimelineItem[];
-  category?: { id: string; code: string; icon: string; label: string };
+  category?: { id: string; code: string; icon: string; color: string; label: string };
   last_modified_at?: string | null;
   last_modified_by?: { id: string; email: string } | null;
 };

@@ -28,8 +28,8 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 export async function listCategories(locale: LocaleCode, admin = false): Promise<CategoryItem[]> {
   if (import.meta.env.MODE === "test" || import.meta.env.VITE_USE_MOCK_DATA === "true") {
     return [
-      { id: "HEA", code: "HEA", icon: "flame", label: locale === "fr" ? "Chauffage" : "Heating", labels: { en: "Heating", fr: "Chauffage" } },
-      { id: "ELV", code: "ELV", icon: "arrow-up-down", label: locale === "fr" ? "Ascenseur" : "Elevator", labels: { en: "Elevator", fr: "Ascenseur" } },
+      { id: "HEA", code: "HEA", icon: "flame", color: "#d73a49", label: locale === "fr" ? "Chauffage" : "Heating", labels: { en: "Heating", fr: "Chauffage" } },
+      { id: "ELV", code: "ELV", icon: "arrow-up-down", color: "#0366d6", label: locale === "fr" ? "Ascenseur" : "Elevator", labels: { en: "Elevator", fr: "Ascenseur" } },
     ];
   }
   const params = new URLSearchParams({ locale });

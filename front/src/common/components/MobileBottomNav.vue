@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { CalendarClock, FolderTree, Shield, TriangleAlert } from "@lucide/vue";
+import { BriefcaseBusiness, CalendarClock, FolderTree, Shield, TriangleAlert } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 
@@ -17,9 +17,10 @@ const { t } = useI18n();
 const route = useRoute();
 const eventsActive = computed(() => route.path.startsWith("/events"));
 const incidentsActive = computed(() => route.path.startsWith("/incidents"));
+const projectsActive = computed(() => route.path.startsWith("/projects"));
 const adminUsersActive = computed(() => route.path.startsWith("/admin/users"));
 const adminCategoriesActive = computed(() => route.path.startsWith("/admin/categories"));
-const blankSlotCount = computed(() => Math.max(0, 4 - (props.showCoOwnerLinks ? 2 : 0) - (props.showAdminLink ? 2 : 0)));
+const blankSlotCount = computed(() => Math.max(0, 5 - (props.showCoOwnerLinks ? 3 : 0) - (props.showAdminLink ? 2 : 0)));
 </script>
 
 <template>
@@ -29,6 +30,9 @@ const blankSlotCount = computed(() => Math.max(0, 4 - (props.showCoOwnerLinks ? 
     </a>
     <a v-if="showCoOwnerLinks" class="nav-item" :class="{ active: incidentsActive }" href="#/incidents" :aria-label="t('nav.incidents')">
       <TriangleAlert :size="18" :stroke-width="2" />
+    </a>
+    <a v-if="showCoOwnerLinks" class="nav-item" :class="{ active: projectsActive }" href="#/projects" :aria-label="t('nav.projects')">
+      <BriefcaseBusiness :size="18" :stroke-width="2" />
     </a>
     <a v-if="showAdminLink" class="nav-item" :class="{ active: adminUsersActive }" href="#/admin/users" :aria-label="t('nav.adminUsers')">
       <Shield :size="18" :stroke-width="2" />
@@ -51,7 +55,7 @@ const blankSlotCount = computed(() => Math.max(0, 4 - (props.showCoOwnerLinks ? 
   left: 0;
   z-index: 60;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 0;
   border-top: 1px solid var(--border-color);
   background: var(--panel-bg);

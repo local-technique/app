@@ -3,6 +3,7 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { listCategories } from "../categories/api";
+import CategoryBadge from "../categories/CategoryBadge.vue";
 import type { CategoryItem } from "../categories/types";
 import { toDateTimeLocalInput, toUtcFromDateTimeLocalInput } from "../common/dateInput";
 import type { LocaleCode } from "../common/i18n";
@@ -32,6 +33,7 @@ const form = ref({
   warning: "",
   location: "",
 });
+const selectedCategory = computed(() => categories.value.find((category) => category.id === form.value.categoryId) ?? null);
 
 function activeLocale(): LocaleCode {
   return editLocale.value === "en" ? "en" : "fr";
@@ -119,7 +121,7 @@ async function save(): Promise<void> {
     <form v-else class="event-form" @submit.prevent="save">
       <label>{{ t("labels.editLocale") }}<select v-model="editLocale"><option v-for="item in enabledLocales" :key="item" :value="item">{{ item.toUpperCase() }}</option></select></label>
       <label>{{ t("labels.eventId") }}<input v-model="form.id" required :disabled="isEdit" /></label>
-      <label>{{ t("labels.category") }}<select v-model="form.categoryId" required><option v-for="category in categories" :key="category.id" :value="category.id">{{ category.code }} - {{ category.label }}</option></select></label>
+      <label>{{ t("labels.category") }}<span class="category-select-row"><CategoryBadge v-if="selectedCategory" :code="selectedCategory.code" :icon="selectedCategory.icon" :color="selectedCategory.color" :label="selectedCategory.label" /><select v-model="form.categoryId" required><option v-for="category in categories" :key="category.id" :value="category.id">{{ category.code }} - {{ category.label }}</option></select></span></label>
       <label>{{ t("labels.startUtc") }}<input v-model="form.startUtc" type="datetime-local" required /></label>
       <label>{{ t("labels.endUtc") }}<input v-model="form.endUtc" type="datetime-local" /></label>
       <label>{{ t("labels.notifiedAtUtc") }}<input v-model="form.notifiedAtUtc" type="datetime-local" /></label>
@@ -139,6 +141,8 @@ async function save(): Promise<void> {
 .event-form label { display: grid; gap: 0.35rem; color: var(--muted-fg); font-weight: 700; }
 .event-form input, .event-form select, .event-form textarea { border: 1px solid var(--control-border); border-radius: 0.7rem; padding: 0.65rem; background: var(--control-bg); color: var(--control-fg); }
 .event-form textarea { min-height: 7rem; }
+.category-select-row { align-items: center; display: flex; gap: 0.6rem; }
+.category-select-row select { flex: 1 1 auto; min-width: 0; }
 .form-actions { display: flex; gap: 0.7rem; justify-content: flex-end; }
 .secondary-button, .primary-button { border: 1px solid var(--control-border); border-radius: 0.55rem; padding: 0.55rem 0.8rem; background: var(--control-bg); color: var(--control-fg); text-decoration: none; }
 .primary-button { border-color: rgba(72, 144, 255, 0.7); background: rgba(72, 144, 255, 0.22); }

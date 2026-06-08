@@ -16,7 +16,7 @@ export type IncidentTimelineEntry = {
 export type IncidentItem = {
   id: string;
   categoryCode: string;
-  category?: Pick<CategoryItem, "id" | "code" | "icon" | "label">;
+  category?: Pick<CategoryItem, "id" | "code" | "icon" | "color" | "label">;
   title: IncidentLocalizedText;
   shortDescription: IncidentLocalizedText;
   longDescription: IncidentLocalizedText;

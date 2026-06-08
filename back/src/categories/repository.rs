@@ -6,6 +6,13 @@ use sqlx::Row;
 use crate::categories::model::CategoryItem;
 use crate::common::error::AppError;
 
+const CATEGORY_REFERENCE_COUNT_QUERY: &str = r#"
+SELECT
+  (SELECT count(*) FROM incidents WHERE category_code = $1) +
+  (SELECT count(*) FROM maintenances WHERE category_code = $1) +
+  (SELECT count(*) FROM projects WHERE category_code = $1)
+"#;
+
 pub async fn list(db: &sqlx::PgPool, locale_chain: &[String]) -> Result<Vec<CategoryItem>, AppError> {
     let rows = sqlx::query(
         r#"
@@ -13,6 +20,7 @@ SELECT
   c.id,
   c.code,
   c.icon,
+  c.color,
   coalesce((
     SELECT ci.label
     FROM event_category_i18n ci
@@ -37,6 +45,7 @@ ORDER BY c.code ASC
             id,
             code: row.try_get("code")?,
             icon: row.try_get("icon")?,
+            color: row.try_get("color")?,
             label: row.try_get("label")?,
         });
     }
@@ -48,13 +57,15 @@ pub async fn create(
     id: &str,
     code: &str,
     icon: &str,
+    color: &str,
     labels: &HashMap<String, String>,
 ) -> Result<(), AppError> {
     let mut tx = db.begin().await?;
-    sqlx::query("INSERT INTO event_categories (id, code, icon) VALUES ($1, $2, $3)")
+    sqlx::query("INSERT INTO event_categories (id, code, icon, color) VALUES ($1, $2, $3, $4)")
         .bind(id)
         .bind(code)
         .bind(icon)
+        .bind(color)
         .execute(&mut *tx)
         .await?;
     replace_labels(&mut tx, id, labels).await?;
@@ -67,13 +78,15 @@ pub async fn update(
     id: &str,
     code: &str,
     icon: &str,
+    color: &str,
     labels: &HashMap<String, String>,
 ) -> Result<(), AppError> {
     let mut tx = db.begin().await?;
-    let result = sqlx::query("UPDATE event_categories SET code = $2, icon = $3, updated_at = now() WHERE id = $1")
+    let result = sqlx::query("UPDATE event_categories SET code = $2, icon = $3, color = $4, updated_at = now() WHERE id = $1")
         .bind(id)
         .bind(code)
         .bind(icon)
+        .bind(color)
         .execute(&mut *tx)
         .await?;
     if result.rows_affected() == 0 {
@@ -85,13 +98,7 @@ pub async fn update(
 }
 
 pub async fn delete(db: &sqlx::PgPool, id: &str) -> Result<(), AppError> {
-    let references: i64 = sqlx::query_scalar(
-        r#"
-SELECT
-  (SELECT count(*) FROM incidents WHERE category_code = $1) +
-  (SELECT count(*) FROM maintenances WHERE category_code = $1)
-"#,
-    )
+    let references: i64 = sqlx::query_scalar(CATEGORY_REFERENCE_COUNT_QUERY)
     .bind(id)
     .fetch_one(db)
     .await?;
@@ -110,6 +117,14 @@ SELECT
         return Err(AppError::not_found("category not found"));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn delete_reference_count_includes_projects() {
+        assert!(super::CATEGORY_REFERENCE_COUNT_QUERY.contains("FROM projects WHERE category_code = $1"));
+    }
 }
 
 async fn labels_for(db: &sqlx::PgPool, id: &str) -> Result<HashMap<String, String>, AppError> {

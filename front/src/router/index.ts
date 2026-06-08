@@ -10,6 +10,9 @@ const EventFormPage = () => import("../events/FormPage.vue");
 const IncidentsPage = () => import("../incidents/ListingPage.vue");
 const IncidentDetailPage = () => import("../incidents/DetailPage.vue");
 const IncidentFormPage = () => import("../incidents/FormPage.vue");
+const ProjectsPage = () => import("../projects/ListingPage.vue");
+const ProjectDetailPage = () => import("../projects/DetailPage.vue");
+const ProjectFormPage = () => import("../projects/FormPage.vue");
 const AdminUsersPage = () => import("../admin/UsersPage.vue");
 const AdminCategoriesPage = () => import("../admin/CategoriesPage.vue");
 const AccessPendingPage = () => import("../common/AccessPendingPage.vue");
@@ -32,6 +35,10 @@ const router = createRouter({
     { path: "/incidents/new", component: IncidentFormPage, meta: { requiresAuth: true, requiredRoles: ["ADMIN", "CO_OWNERSHIP_BOARD"] } },
     { path: "/incidents/:id", component: IncidentDetailPage, meta: { requiresAuth: true, requiredRoles: ["ADMIN", "CO_OWNER", "CO_OWNERSHIP_BOARD"] } },
     { path: "/incidents/:id/edit", component: IncidentFormPage, meta: { requiresAuth: true, requiredRoles: ["ADMIN", "CO_OWNERSHIP_BOARD"] } },
+    { path: "/projects", component: ProjectsPage, meta: { requiresAuth: true, requiredRoles: ["ADMIN", "CO_OWNER", "CO_OWNERSHIP_BOARD"] } },
+    { path: "/projects/new", component: ProjectFormPage, meta: { requiresAuth: true, requiredRoles: ["ADMIN", "CO_OWNERSHIP_BOARD"] } },
+    { path: "/projects/:id", component: ProjectDetailPage, meta: { requiresAuth: true, requiredRoles: ["ADMIN", "CO_OWNER", "CO_OWNERSHIP_BOARD"] } },
+    { path: "/projects/:id/edit", component: ProjectFormPage, meta: { requiresAuth: true, requiredRoles: ["ADMIN", "CO_OWNERSHIP_BOARD"] } },
     { path: "/admin/users", component: AdminUsersPage, meta: { requiresAuth: true, requiredRole: "ADMIN" } },
     { path: "/admin/categories", component: AdminCategoriesPage, meta: { requiresAuth: true, requiredRole: "ADMIN" } },
     { path: "/:pathMatch(.*)*", component: NotFoundPage },
