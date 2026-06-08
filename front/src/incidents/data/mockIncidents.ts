@@ -1,5 +1,12 @@
 import type { IncidentItem } from "../types";
 
+const categories = {
+  HEA: { id: "HEA", code: "HEA", icon: "flame", color: "#d73a49", label: "Heating" },
+  ELV: { id: "ELV", code: "ELV", icon: "arrow-up-down", color: "#0366d6", label: "Elevator" },
+  PLB: { id: "PLB", code: "PLB", icon: "droplets", color: "#0e8a16", label: "Plumbing" },
+  ELC: { id: "ELC", code: "ELC", icon: "zap", color: "#f9c513", label: "Electrical" },
+} as const;
+
 const invoicePdfUrl = new URL("../../common/assets/mock-files/invoice-2026-04.pdf", import.meta.url).href;
 const elevatorInterventionPdfUrl = new URL(
   "../../common/assets/mock-files/elevator-intervention-2026-02.pdf",
@@ -14,6 +21,7 @@ export const MOCK_INCIDENTS: IncidentItem[] = [
   {
     id: "INC-001",
     categoryCode: "HEA",
+    category: categories.HEA,
     title: {
       en: "Heating outage on block B",
       fr: "Panne chauffage bloc B",
@@ -79,6 +87,7 @@ export const MOCK_INCIDENTS: IncidentItem[] = [
   {
     id: "INC-002",
     categoryCode: "ELV",
+    category: categories.ELV,
     title: {
       en: "Elevator shutdown resolved",
       fr: "Arret ascenseur resolu",
@@ -135,6 +144,7 @@ export const MOCK_INCIDENTS: IncidentItem[] = [
   {
     id: "INC-003",
     categoryCode: "ELC",
+    category: categories.ELC,
     title: {
       en: "Generator alert cleared",
       fr: "Alerte generateur levee",
@@ -176,6 +186,7 @@ export const MOCK_INCIDENTS: IncidentItem[] = [
   {
     id: "INC-004",
     categoryCode: "PLB",
+    category: categories.PLB,
     title: {
       en: "Water leakage in basement closed",
       fr: "Fuite d'eau en sous-sol cloturee",

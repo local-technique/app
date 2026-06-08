@@ -13,9 +13,11 @@ describe("Incident detail", () => {
     await router.push("/incidents/INC-001?q=generator");
     await router.isReady();
 
-    render(IncidentDetailPage, { global: { plugins: [router, createAppI18n("en")] } });
+    const { container } = render(IncidentDetailPage, { global: { plugins: [router, createAppI18n("en")] } });
 
     expect(await screen.findByRole("heading", { name: "Heating outage on block B" })).not.toBeNull();
+    expect(container.querySelector(".category-badge-inline")?.textContent).toContain("HEA");
+    expect(getComputedStyle(container.querySelector(".category-badge-inline") as Element).getPropertyValue("--category-color").trim()).toBe("#d73a49");
     expect(screen.getByText("ID: INC-001")).not.toBeNull();
     expect(screen.getByRole("heading", { name: "Incident timeline" })).not.toBeNull();
     expect(screen.getByText("Issue detected by monitoring system")).not.toBeNull();

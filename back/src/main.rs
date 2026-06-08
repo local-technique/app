@@ -19,6 +19,7 @@ mod common;
 mod config;
 mod incidents;
 mod maintenances;
+mod projects;
 mod translations;
 
 #[tokio::main]

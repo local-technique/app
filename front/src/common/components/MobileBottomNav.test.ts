@@ -18,7 +18,7 @@ describe("Mobile bottom nav", () => {
       global: { plugins: [router, createAppI18n("en")] },
     });
 
-    expect(container.querySelectorAll(".nav-item")).toHaveLength(5);
+    expect(container.querySelectorAll(".nav-item")).toHaveLength(6);
   });
 
   it("marks only the current admin item active", async () => {
@@ -36,5 +36,21 @@ describe("Mobile bottom nav", () => {
 
     expect(container.querySelector("a[aria-label='Categories']")?.classList.contains("active")).toBe(true);
     expect(container.querySelector("a[aria-label='User roles']")?.classList.contains("active")).toBe(false);
+  });
+
+  it("marks projects active", async () => {
+    const router = createRouter({
+      history: createWebHashHistory(),
+      routes: [{ path: "/projects", component: { template: "<div />" } }],
+    });
+    await router.push("/projects");
+    await router.isReady();
+
+    const { container } = render(MobileBottomNav, {
+      props: { showCoOwnerLinks: true, showAdminLink: true },
+      global: { plugins: [router, createAppI18n("en")] },
+    });
+
+    expect(container.querySelector("a[aria-label='Projects']")?.classList.contains("active")).toBe(true);
   });
 });

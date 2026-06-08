@@ -4,6 +4,7 @@ import { ArrowLeft, CircleCheck } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { currentUserRoles, hasAnyRole, hasRole } from "../auth/session";
+import CategoryBadge from "../categories/CategoryBadge.vue";
 import AttachmentList from "../common/components/AttachmentList.vue";
 import AttachmentPreview from "../common/components/AttachmentPreview.vue";
 import type { AttachmentItem } from "../common/attachments";
@@ -102,7 +103,10 @@ async function deleteIncident(): Promise<void> {
     <h1 class="page-title">{{ model.title }}</h1>
     <p class="detail-actions"><RouterLink v-if="canEdit" class="secondary-button" :to="`/incidents/${model.id}/edit`">{{ t("labels.edit") }}</RouterLink><button v-if="canDelete" class="secondary-button" type="button" @click="deleteIncident">{{ t("labels.delete") }}</button></p>
     <p class="timeline-meta">ID: {{ model.id }}</p>
-    <p class="timeline-meta" v-if="model.raw.category">{{ model.raw.category.code }} - {{ model.raw.category.label }}</p>
+    <p class="timeline-meta category-meta" v-if="model.raw.category">
+      <CategoryBadge :code="model.raw.category.code" :icon="model.raw.category.icon" :color="model.raw.category.color" :label="model.raw.category.label" />
+      <span>- {{ model.raw.category.label }}</span>
+    </p>
     <p class="timeline-meta" v-if="auditLabel">{{ auditLabel }}</p>
 
     <section class="timeline-card detail-block">
@@ -199,6 +203,7 @@ async function deleteIncident(): Promise<void> {
 
 .detail-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
 .secondary-button { border: 1px solid var(--control-border); border-radius: 0.55rem; padding: 0.45rem 0.7rem; background: var(--control-bg); color: var(--control-fg); cursor: pointer; text-decoration: none; }
+.category-meta { align-items: center; display: flex; gap: 0.35rem; }
 
 .incident-timeline-list {
   --timeline-accent: rgba(72, 144, 255, 0.78);

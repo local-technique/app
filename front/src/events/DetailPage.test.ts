@@ -16,9 +16,11 @@ describe("Event detail", () => {
     await router.push("/events/HEA-001");
     await router.isReady();
 
-    render(EventsDetailPage, { global: { plugins: [router, createAppI18n("en")] } });
+    const { container } = render(EventsDetailPage, { global: { plugins: [router, createAppI18n("en")] } });
 
     const warning = await screen.findByText("⚠️ no hot water between 9h30 & 17h00");
+    expect(container.querySelector(".category-badge-inline")?.textContent).toContain("HEA");
+    expect(getComputedStyle(container.querySelector(".category-badge-inline") as Element).getPropertyValue("--category-color").trim()).toBe("#d73a49");
     expect(warning.classList.contains("timeline-warning")).toBe(true);
   });
 });

@@ -7,6 +7,7 @@ pub struct CategoryDisplay {
     pub id: String,
     pub code: String,
     pub icon: String,
+    pub color: String,
     pub label: String,
 }
 

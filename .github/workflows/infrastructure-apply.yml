@@ -13,6 +13,10 @@ permissions:
   actions: write
   contents: read
 
+concurrency:
+  group: infrastructure-apply-main
+  cancel-in-progress: false
+
 env:
   TF_IN_AUTOMATION: "true"
   TF_CLI_ARGS: "-no-color"

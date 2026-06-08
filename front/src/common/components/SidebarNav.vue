@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { CalendarClock, FolderTree, Shield, TriangleAlert } from "@lucide/vue";
+import { BriefcaseBusiness, CalendarClock, FolderTree, Shield, TriangleAlert } from "@lucide/vue";
 import { useRoute } from "vue-router";
 import type { LocaleCode } from "../i18n";
 import type { ThemeMode } from "../theme";
@@ -21,6 +21,7 @@ defineEmits<{
 const route = useRoute();
 const eventsActive = computed(() => route.path.startsWith("/events"));
 const incidentsActive = computed(() => route.path.startsWith("/incidents"));
+const projectsActive = computed(() => route.path.startsWith("/projects"));
 const adminUsersActive = computed(() => route.path.startsWith("/admin/users"));
 const adminCategoriesActive = computed(() => route.path.startsWith("/admin/categories"));
 </script>
@@ -35,6 +36,10 @@ const adminCategoriesActive = computed(() => route.path.startsWith("/admin/categ
       <a v-if="showCoOwnerLinks" href="#/incidents" :class="{ active: incidentsActive }" @click="$emit('navigate')">
         <TriangleAlert :size="16" :stroke-width="2" />
         <span>{{ $t("nav.incidents") }}</span>
+      </a>
+      <a v-if="showCoOwnerLinks" href="#/projects" :class="{ active: projectsActive }" @click="$emit('navigate')">
+        <BriefcaseBusiness :size="16" :stroke-width="2" />
+        <span>{{ $t("nav.projects") }}</span>
       </a>
       <a v-if="showAdminLink" href="#/admin/users" :class="{ active: adminUsersActive }" @click="$emit('navigate')">
         <Shield :size="16" :stroke-width="2" />

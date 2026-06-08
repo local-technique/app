@@ -14,7 +14,7 @@ type ApiMaintenanceListItem = {
   start_utc: string;
   end_utc?: string;
   notified_at_utc?: string;
-  category?: { id: string; code: string; icon: string; label: string };
+  category?: { id: string; code: string; icon: string; color: string; label: string };
 };
 
 type ApiMaintenanceDetail = {
@@ -28,7 +28,7 @@ type ApiMaintenanceDetail = {
   start_utc: string;
   end_utc?: string;
   notified_at_utc?: string;
-  category?: { id: string; code: string; icon: string; label: string };
+  category?: { id: string; code: string; icon: string; color: string; label: string };
   last_modified_at?: string | null;
   last_modified_by?: { id: string; email: string } | null;
 };

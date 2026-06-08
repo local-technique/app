@@ -3,6 +3,7 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { currentUserRoles, hasAnyRole } from "../auth/session";
+import CategoryBadge from "../categories/CategoryBadge.vue";
 import type { LocaleCode } from "../common/localeContent";
 import { apiEventsRepository } from "./repositories/apiEventsRepository";
 import { groupByStatus, toEventViewModel } from "./utils";
@@ -103,13 +104,16 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
     <section class="timeline-section" v-if="hasSection('current')">
       <h2>{{ t("labels.current") }}</h2>
       <div class="timeline-list">
-        <article class="timeline-card" v-for="event in grouped.current" :key="event.id">
-          <h3 class="timeline-card-title">
-            <RouterLink :to="{ path: `/events/${event.id}`, query: detailQuery }">{{ event.title }}</RouterLink>
-          </h3>
-          <p class="timeline-warning" v-if="event.warning">{{ t("labels.warningPrefix") }} {{ event.warning }}</p>
-          <p class="timeline-meta">{{ event.dateLabel }}</p>
-          <p class="timeline-meta" v-if="event.location">{{ event.location }}</p>
+        <article class="timeline-card category-card" v-for="event in grouped.current" :key="event.id" :style="event.raw.category ? { '--category-color': event.raw.category.color } : undefined">
+          <CategoryBadge v-if="event.raw.category" :code="event.raw.category.code" :icon="event.raw.category.icon" :color="event.raw.category.color" :label="event.raw.category.label" variant="rail" />
+          <div class="category-card-content">
+            <h3 class="timeline-card-title">
+              <RouterLink :to="{ path: `/events/${event.id}`, query: detailQuery }">{{ event.title }}</RouterLink>
+            </h3>
+            <p class="timeline-warning" v-if="event.warning">{{ t("labels.warningPrefix") }} {{ event.warning }}</p>
+            <p class="timeline-meta">{{ event.dateLabel }}</p>
+            <p class="timeline-meta" v-if="event.location">{{ event.location }}</p>
+          </div>
         </article>
       </div>
     </section>
@@ -117,13 +121,16 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
     <section class="timeline-section" v-if="hasSection('toCome')">
       <h2>{{ t("labels.toCome") }}</h2>
       <div class="timeline-list">
-        <article class="timeline-card" v-for="event in grouped.toCome" :key="event.id">
-          <h3 class="timeline-card-title">
-            <RouterLink :to="{ path: `/events/${event.id}`, query: detailQuery }">{{ event.title }}</RouterLink>
-          </h3>
-          <p class="timeline-warning" v-if="event.warning">{{ t("labels.warningPrefix") }} {{ event.warning }}</p>
-          <p class="timeline-meta">{{ event.dateLabel }}</p>
-          <p class="timeline-meta" v-if="event.location">{{ event.location }}</p>
+        <article class="timeline-card category-card" v-for="event in grouped.toCome" :key="event.id" :style="event.raw.category ? { '--category-color': event.raw.category.color } : undefined">
+          <CategoryBadge v-if="event.raw.category" :code="event.raw.category.code" :icon="event.raw.category.icon" :color="event.raw.category.color" :label="event.raw.category.label" variant="rail" />
+          <div class="category-card-content">
+            <h3 class="timeline-card-title">
+              <RouterLink :to="{ path: `/events/${event.id}`, query: detailQuery }">{{ event.title }}</RouterLink>
+            </h3>
+            <p class="timeline-warning" v-if="event.warning">{{ t("labels.warningPrefix") }} {{ event.warning }}</p>
+            <p class="timeline-meta">{{ event.dateLabel }}</p>
+            <p class="timeline-meta" v-if="event.location">{{ event.location }}</p>
+          </div>
         </article>
       </div>
     </section>
@@ -131,13 +138,16 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
     <section class="timeline-section" v-if="hasSection('past')" data-status="past">
       <h2>{{ t("labels.past") }}</h2>
       <div class="timeline-list">
-        <article class="timeline-card timeline-card-past" v-for="event in grouped.past" :key="event.id">
-          <h3 class="timeline-card-title">
-            <RouterLink :to="{ path: `/events/${event.id}`, query: detailQuery }">{{ event.title }}</RouterLink>
-          </h3>
-          <p class="timeline-warning" v-if="event.warning">{{ t("labels.warningPrefix") }} {{ event.warning }}</p>
-          <p class="timeline-meta">{{ event.dateLabel }}</p>
-          <p class="timeline-meta" v-if="event.location">{{ event.location }}</p>
+        <article class="timeline-card timeline-card-past category-card" v-for="event in grouped.past" :key="event.id" :style="event.raw.category ? { '--category-color': event.raw.category.color } : undefined">
+          <CategoryBadge v-if="event.raw.category" :code="event.raw.category.code" :icon="event.raw.category.icon" :color="event.raw.category.color" :label="event.raw.category.label" variant="rail" />
+          <div class="category-card-content">
+            <h3 class="timeline-card-title">
+              <RouterLink :to="{ path: `/events/${event.id}`, query: detailQuery }">{{ event.title }}</RouterLink>
+            </h3>
+            <p class="timeline-warning" v-if="event.warning">{{ t("labels.warningPrefix") }} {{ event.warning }}</p>
+            <p class="timeline-meta">{{ event.dateLabel }}</p>
+            <p class="timeline-meta" v-if="event.location">{{ event.location }}</p>
+          </div>
         </article>
       </div>
     </section>
@@ -149,4 +159,7 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
 
 <style scoped>
 .primary-action { display: inline-flex; margin-top: 0.8rem; border: 1px solid rgba(72, 144, 255, 0.7); border-radius: 0.55rem; padding: 0.55rem 0.8rem; background: rgba(72, 144, 255, 0.22); color: var(--control-fg); text-decoration: none; font-weight: 700; }
+.category-card { align-items: stretch; display: flex; gap: 0.72rem; overflow: hidden; position: relative; }
+.category-card::before { background: var(--category-color, rgba(72, 144, 255, 0.55)); content: ""; position: absolute; inset: 0 auto 0 0; width: 0.28rem; }
+.category-card-content { min-width: 0; }
 </style>

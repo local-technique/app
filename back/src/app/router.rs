@@ -4,7 +4,7 @@ use axum::{
 };
 
 use crate::app::state::AppState;
-use crate::{admin, auth, categories, incidents, maintenances, translations};
+use crate::{admin, auth, categories, incidents, maintenances, projects, translations};
 
 pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
     Router::new()
@@ -52,6 +52,19 @@ pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
         .route(
             "/maintenances/{id}/translations/replace",
             post(maintenances::http::replace_translations),
+        )
+        .route("/projects", get(projects::http::list).post(projects::http::create))
+        .route(
+            "/projects/{id}",
+            get(projects::http::detail)
+                .put(projects::http::update)
+                .delete(projects::http::delete),
+        )
+        .route("/projects/{id}/translations", get(projects::http::translations))
+        .route("/projects/{id}/edit", get(projects::http::edit))
+        .route(
+            "/projects/{id}/translations/replace",
+            post(projects::http::replace_translations),
         )
         .route("/translations", get(translations::http::list_matrix))
         .route("/translations/bulk", post(translations::http::upsert_bulk))

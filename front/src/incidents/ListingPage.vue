@@ -3,6 +3,7 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { currentUserRoles, hasAnyRole } from "../auth/session";
+import CategoryBadge from "../categories/CategoryBadge.vue";
 import type { LocaleCode } from "../common/localeContent";
 import { apiIncidentsRepository } from "./repositories/apiIncidentsRepository";
 import { groupByStatus, toIncidentViewModel } from "./utils";
@@ -103,9 +104,10 @@ function hasSection(name: "current" | "past"): boolean {
     <section class="timeline-section" v-if="hasSection('current')">
       <h2>{{ t("labels.current") }}</h2>
       <div class="timeline-list">
-        <article class="timeline-card" v-for="incident in grouped.current" :key="incident.id">
+        <article class="timeline-card incident-list-card" v-for="incident in grouped.current" :key="incident.id" :style="incident.raw.category ? { '--category-color': incident.raw.category.color } : undefined">
+          <CategoryBadge v-if="incident.raw.category" :code="incident.raw.category.code" :icon="incident.raw.category.icon" :color="incident.raw.category.color" :label="incident.raw.category.label" variant="rail" />
           <div class="incident-card-main">
-            <p class="timeline-meta">{{ incident.id }} - {{ incident.raw.categoryCode }}</p>
+            <p class="timeline-meta">{{ incident.id }}</p>
             <h3 class="timeline-card-title">
               <RouterLink :to="{ path: `/incidents/${incident.id}`, query: detailQuery }">{{ incident.title }}</RouterLink>
             </h3>
@@ -126,9 +128,10 @@ function hasSection(name: "current" | "past"): boolean {
     <section class="timeline-section" v-if="hasSection('past')" data-status="past">
       <h2>{{ t("labels.past") }}</h2>
       <div class="timeline-list">
-        <article class="timeline-card timeline-card-past" v-for="incident in grouped.past" :key="incident.id">
+        <article class="timeline-card timeline-card-past incident-list-card" v-for="incident in grouped.past" :key="incident.id" :style="incident.raw.category ? { '--category-color': incident.raw.category.color } : undefined">
+          <CategoryBadge v-if="incident.raw.category" :code="incident.raw.category.code" :icon="incident.raw.category.icon" :color="incident.raw.category.color" :label="incident.raw.category.label" variant="rail" />
           <div class="incident-card-main">
-            <p class="timeline-meta">{{ incident.id }} - {{ incident.raw.categoryCode }}</p>
+            <p class="timeline-meta">{{ incident.id }}</p>
             <h3 class="timeline-card-title">
               <RouterLink :to="{ path: `/incidents/${incident.id}`, query: detailQuery }">{{ incident.title }}</RouterLink>
             </h3>
@@ -153,7 +156,9 @@ function hasSection(name: "current" | "past"): boolean {
 
 <style scoped>
 .primary-action { display: inline-flex; margin-top: 0.8rem; border: 1px solid rgba(72, 144, 255, 0.7); border-radius: 0.55rem; padding: 0.55rem 0.8rem; background: rgba(72, 144, 255, 0.22); color: var(--control-fg); text-decoration: none; font-weight: 700; }
-.timeline-card { grid-template-columns: minmax(0, 1fr); }
+.timeline-card { grid-template-columns: auto minmax(0, 1fr); }
+.incident-list-card { overflow: hidden; position: relative; }
+.incident-list-card::before { background: var(--category-color, rgba(72, 144, 255, 0.55)); content: ""; position: absolute; inset: 0 auto 0 0; width: 0.28rem; }
 .incident-card-main { display: grid; gap: 0.5rem; }
 .latest-timeline-entry { border-top: 1px solid var(--border-color); display: grid; gap: 0.3rem; padding-top: 0.55rem; }
 .latest-timeline-title { color: #77b3ff; display: block; margin: 0; font-size: 0.88rem; font-weight: 650; line-height: 1.25; }
@@ -161,7 +166,7 @@ function hasSection(name: "current" | "past"): boolean {
 .pending-badge { background: rgba(255, 139, 26, 0.2); border: 1px solid rgba(255, 139, 26, 0.62); border-radius: 999px; color: #ff8b1a; display: inline-flex; font-size: 0.78rem; line-height: 1.15; padding: 0.18rem 0.45rem; }
 
 @media (min-width: 760px) {
-  .timeline-card { align-items: stretch; grid-template-columns: minmax(0, 1fr) minmax(13rem, 30%); column-gap: 1.2rem; }
+  .timeline-card { align-items: stretch; grid-template-columns: auto minmax(0, 1fr) minmax(13rem, 30%); column-gap: 1.2rem; }
   .latest-timeline-entry { align-content: start; border-left: 1px solid var(--border-color); border-top: 0; padding-left: 1rem; padding-top: 0; }
 }
 </style>
