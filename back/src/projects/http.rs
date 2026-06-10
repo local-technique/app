@@ -6,7 +6,7 @@ use crate::app::state::AppState;
 use crate::common::auth::Principal;
 use crate::common::error::AppError;
 use crate::common::role::Role;
-use crate::projects::model::{ProjectListQuery, ProjectSaveRequest, ProjectTranslationsUpdateRequest};
+use crate::projects::model::{CreatedKeyResponse, ProjectListQuery, ProjectSaveRequest, ProjectTranslationsUpdateRequest};
 use crate::projects::service;
 
 pub async fn list(
@@ -70,10 +70,10 @@ pub async fn create(
     principal: Principal,
     State(state): State<AppState>,
     Json(payload): Json<ProjectSaveRequest>,
-) -> Result<StatusCode, AppError> {
+) -> Result<(StatusCode, Json<CreatedKeyResponse>), AppError> {
     principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard])?;
-    service::save_partial(&state.db, &payload, principal.user_id).await?;
-    Ok(StatusCode::CREATED)
+    let key = service::save_partial(&state.db, &payload, principal.user_id).await?;
+    Ok((StatusCode::CREATED, Json(CreatedKeyResponse { key })))
 }
 
 pub async fn update(
@@ -83,7 +83,7 @@ pub async fn update(
     Json(mut payload): Json<ProjectSaveRequest>,
 ) -> Result<StatusCode, AppError> {
     principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard])?;
-    payload.id = id;
+    payload.key = Some(id);
     service::save_partial(&state.db, &payload, principal.user_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }

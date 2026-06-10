@@ -105,7 +105,7 @@ function hasSection(name: "current" | "past"): boolean {
       <h2>{{ t("labels.current") }}</h2>
       <div class="timeline-list">
         <article class="timeline-card incident-list-card" v-for="incident in grouped.current" :key="incident.id" :style="incident.raw.category ? { '--category-color': incident.raw.category.color } : undefined">
-          <CategoryBadge v-if="incident.raw.category" :code="incident.raw.category.code" :icon="incident.raw.category.icon" :color="incident.raw.category.color" :label="incident.raw.category.label" variant="rail" />
+          <CategoryBadge v-if="incident.raw.category" :category-key="incident.raw.category.key" :icon="incident.raw.category.icon" :color="incident.raw.category.color" :label="incident.raw.category.label" variant="rail" />
           <div class="incident-card-main">
             <p class="timeline-meta">{{ incident.id }}</p>
             <h3 class="timeline-card-title">
@@ -129,7 +129,7 @@ function hasSection(name: "current" | "past"): boolean {
       <h2>{{ t("labels.past") }}</h2>
       <div class="timeline-list">
         <article class="timeline-card timeline-card-past incident-list-card" v-for="incident in grouped.past" :key="incident.id" :style="incident.raw.category ? { '--category-color': incident.raw.category.color } : undefined">
-          <CategoryBadge v-if="incident.raw.category" :code="incident.raw.category.code" :icon="incident.raw.category.icon" :color="incident.raw.category.color" :label="incident.raw.category.label" variant="rail" />
+          <CategoryBadge v-if="incident.raw.category" :category-key="incident.raw.category.key" :icon="incident.raw.category.icon" :color="incident.raw.category.color" :label="incident.raw.category.label" variant="rail" />
           <div class="incident-card-main">
             <p class="timeline-meta">{{ incident.id }}</p>
             <h3 class="timeline-card-title">

@@ -44,7 +44,7 @@ export class MockIncidentsRepository implements IncidentsRepository {
     };
   }
 
-  async save(_payload: IncidentSavePayload, _existingId?: string): Promise<void> {}
+  async save(_payload: IncidentSavePayload, existingId?: string): Promise<string | void> { return existingId ?? "INC-10"; }
 
   async delete(_id: string): Promise<void> {}
 }

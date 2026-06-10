@@ -5,6 +5,6 @@ export interface ProjectsRepository {
   list(preferredLanguage: LocaleCode, query: string): Promise<ProjectItem[]>;
   byId(id: string, preferredLanguage: LocaleCode): Promise<ProjectItem | null>;
   editData(id: string, preferredLanguage: LocaleCode): Promise<ProjectEditData | null>;
-  save(payload: ProjectSavePayload, existingId?: string): Promise<void>;
+  save(payload: ProjectSavePayload, existingId?: string): Promise<string | void>;
   delete(id: string): Promise<void>;
 }

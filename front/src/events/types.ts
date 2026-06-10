@@ -9,7 +9,7 @@ export type EventLocalizedText = {
 export type EventItem = {
   id: string;
   categoryCode: string;
-  category?: Pick<CategoryItem, "id" | "code" | "icon" | "color" | "label">;
+  category?: Pick<CategoryItem, "id" | "key" | "icon" | "color" | "label">;
   title: EventLocalizedText;
   shortDescription: EventLocalizedText;
   longDescription: EventLocalizedText;
@@ -44,7 +44,7 @@ export type EventEditData = {
 };
 
 export type EventSavePayload = {
-  id: string;
+  id?: string;
   categoryId: string;
   startUtc: string;
   endUtc?: string | null;

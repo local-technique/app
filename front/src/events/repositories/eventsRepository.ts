@@ -5,6 +5,6 @@ export interface EventsRepository {
   list(preferredLanguage: LocaleCode, query: string): Promise<EventItem[]>;
   byId(id: string, preferredLanguage: LocaleCode): Promise<EventItem | null>;
   editData(id: string, preferredLanguage: LocaleCode): Promise<EventEditData | null>;
-  save(payload: EventSavePayload, existingId?: string): Promise<void>;
+  save(payload: EventSavePayload, existingId?: string): Promise<string | void>;
   delete(id: string): Promise<void>;
 }

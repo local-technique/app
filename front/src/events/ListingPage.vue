@@ -105,7 +105,7 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
       <h2>{{ t("labels.current") }}</h2>
       <div class="timeline-list">
         <article class="timeline-card category-card" v-for="event in grouped.current" :key="event.id" :style="event.raw.category ? { '--category-color': event.raw.category.color } : undefined">
-          <CategoryBadge v-if="event.raw.category" :code="event.raw.category.code" :icon="event.raw.category.icon" :color="event.raw.category.color" :label="event.raw.category.label" variant="rail" />
+          <CategoryBadge v-if="event.raw.category" :category-key="event.raw.category.key" :icon="event.raw.category.icon" :color="event.raw.category.color" :label="event.raw.category.label" variant="rail" />
           <div class="category-card-content">
             <h3 class="timeline-card-title">
               <RouterLink :to="{ path: `/events/${event.id}`, query: detailQuery }">{{ event.title }}</RouterLink>
@@ -122,7 +122,7 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
       <h2>{{ t("labels.toCome") }}</h2>
       <div class="timeline-list">
         <article class="timeline-card category-card" v-for="event in grouped.toCome" :key="event.id" :style="event.raw.category ? { '--category-color': event.raw.category.color } : undefined">
-          <CategoryBadge v-if="event.raw.category" :code="event.raw.category.code" :icon="event.raw.category.icon" :color="event.raw.category.color" :label="event.raw.category.label" variant="rail" />
+          <CategoryBadge v-if="event.raw.category" :category-key="event.raw.category.key" :icon="event.raw.category.icon" :color="event.raw.category.color" :label="event.raw.category.label" variant="rail" />
           <div class="category-card-content">
             <h3 class="timeline-card-title">
               <RouterLink :to="{ path: `/events/${event.id}`, query: detailQuery }">{{ event.title }}</RouterLink>
@@ -139,7 +139,7 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
       <h2>{{ t("labels.past") }}</h2>
       <div class="timeline-list">
         <article class="timeline-card timeline-card-past category-card" v-for="event in grouped.past" :key="event.id" :style="event.raw.category ? { '--category-color': event.raw.category.color } : undefined">
-          <CategoryBadge v-if="event.raw.category" :code="event.raw.category.code" :icon="event.raw.category.icon" :color="event.raw.category.color" :label="event.raw.category.label" variant="rail" />
+          <CategoryBadge v-if="event.raw.category" :category-key="event.raw.category.key" :icon="event.raw.category.icon" :color="event.raw.category.color" :label="event.raw.category.label" variant="rail" />
           <div class="category-card-content">
             <h3 class="timeline-card-title">
               <RouterLink :to="{ path: `/events/${event.id}`, query: detailQuery }">{{ event.title }}</RouterLink>

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize)]
 pub struct CategoryItem {
     pub id: String,
-    pub code: String,
+    pub key: String,
     pub icon: String,
     pub color: String,
     pub label: String,
@@ -19,8 +19,7 @@ pub struct CategoryListQuery {
 
 #[derive(Deserialize)]
 pub struct CategoryCreateRequest {
-    pub id: String,
-    pub code: String,
+    pub key: String,
     pub icon: String,
     pub color: String,
     pub labels: HashMap<String, String>,
@@ -28,7 +27,7 @@ pub struct CategoryCreateRequest {
 
 #[derive(Deserialize)]
 pub struct CategoryUpdateRequest {
-    pub code: String,
+    pub key: String,
     pub icon: String,
     pub color: String,
     pub labels: HashMap<String, String>,

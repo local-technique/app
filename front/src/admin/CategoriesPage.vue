@@ -12,7 +12,7 @@ const categories = ref<CategoryItem[]>([]);
 const editingId = ref("");
 const defaultColor = "#9aaab1";
 const defaultColors = ["#d73a49", "#f4511e", "#fbca04", "#0e8a16", "#006b75", "#1d76db", "#0052cc", "#5319e7", "#e99695", "#f9d0c4", "#fef2c0", "#c2e0c6", "#bfdadc", "#c5def5", "#bfd4f2", "#d4c5f9"];
-const form = ref<CategoryInput>({ id: "", code: "", icon: "tag", color: defaultColor, labels: { en: "", fr: "" } });
+const form = ref<CategoryInput>({ key: "", icon: "tag", color: defaultColor, labels: { en: "", fr: "" } });
 const loading = ref(false);
 const error = ref(false);
 const colorPickerOpen = ref(false);
@@ -25,8 +25,8 @@ async function load(): Promise<void> {
 }
 
 function randomColor(): string { return `#${Math.floor(Math.random() * 0x1000000).toString(16).padStart(6, "0")}`; }
-function reset(): void { editingId.value = ""; form.value = { id: "", code: "", icon: "tag", color: defaultColor, labels: { en: "", fr: "" } }; }
-function edit(category: CategoryItem): void { editingId.value = category.id; form.value = { id: category.id, code: category.code, icon: category.icon, color: category.color, labels: { en: category.labels.en ?? "", fr: category.labels.fr ?? "" } }; }
+function reset(): void { editingId.value = ""; form.value = { key: "", icon: "tag", color: defaultColor, labels: { en: "", fr: "" } }; }
+function edit(category: CategoryItem): void { editingId.value = category.id; form.value = { key: category.key, icon: category.icon, color: category.color, labels: { en: category.labels.en ?? "", fr: category.labels.fr ?? "" } }; }
 function closeColorPicker(event: FocusEvent): void {
   if (event.currentTarget instanceof HTMLElement && event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
   colorPickerOpen.value = false;
@@ -55,8 +55,7 @@ void load();
     <h1 class="page-title">{{ t("labels.adminCategoriesTitle") }}</h1>
     <p><a href="https://lucide.dev/icons/" target="_blank" rel="noreferrer">{{ t("labels.categoryIconHelp") }}</a></p>
     <form class="category-form" @submit.prevent="save">
-      <label>{{ t("labels.categoryId") }}<input v-model="form.id" :disabled="Boolean(editingId)" required /></label>
-      <label>{{ t("labels.categoryCode") }}<input v-model="form.code" required /></label>
+      <label>{{ t("labels.categoryKey") }}<input v-model="form.key" required /></label>
       <label>{{ t("labels.categoryIcon") }}<span class="icon-input-row"><CategoryIcon data-testid="category-icon-input-preview" :name="form.icon" :style="{ color: form.color }" /><input v-model="form.icon" required /><span class="color-field" @focusin="colorPickerOpen = true" @focusout="closeColorPicker"><label class="sr-only" for="category-color-input">Color</label><span class="color-input-wrap"><span class="color-preview" :style="{ background: form.color }" aria-hidden="true"></span><input id="category-color-input" v-model="form.color" pattern="#[0-9a-fA-F]{6}" required @focus="colorPickerOpen = true" /><button class="icon-button" type="button" aria-label="Set random color" @click="form.color = randomColor()"><RefreshCcw :size="18" aria-hidden="true" /></button></span><span v-if="colorPickerOpen" class="color-popover"><span>Choose from default colors</span><span class="color-grid"><button v-for="color in defaultColors" :key="color" class="color-swatch" type="button" :aria-label="`Use color ${color}`" :style="{ background: color }" @click="form.color = color"></button></span></span></span></span></label>
       <label>{{ t("labels.labelEn") }}<input v-model="form.labels.en" required /></label>
       <label>{{ t("labels.labelFr") }}<input v-model="form.labels.fr" required /></label>
@@ -65,7 +64,7 @@ void load();
     <p v-if="loading" class="empty-state">{{ t("labels.loadingCategories") }}</p>
     <p v-if="error" class="empty-state">{{ t("labels.categoriesError") }}</p>
     <div class="admin-table-wrap" v-if="categories.length">
-      <table class="admin-table"><thead><tr><th>{{ t("labels.categoryId") }}</th><th>{{ t("labels.categoryCode") }}</th><th>{{ t("labels.categoryIcon") }}</th><th>{{ t("labels.label") }}</th><th>{{ t("labels.actions") }}</th></tr></thead><tbody><tr v-for="category in categories" :key="category.id"><td>{{ category.id }}</td><td>{{ category.code }}</td><td><span class="icon-cell" :style="{ color: category.color }"><CategoryIcon :data-testid="`category-icon-list-${category.id}`" :name="category.icon" />{{ category.icon }}</span></td><td>{{ category.label }}</td><td><button class="secondary-button" type="button" @click="edit(category)">{{ t("labels.edit") }}</button> <button class="secondary-button" type="button" @click="remove(category.id)">{{ t("labels.delete") }}</button></td></tr></tbody></table>
+      <table class="admin-table"><thead><tr><th>{{ t("labels.categoryId") }}</th><th>{{ t("labels.categoryKey") }}</th><th>{{ t("labels.categoryIcon") }}</th><th>{{ t("labels.label") }}</th><th>{{ t("labels.actions") }}</th></tr></thead><tbody><tr v-for="category in categories" :key="category.id"><td>{{ category.id.slice(0, 7) }}</td><td>{{ category.key }}</td><td><span class="icon-cell" :style="{ color: category.color }"><CategoryIcon :data-testid="`category-icon-list-${category.key}`" :name="category.icon" />{{ category.icon }}</span></td><td>{{ category.label }}</td><td><button class="secondary-button" type="button" @click="edit(category)">{{ t("labels.edit") }}</button> <button class="secondary-button" type="button" @click="remove(category.id)">{{ t("labels.delete") }}</button></td></tr></tbody></table>
     </div>
   </main>
 </template>

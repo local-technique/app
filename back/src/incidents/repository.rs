@@ -18,9 +18,9 @@ pub async fn list(
         r#"
 SELECT
   i.id,
-  i.code,
-  i.category_code,
-  c.code AS category_display_code,
+  i.key,
+  i.category_id::TEXT AS category_id,
+  c.key AS category_display_key,
   c.icon AS category_icon,
   c.color AS category_color,
   coalesce((
@@ -30,7 +30,7 @@ SELECT
     WHERE ci.category_id = c.id
     ORDER BY lp.ord
     LIMIT 1
-  ), c.code) AS category_label,
+  ), c.key) AS category_label,
   i.start_utc,
   i.end_utc,
   coalesce((
@@ -76,7 +76,7 @@ SELECT
     LIMIT 1
   ), '') AS latest_timeline_details
 FROM incidents i
-JOIN event_categories c ON c.id = i.category_code
+JOIN event_categories c ON c.id = i.category_id
 LEFT JOIN LATERAL (
   SELECT t.id, t.at_utc
   FROM incident_timeline t
@@ -101,7 +101,8 @@ WHERE ($2::TEXT IS NULL OR $2 = '') OR (
     ORDER BY lp.ord
     LIMIT 1
   ), '') ILIKE ('%' || $2 || '%')
-  OR i.category_code ILIKE ('%' || $2 || '%')
+  OR i.key ILIKE ('%' || $2 || '%')
+  OR c.key ILIKE ('%' || $2 || '%')
 )
 ORDER BY i.start_utc ASC
 "#,
@@ -115,7 +116,7 @@ ORDER BY i.start_utc ASC
 }
 
 fn to_list_item(row: sqlx::postgres::PgRow) -> Result<IncidentListItem, AppError> {
-    let id: String = row.try_get("code")?;
+    let key: String = row.try_get("key")?;
     let start_utc: DateTime<Utc> = row.try_get("start_utc")?;
     let end_utc: Option<DateTime<Utc>> = row.try_get("end_utc")?;
     let latest_timeline_id: Option<Uuid> = row.try_get("latest_timeline_id")?;
@@ -129,11 +130,11 @@ fn to_list_item(row: sqlx::postgres::PgRow) -> Result<IncidentListItem, AppError
         }]
     });
     Ok(IncidentListItem {
-        id,
-        category_code: row.try_get("category_code")?,
+        key,
+        category_id: row.try_get("category_id")?,
         category: CategoryDisplay {
-            id: row.try_get("category_code")?,
-            code: row.try_get("category_display_code")?,
+            id: row.try_get("category_id")?,
+            key: row.try_get("category_display_key")?,
             icon: row.try_get("category_icon")?,
             color: row.try_get("category_color")?,
             label: row.try_get("category_label")?,
@@ -156,9 +157,9 @@ pub async fn by_id(
         r#"
 SELECT
   i.id,
-  i.code,
-  i.category_code,
-  c.code AS category_display_code,
+  i.key,
+  i.category_id::TEXT AS category_id,
+  c.key AS category_display_key,
   c.icon AS category_icon,
   c.color AS category_color,
   coalesce((
@@ -168,7 +169,7 @@ SELECT
     WHERE ci.category_id = c.id
     ORDER BY lp.ord
     LIMIT 1
-  ), c.code) AS category_label,
+  ), c.key) AS category_label,
   i.start_utc,
   i.end_utc,
   i.last_modified_at,
@@ -207,9 +208,9 @@ SELECT
     LIMIT 1
   ), '') AS location
 FROM incidents i
-JOIN event_categories c ON c.id = i.category_code
+JOIN event_categories c ON c.id = i.category_id
 LEFT JOIN users u ON u.id = i.last_modified_by_user_id
-WHERE i.code = $1
+WHERE i.key = $1
 "#,
     )
     .bind(incident_code)
@@ -267,18 +268,18 @@ ORDER BY t.at_utc DESC NULLS FIRST, t.sort_order ASC
         })
         .collect::<Result<Vec<_>, AppError>>()?;
 
-    let code: String = row.try_get("code")?;
+    let key: String = row.try_get("key")?;
     let start_utc: DateTime<Utc> = row.try_get("start_utc")?;
     let end_utc: Option<DateTime<Utc>> = row.try_get("end_utc")?;
     let last_modified_at: Option<DateTime<Utc>> = row.try_get("last_modified_at")?;
     let last_modified_by_user_id: Option<Uuid> = row.try_get("last_modified_by_user_id")?;
     let last_modified_by_email: Option<String> = row.try_get("last_modified_by_email")?;
     Ok(Some(IncidentDetail {
-        id: code,
-        category_code: row.try_get("category_code")?,
+        key,
+        category_id: row.try_get("category_id")?,
         category: CategoryDisplay {
-            id: row.try_get("category_code")?,
-            code: row.try_get("category_display_code")?,
+            id: row.try_get("category_id")?,
+            key: row.try_get("category_display_key")?,
             icon: row.try_get("category_icon")?,
             color: row.try_get("category_color")?,
             label: row.try_get("category_label")?,
@@ -305,7 +306,7 @@ pub async fn edit_data(
     locale_chain: &[String],
     enabled_locales: Vec<String>,
 ) -> Result<Option<IncidentEditData>, AppError> {
-    let row = sqlx::query("SELECT id, code, category_code, start_utc, end_utc FROM incidents WHERE code = $1")
+    let row = sqlx::query("SELECT id, key, category_id::TEXT AS category_id, start_utc, end_utc FROM incidents WHERE key = $1")
         .bind(incident_code)
         .fetch_optional(db)
         .await?;
@@ -333,8 +334,8 @@ pub async fn edit_data(
         });
     }
     Ok(Some(IncidentEditData {
-        id: row.try_get("code")?,
-        category_id: row.try_get("category_code")?,
+        key: row.try_get("key")?,
+        category_id: row.try_get("category_id")?,
         start_utc: start_utc.to_rfc3339(),
         end_utc: end_utc.map(|value| value.to_rfc3339()),
         locale: locale.to_string(),
@@ -447,7 +448,7 @@ LIMIT 1
     Ok(result)
 }
 
-pub async fn save_partial(db: &sqlx::PgPool, payload: &IncidentSaveRequest, user_id: Uuid) -> Result<(), AppError> {
+pub async fn save_partial(db: &sqlx::PgPool, payload: &IncidentSaveRequest, user_id: Uuid) -> Result<String, AppError> {
     let start_utc = DateTime::parse_from_rfc3339(&payload.start_utc)
         .map_err(|_| AppError::bad_request("invalid incident start_utc"))?
         .with_timezone(&Utc);
@@ -463,28 +464,45 @@ pub async fn save_partial(db: &sqlx::PgPool, payload: &IncidentSaveRequest, user
     }
 
     let mut tx = db.begin().await?;
-    let incident_id: Uuid = sqlx::query_scalar(
-        r#"
-INSERT INTO incidents (id, code, category_code, start_utc, end_utc, updated_at, last_modified_at, last_modified_by_user_id)
-VALUES ($1, $2, $3, $4, $5, now(), now(), $6)
-ON CONFLICT (code) DO UPDATE
-SET category_code = EXCLUDED.category_code,
-    start_utc = EXCLUDED.start_utc,
-    end_utc = EXCLUDED.end_utc,
+    let (incident_id, key): (Uuid, String) = if let Some(key) = &payload.key {
+        let row = sqlx::query(
+            r#"
+UPDATE incidents
+SET category_id = $2::uuid,
+    start_utc = $3,
+    end_utc = $4,
     updated_at = now(),
     last_modified_at = now(),
-    last_modified_by_user_id = EXCLUDED.last_modified_by_user_id
-RETURNING id
+    last_modified_by_user_id = $5
+WHERE key = $1
+RETURNING id, key
 "#,
-    )
-    .bind(Uuid::new_v4())
-    .bind(payload.id.as_str())
-    .bind(payload.category_id.as_str())
-    .bind(start_utc)
-    .bind(end_utc)
-    .bind(user_id)
-    .fetch_one(&mut *tx)
-    .await?;
+        )
+        .bind(key)
+        .bind(&payload.category_id)
+        .bind(start_utc)
+        .bind(end_utc)
+        .bind(user_id)
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or_else(|| AppError::not_found("incident not found"))?;
+        (row.try_get("id")?, row.try_get("key")?)
+    } else {
+        let row = sqlx::query(
+            r#"
+INSERT INTO incidents (id, key, category_id, start_utc, end_utc, updated_at, last_modified_at, last_modified_by_user_id)
+VALUES (gen_random_uuid(), 'INC-' || nextval('incident_key_seq'), $1::uuid, $2, $3, now(), now(), $4)
+RETURNING id, key
+"#,
+        )
+        .bind(&payload.category_id)
+        .bind(start_utc)
+        .bind(end_utc)
+        .bind(user_id)
+        .fetch_one(&mut *tx)
+        .await?;
+        (row.try_get("id")?, row.try_get("key")?)
+    };
 
     for (field_key, field_value) in &payload.fields {
         save_field(&mut tx, "incident_i18n", "incident_id", incident_id, &payload.locale, field_key, field_value).await?;
@@ -543,7 +561,7 @@ WHERE incident_timeline.incident_id = EXCLUDED.incident_id
         }
     }
     tx.commit().await?;
-    Ok(())
+    Ok(key)
 }
 
 async fn save_field(
@@ -616,7 +634,7 @@ pub async fn list_translations(
     db: &sqlx::PgPool,
     incident_code: &str,
 ) -> Result<Vec<IncidentTranslationMatrixRow>, AppError> {
-    let incident_exists: Option<bool> = sqlx::query_scalar("SELECT TRUE FROM incidents WHERE code = $1")
+    let incident_exists: Option<bool> = sqlx::query_scalar("SELECT TRUE FROM incidents WHERE key = $1")
         .bind(incident_code)
         .fetch_optional(db)
         .await?;
@@ -627,7 +645,7 @@ pub async fn list_translations(
     let rows = sqlx::query(
         r#"
 WITH target AS (
-  SELECT id FROM incidents WHERE code = $1
+  SELECT id FROM incidents WHERE key = $1
 )
 SELECT
   k.field_key,
@@ -666,7 +684,7 @@ pub async fn replace_translations(
     incident_code: &str,
     values: &[IncidentTranslationValue],
 ) -> Result<(), AppError> {
-    let incident_id: Uuid = sqlx::query_scalar("SELECT id FROM incidents WHERE code = $1")
+    let incident_id: Uuid = sqlx::query_scalar("SELECT id FROM incidents WHERE key = $1")
         .bind(incident_code)
         .fetch_optional(db)
         .await?
@@ -696,7 +714,7 @@ pub async fn replace_translations(
 }
 
 pub async fn delete_by_code(db: &sqlx::PgPool, incident_code: &str) -> Result<bool, AppError> {
-    let result = sqlx::query("DELETE FROM incidents WHERE code = $1")
+    let result = sqlx::query("DELETE FROM incidents WHERE key = $1")
         .bind(incident_code)
         .execute(db)
         .await?;

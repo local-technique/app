@@ -13,15 +13,15 @@ import type { IncidentsRepository } from "./incidentsRepository";
 import { mockIncidentsRepository } from "./mockIncidentsRepository";
 
 type ApiIncidentListItem = {
-  id: string;
-  category_code: string;
+  key: string;
+  category_id: string;
   title: string;
   short_description: string;
   location: string;
   start_utc: string;
   end_utc?: string;
   timeline?: ApiIncidentTimelineItem[];
-  category?: { id: string; code: string; icon: string; color: string; label: string };
+  category?: { id: string; key: string; icon: string; color: string; label: string };
 };
 
 type ApiIncidentTimelineItem = {
@@ -32,8 +32,8 @@ type ApiIncidentTimelineItem = {
 };
 
 type ApiIncidentDetail = {
-  id: string;
-  category_code: string;
+  key: string;
+  category_id: string;
   title: string;
   short_description: string;
   long_description: string;
@@ -41,7 +41,7 @@ type ApiIncidentDetail = {
   start_utc: string;
   end_utc?: string;
   timeline: ApiIncidentTimelineItem[];
-  category?: { id: string; code: string; icon: string; color: string; label: string };
+  category?: { id: string; key: string; icon: string; color: string; label: string };
   last_modified_at?: string | null;
   last_modified_by?: { id: string; email: string } | null;
 };
@@ -62,7 +62,7 @@ type ApiIncidentTimelineEditItem = {
 };
 
 type ApiIncidentEditData = {
-  id: string;
+  key: string;
   category_id: string;
   start_utc: string;
   end_utc?: string;
@@ -71,6 +71,8 @@ type ApiIncidentEditData = {
   fields: ApiEditFieldValue[];
   timeline: ApiIncidentTimelineEditItem[];
 };
+
+type ApiCreatedKeyResponse = { key: string };
 
 function apiBaseUrl(): string {
   return import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
@@ -95,8 +97,8 @@ function toTimelineEntry(locale: LocaleCode, item: ApiIncidentTimelineItem): Inc
 
 function toIncidentItem(locale: LocaleCode, value: ApiIncidentListItem | ApiIncidentDetail): IncidentItem {
   return {
-    id: value.id,
-    categoryCode: value.category_code,
+    id: value.key,
+    categoryCode: value.category_id,
     category: value.category,
     title: localized(locale, value.title ?? ""),
     shortDescription: localized(locale, value.short_description ?? ""),
@@ -132,7 +134,7 @@ function toTimelineEditItem(value: ApiIncidentTimelineEditItem): IncidentTimelin
 
 function toEditData(value: ApiIncidentEditData): IncidentEditData {
   return {
-    id: value.id,
+    id: value.key,
     categoryId: value.category_id,
     startUtc: value.start_utc,
     endUtc: value.end_utc,
@@ -172,7 +174,7 @@ async function fetchJsonOrNull<T>(url: string): Promise<T | null> {
   return (await response.json()) as T;
 }
 
-async function sendJson(url: string, method: string, body?: unknown): Promise<void> {
+async function sendJson<T>(url: string, method: string, body?: unknown): Promise<T | null> {
   const response = await fetch(url, {
     method,
     headers: { ...authHeaders(), "Content-Type": "application/json" },
@@ -181,11 +183,12 @@ async function sendJson(url: string, method: string, body?: unknown): Promise<vo
   if (!response.ok) {
     throw new Error(`request failed with status ${response.status}`);
   }
+  return response.status === 204 ? null : ((await response.json()) as T);
 }
 
-function toApiPayload(payload: IncidentSavePayload): Record<string, unknown> {
+function toApiPayload(payload: IncidentSavePayload, existingId?: string): Record<string, unknown> {
   return {
-    id: payload.id,
+    ...(existingId ? { key: existingId } : {}),
     category_id: payload.categoryId,
     start_utc: payload.startUtc,
     end_utc: payload.endUtc ?? null,
@@ -259,10 +262,11 @@ export class ApiIncidentsRepository implements IncidentsRepository {
     return payload ? toEditData(payload) : null;
   }
 
-  async save(payload: IncidentSavePayload, existingId?: string): Promise<void> {
+  async save(payload: IncidentSavePayload, existingId?: string): Promise<string | void> {
     if (useMockData()) return;
     const path = existingId ? `/incidents/${encodeURIComponent(existingId)}` : "/incidents";
-    await sendJson(`${apiBaseUrl()}${path}`, existingId ? "PUT" : "POST", toApiPayload(payload));
+    const response = await sendJson<ApiCreatedKeyResponse>(`${apiBaseUrl()}${path}`, existingId ? "PUT" : "POST", toApiPayload(payload, existingId));
+    return response?.key;
   }
 
   async delete(id: string): Promise<void> {

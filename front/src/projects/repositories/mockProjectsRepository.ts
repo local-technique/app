@@ -32,7 +32,7 @@ export class MockProjectsRepository implements ProjectsRepository {
     };
   }
 
-  async save(_payload: ProjectSavePayload, _existingId?: string): Promise<void> {}
+  async save(_payload: ProjectSavePayload, existingId?: string): Promise<string | void> { return existingId ?? "PRJ-10"; }
 
   async delete(_id: string): Promise<void> {}
 }

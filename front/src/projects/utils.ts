@@ -88,7 +88,7 @@ export function matchesProjectQuery(project: ProjectItem, query: string, locale:
     resolve(project.title, locale),
     resolve(project.description, locale),
     project.categoryCode,
-    project.category?.code,
+    project.category?.key,
     project.category?.label,
     project.statusType,
     model.displayStatus,

@@ -49,8 +49,8 @@ function removeTimeline(id: string): void { timeline.value = timeline.value.filt
 async function save(): Promise<void> {
   saving.value = true; saveFailed.value = false;
   try {
-    await apiIncidentsRepository.save({ id: form.value.id.trim(), categoryId: form.value.categoryId, startUtc: toUtcFromDateTimeLocalInput(form.value.startUtc) ?? "", endUtc: toUtcFromDateTimeLocalInput(form.value.endUtc), locale: activeLocale(), fields: { title: form.value.title, short_description: form.value.shortDescription, long_description: form.value.longDescription, location: form.value.location }, replaceTimeline: true, timeline: timeline.value.map((item, index) => ({ id: item.id, atUtc: toUtcFromDateTimeLocalInput(item.atUtc), sortOrder: index + 1, fields: { title: item.title, details: item.details } })) }, isEdit.value ? existingId.value : undefined);
-    await router.push(`/incidents/${encodeURIComponent(form.value.id.trim())}`);
+    const createdKey = await apiIncidentsRepository.save({ categoryId: form.value.categoryId, startUtc: toUtcFromDateTimeLocalInput(form.value.startUtc) ?? "", endUtc: toUtcFromDateTimeLocalInput(form.value.endUtc), locale: activeLocale(), fields: { title: form.value.title, short_description: form.value.shortDescription, long_description: form.value.longDescription, location: form.value.location }, replaceTimeline: true, timeline: timeline.value.map((item, index) => ({ id: item.id, atUtc: toUtcFromDateTimeLocalInput(item.atUtc), sortOrder: index + 1, fields: { title: item.title, details: item.details } })) }, isEdit.value ? existingId.value : undefined);
+    await router.push(`/incidents/${encodeURIComponent(isEdit.value ? existingId.value : String(createdKey))}`);
   } catch { saveFailed.value = true; } finally { saving.value = false; }
 }
 </script>
@@ -61,8 +61,8 @@ async function save(): Promise<void> {
     <p v-if="loadFailed" class="empty-state">{{ t("labels.incidentLoadFailed") }}</p>
     <form v-else class="event-form" @submit.prevent="save">
       <label>{{ t("labels.editLocale") }}<select v-model="editLocale"><option v-for="item in enabledLocales" :key="item" :value="item">{{ item.toUpperCase() }}</option></select></label>
-      <label>{{ t("labels.eventId") }}<input v-model="form.id" required :disabled="isEdit" /></label>
-      <label>{{ t("labels.category") }}<span class="category-select-row"><CategoryBadge v-if="selectedCategory" :code="selectedCategory.code" :icon="selectedCategory.icon" :color="selectedCategory.color" :label="selectedCategory.label" /><select v-model="form.categoryId" required><option v-for="category in categories" :key="category.id" :value="category.id">{{ category.code }} - {{ category.label }}</option></select></span></label>
+      <p v-if="isEdit" class="metadata-row"><strong>{{ t("labels.incidentKey") }}</strong><span>{{ form.id }}</span></p>
+      <label>{{ t("labels.category") }}<span class="category-select-row"><CategoryBadge v-if="selectedCategory" :category-key="selectedCategory.key" :icon="selectedCategory.icon" :color="selectedCategory.color" :label="selectedCategory.label" /><select v-model="form.categoryId" required><option v-for="category in categories" :key="category.id" :value="category.id">{{ category.key }} - {{ category.label }}</option></select></span></label>
       <label>{{ t("labels.startUtc") }}<input v-model="form.startUtc" type="datetime-local" required /></label>
       <label>{{ t("labels.endUtc") }}<input v-model="form.endUtc" type="datetime-local" /></label>
       <label>{{ t("labels.title") }}<input v-model="form.title" required /></label>

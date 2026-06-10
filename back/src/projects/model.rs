@@ -5,7 +5,7 @@ use serde::Serialize;
 #[derive(Serialize)]
 pub struct CategoryDisplay {
     pub id: String,
-    pub code: String,
+    pub key: String,
     pub icon: String,
     pub color: String,
     pub label: String,
@@ -19,8 +19,8 @@ pub struct AuditUser {
 
 #[derive(Serialize)]
 pub struct ProjectListItem {
-    pub id: String,
-    pub category_code: String,
+    pub key: String,
+    pub category_id: String,
     pub category: CategoryDisplay,
     pub title: String,
     pub description: String,
@@ -32,8 +32,8 @@ pub struct ProjectListItem {
 
 #[derive(Serialize)]
 pub struct ProjectDetail {
-    pub id: String,
-    pub category_code: String,
+    pub key: String,
+    pub category_id: String,
     pub category: CategoryDisplay,
     pub title: String,
     pub description: String,
@@ -81,7 +81,7 @@ pub struct EditFieldValue {
 
 #[derive(serde::Serialize)]
 pub struct ProjectEditData {
-    pub id: String,
+    pub key: String,
     pub category_id: String,
     pub start_utc: Option<String>,
     pub end_utc: Option<String>,
@@ -93,11 +93,17 @@ pub struct ProjectEditData {
 
 #[derive(serde::Deserialize, Debug, PartialEq, Eq)]
 pub struct ProjectSaveRequest {
-    pub id: String,
+    #[serde(default)]
+    pub key: Option<String>,
     pub category_id: String,
     pub start_utc: Option<String>,
     pub end_utc: Option<String>,
     pub status_type: String,
     pub locale: String,
     pub fields: HashMap<String, String>,
+}
+
+#[derive(serde::Serialize)]
+pub struct CreatedKeyResponse {
+    pub key: String,
 }

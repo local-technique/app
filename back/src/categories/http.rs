@@ -31,10 +31,10 @@ pub async fn create(
     principal: Principal,
     State(state): State<AppState>,
     Json(payload): Json<CategoryCreateRequest>,
-) -> Result<StatusCode, AppError> {
+) -> Result<(StatusCode, Json<crate::categories::model::CategoryItem>), AppError> {
     principal.ensure_role(Role::Admin)?;
-    service::create(&state.db, &payload).await?;
-    Ok(StatusCode::CREATED)
+    let value = service::create(&state.db, &payload).await?;
+    Ok((StatusCode::CREATED, Json(value)))
 }
 
 pub async fn update(
@@ -42,10 +42,9 @@ pub async fn update(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(payload): Json<CategoryUpdateRequest>,
-) -> Result<StatusCode, AppError> {
+) -> Result<Json<crate::categories::model::CategoryItem>, AppError> {
     principal.ensure_role(Role::Admin)?;
-    service::update(&state.db, &id, &payload).await?;
-    Ok(StatusCode::NO_CONTENT)
+    Ok(Json(service::update(&state.db, &id, &payload).await?))
 }
 
 pub async fn delete(

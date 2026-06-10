@@ -104,7 +104,7 @@ async function deleteEvent(): Promise<void> {
     <p class="detail-actions"><RouterLink v-if="canEdit" class="secondary-button" :to="`/events/${model.id}/edit`">{{ t("labels.edit") }}</RouterLink><button v-if="canDelete" class="secondary-button" type="button" @click="deleteEvent">{{ t("labels.delete") }}</button></p>
     <p class="timeline-meta">ID: {{ model.id }}</p>
     <p class="timeline-meta category-meta" v-if="model.raw.category">
-      <CategoryBadge :code="model.raw.category.code" :icon="model.raw.category.icon" :color="model.raw.category.color" :label="model.raw.category.label" />
+      <CategoryBadge :category-key="model.raw.category.key" :icon="model.raw.category.icon" :color="model.raw.category.color" :label="model.raw.category.label" />
       <span>- {{ model.raw.category.label }}</span>
     </p>
     <p class="timeline-meta" v-if="auditLabel">{{ auditLabel }}</p>

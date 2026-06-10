@@ -5,15 +5,15 @@ import { mockProjectsRepository } from "./mockProjectsRepository";
 import type { ProjectsRepository } from "./projectsRepository";
 
 type ApiProjectListItem = {
-  id: string;
-  category_code: string;
+  key: string;
+  category_id: string;
   title: string;
   description: string;
   start_utc?: string | null;
   end_utc?: string | null;
   status_type: "waiting" | "ongoing";
   status_text: string;
-  category?: { id: string; code: string; icon: string; color: string; label: string };
+  category?: { id: string; key: string; icon: string; color: string; label: string };
 };
 
 type ApiProjectDetail = ApiProjectListItem & {
@@ -30,7 +30,7 @@ type ApiEditFieldValue = {
 };
 
 type ApiProjectEditData = {
-  id: string;
+  key: string;
   category_id: string;
   start_utc?: string | null;
   end_utc?: string | null;
@@ -39,6 +39,8 @@ type ApiProjectEditData = {
   enabled_locales: string[];
   fields: ApiEditFieldValue[];
 };
+
+type ApiCreatedKeyResponse = { key: string };
 
 function apiBaseUrl(): string {
   return import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
@@ -54,8 +56,8 @@ function localized(locale: LocaleCode, value: string): ProjectLocalizedText {
 
 function toProjectItem(locale: LocaleCode, value: ApiProjectListItem | ApiProjectDetail): ProjectItem {
   return {
-    id: value.id,
-    categoryCode: value.category_code,
+    id: value.key,
+    categoryCode: value.category_id,
     category: value.category,
     title: localized(locale, value.title ?? ""),
     description: localized(locale, value.description ?? ""),
@@ -81,7 +83,7 @@ function toEditField(value: ApiEditFieldValue): EditFieldValue {
 
 function toEditData(value: ApiProjectEditData): ProjectEditData {
   return {
-    id: value.id,
+    id: value.key,
     categoryId: value.category_id,
     startUtc: value.start_utc ?? undefined,
     endUtc: value.end_utc ?? undefined,
@@ -119,7 +121,7 @@ async function fetchJsonOrNull<T>(url: string): Promise<T | null> {
   return (await response.json()) as T;
 }
 
-async function sendJson(url: string, method: string, body?: unknown): Promise<void> {
+async function sendJson<T>(url: string, method: string, body?: unknown): Promise<T | null> {
   const response = await fetch(url, {
     method,
     headers: { ...authHeaders(), "Content-Type": "application/json" },
@@ -128,11 +130,12 @@ async function sendJson(url: string, method: string, body?: unknown): Promise<vo
   if (!response.ok) {
     throw new Error(`request failed with status ${response.status}`);
   }
+  return response.status === 204 ? null : ((await response.json()) as T);
 }
 
-function toApiPayload(payload: ProjectSavePayload): Record<string, unknown> {
+function toApiPayload(payload: ProjectSavePayload, existingId?: string): Record<string, unknown> {
   return {
-    id: payload.id,
+    ...(existingId ? { key: existingId } : {}),
     category_id: payload.categoryId,
     start_utc: payload.startUtc ?? null,
     end_utc: payload.endUtc ?? null,
@@ -176,10 +179,11 @@ export class ApiProjectsRepository implements ProjectsRepository {
     return payload ? toEditData(payload) : null;
   }
 
-  async save(payload: ProjectSavePayload, existingId?: string): Promise<void> {
+  async save(payload: ProjectSavePayload, existingId?: string): Promise<string | void> {
     if (useMockData()) return;
     const path = existingId ? `/projects/${encodeURIComponent(existingId)}` : "/projects";
-    await sendJson(`${apiBaseUrl()}${path}`, existingId ? "PUT" : "POST", toApiPayload(payload));
+    const response = await sendJson<ApiCreatedKeyResponse>(`${apiBaseUrl()}${path}`, existingId ? "PUT" : "POST", toApiPayload(payload, existingId));
+    return response?.key;
   }
 
   async delete(id: string): Promise<void> {
