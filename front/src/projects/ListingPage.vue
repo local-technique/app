@@ -91,7 +91,7 @@ function projectPath(id: string): string {
       <h2>{{ t("labels.ongoingProjects") }}</h2>
       <div class="timeline-list">
         <article v-for="project in grouped.ongoing" :key="project.id" class="timeline-card project-card project-card-ongoing" :style="project.raw.category ? { '--category-color': project.raw.category.color } : undefined">
-          <CategoryBadge v-if="project.raw.category" :code="project.raw.category.code" :icon="project.raw.category.icon" :color="project.raw.category.color" :label="project.raw.category.label" variant="rail" />
+          <CategoryBadge v-if="project.raw.category" :category-key="project.raw.category.key" :icon="project.raw.category.icon" :color="project.raw.category.color" :label="project.raw.category.label" variant="rail" />
           <div class="project-card-content">
             <p class="project-kicker">{{ project.id }}</p>
             <h3 class="timeline-card-title"><RouterLink :to="{ path: projectPath(project.id), query: detailQuery }">{{ project.title }}</RouterLink></h3>
@@ -106,7 +106,7 @@ function projectPath(id: string): string {
       <h2>{{ t("labels.projectsToCome") }}</h2>
       <div class="timeline-list">
         <article v-for="project in grouped.toCome" :key="project.id" class="timeline-card project-card project-card-tocome" :style="project.raw.category ? { '--category-color': project.raw.category.color } : undefined">
-          <CategoryBadge v-if="project.raw.category" :code="project.raw.category.code" :icon="project.raw.category.icon" :color="project.raw.category.color" :label="project.raw.category.label" variant="rail" />
+          <CategoryBadge v-if="project.raw.category" :category-key="project.raw.category.key" :icon="project.raw.category.icon" :color="project.raw.category.color" :label="project.raw.category.label" variant="rail" />
           <div class="project-card-content">
             <p class="project-kicker">{{ project.id }}</p>
             <h3 class="timeline-card-title"><RouterLink :to="{ path: projectPath(project.id), query: detailQuery }">{{ project.title }}</RouterLink></h3>
@@ -121,7 +121,7 @@ function projectPath(id: string): string {
       <h2>{{ t("labels.finishedProjects") }}</h2>
       <div class="timeline-list">
         <article v-for="project in grouped.finished" :key="project.id" class="timeline-card timeline-card-past project-card" :style="project.raw.category ? { '--category-color': project.raw.category.color } : undefined">
-          <CategoryBadge v-if="project.raw.category" :code="project.raw.category.code" :icon="project.raw.category.icon" :color="project.raw.category.color" :label="project.raw.category.label" variant="rail" />
+          <CategoryBadge v-if="project.raw.category" :category-key="project.raw.category.key" :icon="project.raw.category.icon" :color="project.raw.category.color" :label="project.raw.category.label" variant="rail" />
           <div class="project-card-content">
             <p class="project-kicker">{{ project.id }}</p>
             <h3 class="timeline-card-title"><RouterLink :to="{ path: projectPath(project.id), query: detailQuery }">{{ project.title }}</RouterLink></h3>

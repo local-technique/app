@@ -1,6 +1,6 @@
 export type CategoryItem = {
   id: string;
-  code: string;
+  key: string;
   icon: string;
   color: string;
   label: string;
@@ -8,8 +8,7 @@ export type CategoryItem = {
 };
 
 export type CategoryInput = {
-  id?: string;
-  code: string;
+  key: string;
   icon: string;
   color: string;
   labels: Record<string, string>;

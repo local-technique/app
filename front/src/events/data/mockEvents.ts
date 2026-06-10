@@ -1,12 +1,12 @@
 import type { EventItem } from "../types";
 
 const categories = {
-  HEA: { id: "HEA", code: "HEA", icon: "flame", color: "#d73a49", label: "Heating" },
-  ELV: { id: "ELV", code: "ELV", icon: "arrow-up-down", color: "#0366d6", label: "Elevator" },
-  PLB: { id: "PLB", code: "PLB", icon: "droplets", color: "#0e8a16", label: "Plumbing" },
-  ELC: { id: "ELC", code: "ELC", icon: "zap", color: "#f9c513", label: "Electrical" },
-  GAR: { id: "GAR", code: "GAR", icon: "warehouse", color: "#6f42c1", label: "Garage" },
-  PMG: { id: "PMG", code: "PMG", icon: "building-2", color: "#005cc5", label: "Property management" },
+  HEA: { id: "HEA", key: "HEA", icon: "flame", color: "#d73a49", label: "Heating" },
+  ELV: { id: "ELV", key: "ELV", icon: "arrow-up-down", color: "#0366d6", label: "Elevator" },
+  PLB: { id: "PLB", key: "PLB", icon: "droplets", color: "#0e8a16", label: "Plumbing" },
+  ELC: { id: "ELC", key: "ELC", icon: "zap", color: "#f9c513", label: "Electrical" },
+  GAR: { id: "GAR", key: "GAR", icon: "warehouse", color: "#6f42c1", label: "Garage" },
+  PMG: { id: "PMG", key: "PMG", icon: "building-2", color: "#005cc5", label: "Property management" },
 } as const;
 
 const invoicePdfUrl = new URL("../../common/assets/mock-files/invoice-2026-04.pdf", import.meta.url).href;

@@ -35,7 +35,7 @@ export class MockEventsRepository implements EventsRepository {
     };
   }
 
-  async save(_payload: EventSavePayload, _existingId?: string): Promise<void> {}
+  async save(_payload: EventSavePayload, existingId?: string): Promise<string | void> { return existingId ?? "EVT-10"; }
 
   async delete(_id: string): Promise<void> {}
 }

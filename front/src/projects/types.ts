@@ -13,7 +13,7 @@ export type ProjectStatusSection = "ongoing" | "toCome" | "finished";
 export type ProjectItem = {
   id: string;
   categoryCode: string;
-  category?: Pick<CategoryItem, "id" | "code" | "icon" | "color" | "label">;
+  category?: Pick<CategoryItem, "id" | "key" | "icon" | "color" | "label">;
   title: ProjectLocalizedText;
   description: ProjectLocalizedText;
   startUtc?: string;
@@ -45,7 +45,7 @@ export type ProjectEditData = {
 };
 
 export type ProjectSavePayload = {
-  id: string;
+  id?: string;
   categoryId: string;
   startUtc?: string | null;
   endUtc?: string | null;

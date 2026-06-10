@@ -1,6 +1,5 @@
 use chrono::{DateTime, Utc};
 use sqlx::Row;
-use uuid::Uuid;
 
 use crate::common::error::AppError;
 use crate::projects::model::{
@@ -16,12 +15,12 @@ pub async fn list(
     let rows = sqlx::query(
         r#"
 SELECT
-  p.code,
-  p.category_code,
+  p.key,
+  p.category_id::TEXT AS category_id,
   p.start_utc,
   p.end_utc,
   p.status_type,
-  c.code AS category_display_code,
+  c.key AS category_display_key,
   c.icon AS category_icon,
   c.color AS category_color,
   coalesce((
@@ -31,7 +30,7 @@ SELECT
     WHERE ci.category_id = c.id
     ORDER BY lp.ord
     LIMIT 1
-  ), c.code) AS category_label,
+  ), c.key) AS category_label,
   coalesce((
     SELECT pi.field_value
     FROM project_i18n pi
@@ -57,10 +56,10 @@ SELECT
     LIMIT 1
   ), '') AS status_text
 FROM projects p
-JOIN event_categories c ON c.id = p.category_code
+JOIN event_categories c ON c.id = p.category_id
 WHERE ($2::TEXT IS NULL OR $2 = '') OR (
-  p.code ILIKE ('%' || $2 || '%')
-  OR p.category_code ILIKE ('%' || $2 || '%')
+  p.key ILIKE ('%' || $2 || '%')
+  OR c.key ILIKE ('%' || $2 || '%')
   OR p.status_type ILIKE ('%' || $2 || '%')
   OR (
     p.end_utc < now()
@@ -78,7 +77,7 @@ WHERE ($2::TEXT IS NULL OR $2 = '') OR (
     WHERE ci.category_id = c.id
     ORDER BY lp.ord
     LIMIT 1
-  ), c.code) ILIKE ('%' || $2 || '%')
+  ), c.key) ILIKE ('%' || $2 || '%')
   OR coalesce((
     SELECT pi.field_value
     FROM project_i18n pi
@@ -119,11 +118,11 @@ fn to_list_item(row: sqlx::postgres::PgRow) -> Result<ProjectListItem, AppError>
     let start_utc: Option<DateTime<Utc>> = row.try_get("start_utc")?;
     let end_utc: Option<DateTime<Utc>> = row.try_get("end_utc")?;
     Ok(ProjectListItem {
-        id: row.try_get("code")?,
-        category_code: row.try_get("category_code")?,
+        key: row.try_get("key")?,
+        category_id: row.try_get("category_id")?,
         category: CategoryDisplay {
-            id: row.try_get("category_code")?,
-            code: row.try_get("category_display_code")?,
+            id: row.try_get("category_id")?,
+            key: row.try_get("category_display_key")?,
             icon: row.try_get("category_icon")?,
             color: row.try_get("category_color")?,
             label: row.try_get("category_label")?,
@@ -145,15 +144,15 @@ pub async fn by_id(
     let row = sqlx::query(
         r#"
 SELECT
-  p.code,
-  p.category_code,
+  p.key,
+  p.category_id::TEXT AS category_id,
   p.start_utc,
   p.end_utc,
   p.status_type,
   p.last_modified_at,
-  u.id AS last_modified_by_user_id,
+  u.id::TEXT AS last_modified_by_user_id,
   u.email AS last_modified_by_email,
-  c.code AS category_display_code,
+  c.key AS category_display_key,
   c.icon AS category_icon,
   c.color AS category_color,
   coalesce((
@@ -163,7 +162,7 @@ SELECT
     WHERE ci.category_id = c.id
     ORDER BY lp.ord
     LIMIT 1
-  ), c.code) AS category_label,
+  ), c.key) AS category_label,
   coalesce((
     SELECT pi.field_value
     FROM project_i18n pi
@@ -189,9 +188,9 @@ SELECT
     LIMIT 1
   ), '') AS status_text
 FROM projects p
-JOIN event_categories c ON c.id = p.category_code
+JOIN event_categories c ON c.id = p.category_id
 LEFT JOIN users u ON u.id = p.last_modified_by_user_id
-WHERE p.code = $1
+WHERE p.key = $1
 "#,
     )
     .bind(project_code)
@@ -203,15 +202,15 @@ WHERE p.code = $1
     let start_utc: Option<DateTime<Utc>> = row.try_get("start_utc")?;
     let end_utc: Option<DateTime<Utc>> = row.try_get("end_utc")?;
     let last_modified_at: Option<DateTime<Utc>> = row.try_get("last_modified_at")?;
-    let last_modified_by_user_id: Option<Uuid> = row.try_get("last_modified_by_user_id")?;
+    let last_modified_by_user_id: Option<String> = row.try_get("last_modified_by_user_id")?;
     let last_modified_by_email: Option<String> = row.try_get("last_modified_by_email")?;
 
     Ok(Some(ProjectDetail {
-        id: row.try_get("code")?,
-        category_code: row.try_get("category_code")?,
+        key: row.try_get("key")?,
+        category_id: row.try_get("category_id")?,
         category: CategoryDisplay {
-            id: row.try_get("category_code")?,
-            code: row.try_get("category_display_code")?,
+            id: row.try_get("category_id")?,
+            key: row.try_get("category_display_key")?,
             icon: row.try_get("category_icon")?,
             color: row.try_get("category_color")?,
             label: row.try_get("category_label")?,
@@ -224,7 +223,7 @@ WHERE p.code = $1
         status_text: row.try_get("status_text")?,
         last_modified_at: last_modified_at.map(|value| value.to_rfc3339()),
         last_modified_by: last_modified_by_user_id.zip(last_modified_by_email).map(|(id, email)| AuditUser {
-            id: id.to_string(),
+            id,
             email,
         }),
     }))
@@ -237,37 +236,37 @@ pub async fn edit_data(
     locale_chain: &[String],
     enabled_locales: Vec<String>,
 ) -> Result<Option<ProjectEditData>, AppError> {
-    let row = sqlx::query("SELECT id, code, category_code, start_utc, end_utc, status_type FROM projects WHERE code = $1")
+    let row = sqlx::query("SELECT id::TEXT AS id, key, category_id::TEXT AS category_id, start_utc, end_utc, status_type FROM projects WHERE key = $1")
         .bind(project_code)
         .fetch_optional(db)
         .await?;
     let Some(row) = row else { return Ok(None); };
-    let project_id: Uuid = row.try_get("id")?;
+    let project_id: String = row.try_get("id")?;
     let start_utc: Option<DateTime<Utc>> = row.try_get("start_utc")?;
     let end_utc: Option<DateTime<Utc>> = row.try_get("end_utc")?;
 
     Ok(Some(ProjectEditData {
-        id: row.try_get("code")?,
-        category_id: row.try_get("category_code")?,
+        key: row.try_get("key")?,
+        category_id: row.try_get("category_id")?,
         start_utc: start_utc.map(|value| value.to_rfc3339()),
         end_utc: end_utc.map(|value| value.to_rfc3339()),
         status_type: row.try_get("status_type")?,
         locale: locale.to_string(),
         enabled_locales,
-        fields: edit_fields(db, project_id, locale, locale_chain).await?,
+        fields: edit_fields(db, &project_id, locale, locale_chain).await?,
     }))
 }
 
 async fn edit_fields(
     db: &sqlx::PgPool,
-    project_id: Uuid,
+    project_id: &str,
     locale: &str,
     locale_chain: &[String],
 ) -> Result<Vec<EditFieldValue>, AppError> {
     let mut result = Vec::new();
     for field_key in ["title", "description", "status_text"] {
         let exact = sqlx::query_scalar::<_, String>(
-            "SELECT field_value FROM project_i18n WHERE project_id = $1 AND locale = $2 AND field_key = $3",
+            "SELECT field_value FROM project_i18n WHERE project_id = $1::uuid AND locale = $2 AND field_key = $3",
         )
         .bind(project_id)
         .bind(locale)
@@ -280,7 +279,7 @@ async fn edit_fields(
 SELECT pi.locale, pi.field_value
 FROM project_i18n pi
 JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = pi.locale
-WHERE pi.project_id = $1 AND pi.field_key = $3
+WHERE pi.project_id = $1::uuid AND pi.field_key = $3
 ORDER BY lp.ord
 LIMIT 1
 "#,
@@ -307,7 +306,7 @@ LIMIT 1
     Ok(result)
 }
 
-pub async fn save_partial(db: &sqlx::PgPool, payload: &ProjectSaveRequest, user_id: Uuid) -> Result<(), AppError> {
+pub async fn save_partial(db: &sqlx::PgPool, payload: &ProjectSaveRequest, user_id: uuid::Uuid) -> Result<String, AppError> {
     let start_utc = payload
         .start_utc
         .as_deref()
@@ -324,40 +323,58 @@ pub async fn save_partial(db: &sqlx::PgPool, payload: &ProjectSaveRequest, user_
         .map(|value| value.with_timezone(&Utc));
 
     let mut tx = db.begin().await?;
-    let project_id: Uuid = sqlx::query_scalar(
-        r#"
-INSERT INTO projects (id, code, category_code, start_utc, end_utc, status_type, updated_at, last_modified_at, last_modified_by_user_id)
-VALUES ($1, $2, $3, $4, $5, $6, now(), now(), $7)
-ON CONFLICT (code) DO UPDATE
-SET category_code = EXCLUDED.category_code,
-    start_utc = EXCLUDED.start_utc,
-    end_utc = EXCLUDED.end_utc,
-    status_type = EXCLUDED.status_type,
+    let (project_id, key): (String, String) = if let Some(key) = &payload.key {
+        let row = sqlx::query(
+            r#"
+UPDATE projects
+SET category_id = $2::uuid,
+    start_utc = $3,
+    end_utc = $4,
+    status_type = $5,
     updated_at = now(),
     last_modified_at = now(),
-    last_modified_by_user_id = EXCLUDED.last_modified_by_user_id
-RETURNING id
+    last_modified_by_user_id = $6
+WHERE key = $1
+RETURNING id::TEXT AS id, key
 "#,
-    )
-    .bind(Uuid::new_v4())
-    .bind(payload.id.as_str())
-    .bind(payload.category_id.as_str())
-    .bind(start_utc)
-    .bind(end_utc)
-    .bind(payload.status_type.as_str())
-    .bind(user_id)
-    .fetch_one(&mut *tx)
-    .await?;
+        )
+        .bind(key)
+        .bind(&payload.category_id)
+        .bind(start_utc)
+        .bind(end_utc)
+        .bind(&payload.status_type)
+        .bind(user_id)
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or_else(|| AppError::not_found("project not found"))?;
+        (row.try_get("id")?, row.try_get("key")?)
+    } else {
+        let row = sqlx::query(
+            r#"
+INSERT INTO projects (id, key, category_id, start_utc, end_utc, status_type, updated_at, last_modified_at, last_modified_by_user_id)
+VALUES (gen_random_uuid(), 'PRJ-' || nextval('project_key_seq'), $1::uuid, $2, $3, $4, now(), now(), $5)
+RETURNING id::TEXT AS id, key
+"#,
+        )
+        .bind(&payload.category_id)
+        .bind(start_utc)
+        .bind(end_utc)
+        .bind(&payload.status_type)
+        .bind(user_id)
+        .fetch_one(&mut *tx)
+        .await?;
+        (row.try_get("id")?, row.try_get("key")?)
+    };
 
     for (field_key, field_value) in &payload.fields {
         sqlx::query(
             r#"
 INSERT INTO project_i18n (project_id, locale, field_key, field_value)
-VALUES ($1, $2, $3, $4)
+VALUES ($1::uuid, $2, $3, $4)
 ON CONFLICT (project_id, locale, field_key) DO UPDATE SET field_value = EXCLUDED.field_value
 "#,
         )
-        .bind(project_id)
+        .bind(&project_id)
         .bind(&payload.locale)
         .bind(field_key)
         .bind(field_value)
@@ -365,11 +382,11 @@ ON CONFLICT (project_id, locale, field_key) DO UPDATE SET field_value = EXCLUDED
         .await?;
     }
     tx.commit().await?;
-    Ok(())
+    Ok(key)
 }
 
 pub async fn list_translations(db: &sqlx::PgPool, project_code: &str) -> Result<Vec<ProjectTranslationMatrixRow>, AppError> {
-    let project_exists: Option<bool> = sqlx::query_scalar("SELECT TRUE FROM projects WHERE code = $1")
+    let project_exists: Option<bool> = sqlx::query_scalar("SELECT TRUE FROM projects WHERE key = $1")
         .bind(project_code)
         .fetch_optional(db)
         .await?;
@@ -380,7 +397,7 @@ pub async fn list_translations(db: &sqlx::PgPool, project_code: &str) -> Result<
     let rows = sqlx::query(
         r#"
 WITH target AS (
-  SELECT id FROM projects WHERE code = $1
+  SELECT id FROM projects WHERE key = $1
 ), keys AS (
   SELECT 'title' AS field_key
   UNION ALL SELECT 'description'
@@ -419,21 +436,21 @@ pub async fn replace_translations(
     project_code: &str,
     values: &[ProjectTranslationValue],
 ) -> Result<(), AppError> {
-    let project_id: Uuid = sqlx::query_scalar("SELECT id FROM projects WHERE code = $1")
+    let project_id: String = sqlx::query_scalar("SELECT id::TEXT FROM projects WHERE key = $1")
         .bind(project_code)
         .fetch_optional(db)
         .await?
         .ok_or_else(|| AppError::not_found("project not found"))?;
 
     let mut tx = db.begin().await?;
-    sqlx::query("DELETE FROM project_i18n WHERE project_id = $1")
-        .bind(project_id)
+    sqlx::query("DELETE FROM project_i18n WHERE project_id = $1::uuid")
+        .bind(&project_id)
         .execute(&mut *tx)
         .await?;
 
     for value in values {
-        sqlx::query("INSERT INTO project_i18n (project_id, locale, field_key, field_value) VALUES ($1, $2, $3, $4)")
-            .bind(project_id)
+        sqlx::query("INSERT INTO project_i18n (project_id, locale, field_key, field_value) VALUES ($1::uuid, $2, $3, $4)")
+            .bind(&project_id)
             .bind(&value.locale)
             .bind(&value.field_key)
             .bind(&value.field_value)
@@ -446,7 +463,7 @@ pub async fn replace_translations(
 }
 
 pub async fn delete_by_code(db: &sqlx::PgPool, project_code: &str) -> Result<bool, AppError> {
-    let result = sqlx::query("DELETE FROM projects WHERE code = $1")
+    let result = sqlx::query("DELETE FROM projects WHERE key = $1")
         .bind(project_code)
         .execute(db)
         .await?;

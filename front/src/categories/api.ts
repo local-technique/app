@@ -28,8 +28,8 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 export async function listCategories(locale: LocaleCode, admin = false): Promise<CategoryItem[]> {
   if (import.meta.env.MODE === "test" || import.meta.env.VITE_USE_MOCK_DATA === "true") {
     return [
-      { id: "HEA", code: "HEA", icon: "flame", color: "#d73a49", label: locale === "fr" ? "Chauffage" : "Heating", labels: { en: "Heating", fr: "Chauffage" } },
-      { id: "ELV", code: "ELV", icon: "arrow-up-down", color: "#0366d6", label: locale === "fr" ? "Ascenseur" : "Elevator", labels: { en: "Elevator", fr: "Ascenseur" } },
+      { id: "11111111-1111-4111-8111-111111111111", key: "HEA", icon: "flame", color: "#d73a49", label: locale === "fr" ? "Chauffage" : "Heating", labels: { en: "Heating", fr: "Chauffage" } },
+      { id: "22222222-2222-4222-8222-222222222222", key: "ELV", icon: "arrow-up-down", color: "#0366d6", label: locale === "fr" ? "Ascenseur" : "Elevator", labels: { en: "Elevator", fr: "Ascenseur" } },
     ];
   }
   const params = new URLSearchParams({ locale });
@@ -49,12 +49,10 @@ export async function createCategory(input: CategoryInput): Promise<void> {
 }
 
 export async function updateCategory(id: string, input: CategoryInput): Promise<void> {
-  const { id: _id, ...payload } = input;
-  void _id;
   const response = await fetch(`${apiBaseUrl()}/admin/categories/${encodeURIComponent(id)}`, {
     method: "PUT",
     headers: authHeaders(true),
-    body: JSON.stringify(payload),
+    body: JSON.stringify(input),
   });
   if (!response.ok) {
     throw new Error(`request failed with status ${response.status}`);

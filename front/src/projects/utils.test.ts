@@ -6,7 +6,7 @@ function project(overrides: Partial<ProjectItem> = {}): ProjectItem {
   return {
     id: "PRJ-001",
     categoryCode: "ELV",
-    category: { id: "ELV", code: "ELV", icon: "arrow-up-down", color: "#0366d6", label: "Elevator" },
+    category: { id: "ELV", key: "ELV", icon: "arrow-up-down", color: "#0366d6", label: "Elevator" },
     title: { en: "Elevator modernization" },
     description: { en: "Replace controller" },
     startUtc: "2026-01-10T10:00:00Z",

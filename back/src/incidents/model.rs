@@ -5,7 +5,7 @@ use serde::Serialize;
 #[derive(Serialize)]
 pub struct CategoryDisplay {
     pub id: String,
-    pub code: String,
+    pub key: String,
     pub icon: String,
     pub color: String,
     pub label: String,
@@ -19,8 +19,8 @@ pub struct AuditUser {
 
 #[derive(Serialize)]
 pub struct IncidentListItem {
-    pub id: String,
-    pub category_code: String,
+    pub key: String,
+    pub category_id: String,
     pub category: CategoryDisplay,
     pub title: String,
     pub short_description: String,
@@ -40,8 +40,8 @@ pub struct IncidentTimelineItem {
 
 #[derive(Serialize)]
 pub struct IncidentDetail {
-    pub id: String,
-    pub category_code: String,
+    pub key: String,
+    pub category_id: String,
     pub category: CategoryDisplay,
     pub title: String,
     pub short_description: String,
@@ -98,7 +98,7 @@ pub struct IncidentTimelineEditItem {
 
 #[derive(serde::Serialize)]
 pub struct IncidentEditData {
-    pub id: String,
+    pub key: String,
     pub category_id: String,
     pub start_utc: String,
     pub end_utc: Option<String>,
@@ -118,7 +118,8 @@ pub struct IncidentTimelineSaveItem {
 
 #[derive(serde::Deserialize)]
 pub struct IncidentSaveRequest {
-    pub id: String,
+    #[serde(default)]
+    pub key: Option<String>,
     pub category_id: String,
     pub start_utc: String,
     pub end_utc: Option<String>,
@@ -127,4 +128,9 @@ pub struct IncidentSaveRequest {
     #[serde(default)]
     pub replace_timeline: bool,
     pub timeline: Vec<IncidentTimelineSaveItem>,
+}
+
+#[derive(serde::Serialize)]
+pub struct CreatedKeyResponse {
+    pub key: String,
 }

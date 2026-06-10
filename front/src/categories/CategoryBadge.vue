@@ -2,7 +2,7 @@
 import CategoryIcon from "./CategoryIcon.vue";
 
 defineProps<{
-  code: string;
+  categoryKey: string;
   icon: string;
   color?: string;
   label?: string;
@@ -17,10 +17,10 @@ defineProps<{
       '--category-color': color ?? '#9aaab1',
       ...((variant ?? 'inline') === 'rail' ? { alignContent: 'center', gap: '0.18rem' } : { gap: '0.21rem' }),
     }"
-    :aria-label="label ? `${code} - ${label}` : code"
+    :aria-label="label ? `${categoryKey} - ${label}` : categoryKey"
   >
     <CategoryIcon class="category-badge-icon" :name="icon" :size="variant === 'rail' ? 24 : 18" />
-    <span class="category-badge-code">{{ code }}</span>
+    <span class="category-badge-code">{{ categoryKey }}</span>
   </span>
 </template>
 

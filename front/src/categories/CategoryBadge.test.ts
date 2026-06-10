@@ -4,14 +4,14 @@ import CategoryBadge from "./CategoryBadge.vue";
 
 describe("CategoryBadge", () => {
   it("renders a rail badge with the category code", () => {
-    const { container } = render(CategoryBadge, { props: { code: "HEA", icon: "flame", label: "Heating", variant: "rail" } });
+    const { container } = render(CategoryBadge, { props: { categoryKey: "HEA", icon: "flame", label: "Heating", variant: "rail" } });
 
     expect(screen.getByLabelText("HEA - Heating")).not.toBeNull();
     expect(container.querySelector(".category-badge-rail")?.textContent).toContain("HEA");
   });
 
   it("uses a compact gap between the inline icon and code", () => {
-    const { container } = render(CategoryBadge, { props: { code: "HEA", icon: "flame", label: "Heating" } });
+    const { container } = render(CategoryBadge, { props: { categoryKey: "HEA", icon: "flame", label: "Heating" } });
     const badge = container.querySelector(".category-badge-inline");
 
     expect(badge).not.toBeNull();
@@ -19,7 +19,7 @@ describe("CategoryBadge", () => {
   });
 
   it("packs the rail icon and code together within the card height", () => {
-    const { container } = render(CategoryBadge, { props: { code: "HEA", icon: "flame", label: "Heating", variant: "rail" } });
+    const { container } = render(CategoryBadge, { props: { categoryKey: "HEA", icon: "flame", label: "Heating", variant: "rail" } });
     const badge = container.querySelector(".category-badge-rail");
 
     expect(badge).not.toBeNull();
@@ -27,7 +27,7 @@ describe("CategoryBadge", () => {
   });
 
   it("applies the category color to the badge", () => {
-    const { container } = render(CategoryBadge, { props: { code: "HEA", icon: "flame", label: "Heating", color: "#d73a49", variant: "rail" } });
+    const { container } = render(CategoryBadge, { props: { categoryKey: "HEA", icon: "flame", label: "Heating", color: "#d73a49", variant: "rail" } });
     const badge = container.querySelector(".category-badge-rail");
 
     expect(badge).not.toBeNull();

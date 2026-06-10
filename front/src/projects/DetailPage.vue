@@ -82,7 +82,7 @@ async function deleteProject(): Promise<void> {
     <p class="detail-actions"><RouterLink v-if="canEdit" class="secondary-button" :to="editPath">{{ t("labels.edit") }}</RouterLink><button v-if="canDelete" class="secondary-button" type="button" @click="deleteProject">{{ t("labels.delete") }}</button></p>
     <p class="timeline-meta">{{ t("labels.projectId") }}: {{ model.id }}</p>
     <p v-if="model.raw.category" class="timeline-meta category-meta">
-      <CategoryBadge :code="model.raw.category.code" :icon="model.raw.category.icon" :color="model.raw.category.color" :label="model.raw.category.label" />
+      <CategoryBadge :category-key="model.raw.category.key" :icon="model.raw.category.icon" :color="model.raw.category.color" :label="model.raw.category.label" />
       <span>- {{ model.raw.category.label }}</span>
     </p>
     <p v-if="auditLabel" class="timeline-meta">{{ auditLabel }}</p>

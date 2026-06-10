@@ -71,7 +71,7 @@ pub async fn save_partial(
     db: &sqlx::PgPool,
     payload: &MaintenanceSaveRequest,
     user_id: uuid::Uuid,
-) -> Result<(), AppError> {
+) -> Result<String, AppError> {
     let enabled_locales = load_enabled_locales(db).await?;
     let locale = normalize_locale(&payload.locale)?;
     ensure_locale_enabled(&locale, &enabled_locales)?;
@@ -91,7 +91,7 @@ pub async fn save_partial(
         }
     }
     let validated = MaintenanceSaveRequest {
-        id: normalize_text_value(&payload.id),
+        key: payload.key.as_deref().map(normalize_text_value).filter(|value| !value.is_empty()),
         category_id: normalize_text_value(&payload.category_id),
         start_utc: payload.start_utc.clone(),
         end_utc: payload.end_utc.clone(),
@@ -99,8 +99,8 @@ pub async fn save_partial(
         locale,
         fields,
     };
-    if validated.id.is_empty() || validated.category_id.is_empty() {
-        return Err(AppError::bad_request("maintenance id and category_id are required"));
+    if validated.category_id.is_empty() {
+        return Err(AppError::bad_request("category_id is required"));
     }
     repository::save_partial(db, &validated, user_id).await
 }

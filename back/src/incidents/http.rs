@@ -7,7 +7,7 @@ use crate::common::auth::Principal;
 use crate::common::error::AppError;
 use crate::common::role::Role;
 use crate::incidents::model::{
-    IncidentListQuery, IncidentSaveRequest, IncidentTranslationsUpdateRequest,
+    CreatedKeyResponse, IncidentListQuery, IncidentSaveRequest, IncidentTranslationsUpdateRequest,
 };
 use crate::incidents::service;
 
@@ -72,10 +72,10 @@ pub async fn create(
     principal: Principal,
     State(state): State<AppState>,
     Json(payload): Json<IncidentSaveRequest>,
-) -> Result<StatusCode, AppError> {
+) -> Result<(StatusCode, Json<CreatedKeyResponse>), AppError> {
     principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard])?;
-    service::save_partial(&state.db, &payload, principal.user_id).await?;
-    Ok(StatusCode::CREATED)
+    let key = service::save_partial(&state.db, &payload, principal.user_id).await?;
+    Ok((StatusCode::CREATED, Json(CreatedKeyResponse { key })))
 }
 
 pub async fn update(
@@ -85,7 +85,7 @@ pub async fn update(
     Json(mut payload): Json<IncidentSaveRequest>,
 ) -> Result<StatusCode, AppError> {
     principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard])?;
-    payload.id = id;
+    payload.key = Some(id);
     service::save_partial(&state.db, &payload, principal.user_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }

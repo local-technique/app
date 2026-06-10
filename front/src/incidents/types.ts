@@ -16,7 +16,7 @@ export type IncidentTimelineEntry = {
 export type IncidentItem = {
   id: string;
   categoryCode: string;
-  category?: Pick<CategoryItem, "id" | "code" | "icon" | "color" | "label">;
+  category?: Pick<CategoryItem, "id" | "key" | "icon" | "color" | "label">;
   title: IncidentLocalizedText;
   shortDescription: IncidentLocalizedText;
   longDescription: IncidentLocalizedText;
@@ -56,7 +56,7 @@ export type IncidentEditData = {
 };
 
 export type IncidentSavePayload = {
-  id: string;
+  id?: string;
   categoryId: string;
   startUtc: string;
   endUtc?: string | null;

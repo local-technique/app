@@ -73,7 +73,7 @@ pub async fn save_partial(
     db: &sqlx::PgPool,
     payload: &ProjectSaveRequest,
     user_id: uuid::Uuid,
-) -> Result<(), AppError> {
+) -> Result<String, AppError> {
     let enabled_locales = load_enabled_locales(db).await?;
     let validated = validate_save_payload(payload, &enabled_locales)?;
     repository::save_partial(db, &validated, user_id).await
@@ -120,7 +120,7 @@ fn validate_save_payload(
     }
 
     let validated = ProjectSaveRequest {
-        id: normalize_text_value(&payload.id),
+        key: payload.key.as_deref().map(normalize_text_value).filter(|value| !value.is_empty()),
         category_id: normalize_text_value(&payload.category_id),
         start_utc: start_utc.map(|value| value.to_rfc3339()),
         end_utc: end_utc.map(|value| value.to_rfc3339()),
@@ -128,8 +128,8 @@ fn validate_save_payload(
         locale,
         fields,
     };
-    if validated.id.is_empty() || validated.category_id.is_empty() {
-        return Err(AppError::bad_request("project id and category_id are required"));
+    if validated.category_id.is_empty() {
+        return Err(AppError::bad_request("category_id is required"));
     }
     Ok(validated)
 }
@@ -185,7 +185,7 @@ mod tests {
 
     fn valid_payload() -> ProjectSaveRequest {
         ProjectSaveRequest {
-            id: " PRJ-001 ".to_string(),
+            key: Some(" PRJ-001 ".to_string()),
             category_id: "ELV".to_string(),
             start_utc: Some("2026-01-10T10:00:00Z".to_string()),
             end_utc: Some("2026-02-10T10:00:00Z".to_string()),
@@ -207,7 +207,7 @@ mod tests {
     fn validate_save_payload_trims_values_and_accepts_valid_status() {
         let validated = super::validate_save_payload_for_test(&valid_payload(), &enabled_locales()).expect("valid payload");
 
-        assert_eq!(validated.id, "PRJ-001");
+        assert_eq!(validated.key.as_deref(), Some("PRJ-001"));
         assert_eq!(validated.status_type, "ongoing");
         assert_eq!(validated.fields["title"], "Elevator modernization");
         assert_eq!(validated.fields["status_text"], "Installing controller");
