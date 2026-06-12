@@ -7,6 +7,7 @@ use argon2::{
 };
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
+use sha2::{Digest, Sha256};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -19,7 +20,7 @@ const TOKEN_PREFIX: &str = "lc_";
 fn generate_raw_token() -> (String, String) {
     let mut bytes = [0u8; 32];
     OsRng.fill_bytes(&mut bytes);
-    let encoded = URL_SAFE_NO_PAD.encode(&bytes);
+    let encoded = URL_SAFE_NO_PAD.encode(bytes);
     let full = format!("{}{}", TOKEN_PREFIX, encoded);
     let prefix = encoded[..3].to_string();
     (full, prefix)
@@ -39,11 +40,11 @@ pub fn verify_token(token: &str, stored_hash: &str) -> Result<bool, argon2::pass
         .is_ok())
 }
 
-pub fn hash_for_lookup(token: &str) -> Result<String, argon2::password_hash::Error> {
-    let salt = SaltString::generate(&mut OsRng);
-    let argon2 = Argon2::default();
-    let hash = argon2.hash_password(token.as_bytes(), &salt)?;
-    Ok(hash.to_string())
+pub fn hash_for_lookup(token: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(token.as_bytes());
+    let result = hasher.finalize();
+    URL_SAFE_NO_PAD.encode(result)
 }
 
 pub async fn create_token(db: &PgPool, user_id: Uuid) -> Result<CreateTokenResponse, AppError> {
@@ -53,9 +54,10 @@ pub async fn create_token(db: &PgPool, user_id: Uuid) -> Result<CreateTokenRespo
 
     let (raw_token, prefix) = generate_raw_token();
     let hash = hash_token(&raw_token).map_err(|e| AppError::internal(format!("hashing failed: {e}")))?;
+    let lookup_hash = hash_for_lookup(&raw_token);
 
     let id = Uuid::new_v4();
-    let token = repository::insert_token(db, id, user_id, &prefix, &hash)
+    let token = repository::insert_token(db, id, user_id, &prefix, &hash, &lookup_hash)
         .await
         .map_err(|e| AppError::internal(format!("insert failed: {e}")))?;
 
@@ -114,8 +116,11 @@ mod tests {
     }
 
     #[test]
-    fn hash_for_lookup_returns_valid_hash() {
-        let hash = hash_for_lookup("lc_my_token").expect("hash_for_lookup should succeed");
-        assert!(hash.starts_with("$argon2"));
+    fn hash_for_lookup_is_deterministic() {
+        let hash1 = hash_for_lookup("lc_my_token");
+        let hash2 = hash_for_lookup("lc_my_token");
+        assert_eq!(hash1, hash2, "SHA-256 must be deterministic");
+        assert!(!hash1.is_empty());
+        assert_ne!(hash1, hash_for_lookup("lc_different_token"));
     }
 }

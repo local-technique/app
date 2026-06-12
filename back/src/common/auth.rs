@@ -3,6 +3,8 @@ use axum::http::{HeaderMap, request::Parts};
 use chrono::Utc;
 use uuid::Uuid;
 
+use crate::api_tokens::repository as api_tokens_repository;
+use crate::api_tokens::service as api_tokens_service;
 use crate::app::state::AppState;
 use crate::auth::repository;
 use crate::auth::service;
@@ -43,6 +45,11 @@ where
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
         let app_state = AppState::from_ref(state);
         let token = bearer_from_headers(&parts.headers)?;
+
+        if token.starts_with("lc_") {
+            return authenticate_via_api_token(&app_state, &token).await;
+        }
+
         let claims = service::decode_access_token(&app_state, &token)?;
         let session_id =
             Uuid::parse_str(&claims.sid).map_err(|_| AppError::unauthorized("invalid session claim"))?;
@@ -63,6 +70,37 @@ where
             roles: user.roles,
         })
     }
+}
+
+async fn authenticate_via_api_token(app_state: &AppState, token: &str) -> Result<Principal, AppError> {
+    let lookup_hash = api_tokens_service::hash_for_lookup(token);
+
+    let api_token = api_tokens_repository::find_token_by_hash(&app_state.db, &lookup_hash)
+        .await?
+        .ok_or_else(|| AppError::unauthorized("invalid token"))?;
+
+    if !api_tokens_service::verify_token(token, &api_token.token_hash)
+        .unwrap_or(false)
+    {
+        return Err(AppError::unauthorized("invalid token"));
+    }
+
+    tokio::spawn({
+        let db = app_state.db.clone();
+        let tid = api_token.id;
+        async move {
+            let _ = api_tokens_repository::update_last_used(&db, tid).await;
+        }
+    });
+
+    let user = repository::get_user_by_id(&app_state.db, api_token.user_id)
+        .await?
+        .ok_or_else(|| AppError::unauthorized("invalid user"))?;
+
+    Ok(Principal {
+        user_id: user.id,
+        roles: user.roles,
+    })
 }
 
 fn bearer_from_headers(headers: &HeaderMap) -> Result<String, AppError> {

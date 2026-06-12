@@ -9,11 +9,12 @@ pub async fn insert_token(
     user_id: Uuid,
     token_prefix: &str,
     token_hash: &str,
+    token_hash_sha256: &str,
 ) -> Result<ApiToken, sqlx::Error> {
     sqlx::query_as::<_, ApiToken>(
         r#"
-        INSERT INTO api_tokens (id, user_id, token_prefix, token_hash)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO api_tokens (id, user_id, token_prefix, token_hash, token_hash_sha256)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING id, user_id, token_prefix, token_hash, created_at, last_used_at
         "#,
     )
@@ -21,6 +22,7 @@ pub async fn insert_token(
     .bind(user_id)
     .bind(token_prefix)
     .bind(token_hash)
+    .bind(token_hash_sha256)
     .fetch_one(db)
     .await
 }
@@ -43,16 +45,16 @@ pub async fn find_active_token(
 
 pub async fn find_token_by_hash(
     db: &PgPool,
-    token_hash: &str,
+    token_hash_sha256: &str,
 ) -> Result<Option<ApiToken>, sqlx::Error> {
     sqlx::query_as::<_, ApiToken>(
         r#"
         SELECT id, user_id, token_prefix, token_hash, created_at, last_used_at
         FROM api_tokens
-        WHERE token_hash = $1
+        WHERE token_hash_sha256 = $1
         "#,
     )
-    .bind(token_hash)
+    .bind(token_hash_sha256)
     .fetch_optional(db)
     .await
 }
