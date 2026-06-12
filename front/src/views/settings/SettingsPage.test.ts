@@ -11,10 +11,10 @@ vi.mock("./api", () => ({
 
 import * as api from "./api";
 
-function mockMe(email: string) {
+function mockMe(email: string, roles?: string[]) {
   globalThis.fetch = vi.fn().mockResolvedValue({
     ok: true,
-    json: async () => ({ email }),
+    json: async () => ({ email, roles: roles ?? ["ADMIN"] }),
   });
 }
 

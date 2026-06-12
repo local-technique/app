@@ -6,8 +6,15 @@ import { createToken, getToken, revokeToken, type CreateTokenResponse, type Toke
 
 const { t } = useI18n();
 
+const ROLE_LABEL_KEYS: Record<string, string> = {
+  ADMIN: "roles.admin",
+  CO_OWNER: "roles.coOwner",
+  CO_OWNERSHIP_BOARD: "roles.coOwnershipBoard",
+};
+
 interface UserInfo {
   email: string;
+  roles: string[];
 }
 
 const userInfo = ref<UserInfo | null>(null);
@@ -100,6 +107,14 @@ onMounted(loadData);
       <p class="email-display">{{ userInfo.email }}</p>
     </section>
 
+    <section v-if="userInfo" class="settings-section">
+      <h2>{{ t("labels.roles") }}</h2>
+      <div class="role-list">
+        <span v-for="role in (userInfo.roles ?? [])" :key="role" class="role-badge">{{ t(ROLE_LABEL_KEYS[role] ?? role) }}</span>
+        <span v-if="(userInfo.roles ?? []).length === 0" class="empty-state">{{ t("labels.noRole") }}</span>
+      </div>
+    </section>
+
     <section class="settings-section">
       <h2>{{ t("labels.apiToken") }}</h2>
 
@@ -107,18 +122,28 @@ onMounted(loadData);
 
       <div v-else-if="createdToken" class="token-card token-generated">
         <p class="token-full-label">{{ t("labels.tokenGeneratedNotice") }}</p>
-        <code class="token-full-display">{{ createdToken.token_full }}</code>
-        <button class="icon-button" type="button" :title="t('labels.copyToken')" @click="handleCopyToken">
-          <Check v-if="copyConfirm" :size="16" />
-          <Copy v-else :size="16" />
-          <span>{{ copyConfirm ? t("labels.tokenCopied") : t("labels.copyToken") }}</span>
-        </button>
+        <div class="token-display-row">
+          <code class="token-full-display">{{ createdToken.token_full }}</code>
+          <button class="copy-button" type="button" :title="t('labels.copyToken')" @click="handleCopyToken">
+            <Check v-if="copyConfirm" :size="16" />
+            <Copy v-else :size="16" />
+          </button>
+        </div>
       </div>
 
       <div v-else-if="tokenInfo" class="token-card">
-        <div class="token-detail">
-          <span class="detail-label">{{ t("labels.tokenPrefix") }}</span>
-          <span class="detail-value">{{ tokenInfo.token_prefix }}...</span>
+        <div class="token-display-row">
+          <code class="token-full-display">{{ tokenInfo.token_prefix }}...</code>
+          <div class="token-actions-inline">
+            <button class="secondary-button" type="button" :disabled="saving" @click="handleGenerate">
+              <RefreshCcw :size="14" />
+              {{ t("labels.renewToken") }}
+            </button>
+            <button class="danger-button" type="button" :disabled="saving" @click="handleRevoke">
+              <Trash2 :size="14" />
+              {{ t("labels.revokeToken") }}
+            </button>
+          </div>
         </div>
         <div class="token-detail">
           <span class="detail-label">{{ t("labels.tokenCreated") }}</span>
@@ -127,16 +152,6 @@ onMounted(loadData);
         <div class="token-detail">
           <span class="detail-label">{{ t("labels.tokenLastUsed") }}</span>
           <span class="detail-value">{{ tokenInfo.last_used_at ? new Date(tokenInfo.last_used_at).toLocaleString() : t("labels.never") }}</span>
-        </div>
-        <div class="token-actions">
-          <button class="secondary-button" type="button" :disabled="saving" @click="handleGenerate">
-            <RefreshCcw :size="14" />
-            {{ t("labels.renewToken") }}
-          </button>
-          <button class="danger-button" type="button" :disabled="saving" @click="handleRevoke">
-            <Trash2 :size="14" />
-            {{ t("labels.revokeToken") }}
-          </button>
         </div>
       </div>
 
@@ -197,8 +212,22 @@ onMounted(loadData);
   margin: 0;
 }
 
+.token-display-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.token-actions-inline {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
 .token-full-display {
   display: block;
+  flex: 1;
+  min-width: 0;
   padding: 0.7rem;
   background: rgba(0, 0, 0, 0.04);
   border-radius: 0.5rem;
@@ -211,6 +240,29 @@ onMounted(loadData);
 html[data-theme="dark"] .token-full-display,
 html[data-theme="system"][data-resolved-theme="dark"] .token-full-display {
   background: rgba(255, 255, 255, 0.05);
+}
+
+.copy-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0.35rem;
+  padding: 0.3rem;
+  background: transparent;
+  color: var(--muted-fg);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.copy-button:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--page-fg);
+}
+
+html[data-theme="dark"] .copy-button:hover,
+html[data-theme="system"][data-resolved-theme="dark"] .copy-button:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .token-detail {
@@ -235,17 +287,20 @@ html[data-theme="system"][data-resolved-theme="dark"] .token-full-display {
   margin-top: 0.3rem;
 }
 
-.icon-button {
-  display: inline-flex;
-  align-items: center;
+.role-list {
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
-  border: 1px solid var(--control-border);
-  border-radius: 0.5rem;
-  padding: 0.45rem 0.7rem;
-  background: var(--control-bg);
-  color: var(--control-fg);
-  cursor: pointer;
-  font-size: 0.85rem;
+}
+
+.role-badge {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 0.18rem 0.5rem;
+  background: rgba(72, 144, 255, 0.18);
+  color: var(--page-fg);
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 
 .secondary-button,
