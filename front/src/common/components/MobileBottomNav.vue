@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { BriefcaseBusiness, CalendarClock, FolderTree, Shield, TriangleAlert } from "@lucide/vue";
+import { BriefcaseBusiness, CalendarClock, FolderTree, Settings, Shield, TriangleAlert } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 
@@ -15,32 +15,91 @@ const props = defineProps<{
 
 const { t } = useI18n();
 const route = useRoute();
-const eventsActive = computed(() => route.path.startsWith("/events"));
-const incidentsActive = computed(() => route.path.startsWith("/incidents"));
-const projectsActive = computed(() => route.path.startsWith("/projects"));
-const adminUsersActive = computed(() => route.path.startsWith("/admin/users"));
-const adminCategoriesActive = computed(() => route.path.startsWith("/admin/categories"));
-const blankSlotCount = computed(() => Math.max(0, 5 - (props.showCoOwnerLinks ? 3 : 0) - (props.showAdminLink ? 2 : 0)));
+
+type NavItem = {
+  key: string;
+  isActive: boolean;
+  label: string;
+  href: string;
+  icon: any;
+};
+
+const allItems = computed<NavItem[]>(() => {
+  const items: NavItem[] = [];
+
+  if (props.showCoOwnerLinks) {
+    items.push(
+      {
+        key: "events",
+        isActive: route.path.startsWith("/events"),
+        label: t("nav.events"),
+        href: "#/events",
+        icon: CalendarClock,
+      },
+      {
+        key: "incidents",
+        isActive: route.path.startsWith("/incidents"),
+        label: t("nav.incidents"),
+        href: "#/incidents",
+        icon: TriangleAlert,
+      },
+      {
+        key: "projects",
+        isActive: route.path.startsWith("/projects"),
+        label: t("nav.projects"),
+        href: "#/projects",
+        icon: BriefcaseBusiness,
+      },
+    );
+  }
+
+  if (props.showAdminLink) {
+    items.push(
+      {
+        key: "users",
+        isActive: route.path.startsWith("/admin/users"),
+        label: t("nav.adminUsers"),
+        href: "#/admin/users",
+        icon: Shield,
+      },
+      {
+        key: "categories",
+        isActive: route.path.startsWith("/admin/categories"),
+        label: t("nav.adminCategories"),
+        href: "#/admin/categories",
+        icon: FolderTree,
+      },
+    );
+  }
+
+  items.push({
+    key: "settings",
+    isActive: route.path.startsWith("/settings"),
+    label: t("nav.settings"),
+    href: "#/settings",
+    icon: Settings,
+  });
+
+  return items;
+});
+
+const visibleItems = computed(() => allItems.value.slice(0, 5));
+const spacerCount = computed(() => 5 - visibleItems.value.length);
 </script>
 
 <template>
   <nav class="mobile-bottom-nav" aria-label="Mobile primary navigation">
-    <a v-if="showCoOwnerLinks" class="nav-item" :class="{ active: eventsActive }" href="#/events" :aria-label="t('nav.events')">
-      <CalendarClock :size="18" :stroke-width="2" />
+    <a
+      v-for="item in visibleItems"
+      :key="item.key"
+      class="nav-item"
+      :class="{ active: item.isActive }"
+      :href="item.href"
+      :aria-label="item.label"
+    >
+      <component :is="item.icon" :size="18" :stroke-width="2" />
     </a>
-    <a v-if="showCoOwnerLinks" class="nav-item" :class="{ active: incidentsActive }" href="#/incidents" :aria-label="t('nav.incidents')">
-      <TriangleAlert :size="18" :stroke-width="2" />
-    </a>
-    <a v-if="showCoOwnerLinks" class="nav-item" :class="{ active: projectsActive }" href="#/projects" :aria-label="t('nav.projects')">
-      <BriefcaseBusiness :size="18" :stroke-width="2" />
-    </a>
-    <a v-if="showAdminLink" class="nav-item" :class="{ active: adminUsersActive }" href="#/admin/users" :aria-label="t('nav.adminUsers')">
-      <Shield :size="18" :stroke-width="2" />
-    </a>
-    <a v-if="showAdminLink" class="nav-item" :class="{ active: adminCategoriesActive }" href="#/admin/categories" :aria-label="t('nav.adminCategories')">
-      <FolderTree :size="18" :stroke-width="2" />
-    </a>
-    <span v-for="index in blankSlotCount" :key="index" class="nav-item nav-item-blank" aria-hidden="true"></span>
+    <span v-for="n in spacerCount" :key="'spacer-' + n" class="nav-item nav-item-spacer" aria-hidden="true"></span>
     <button class="nav-item nav-item-more" type="button" :aria-label="t('labels.openMore')" @click="$emit('openMore')">
       ...
     </button>
@@ -78,19 +137,19 @@ const blankSlotCount = computed(() => Math.max(0, 5 - (props.showCoOwnerLinks ? 
   cursor: pointer;
 }
 
+.nav-item-spacer {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme="dark"] .nav-item-spacer,
+html[data-theme="system"][data-resolved-theme="dark"] .nav-item-spacer {
+  background: rgba(255, 255, 255, 0.04);
+}
+
 .nav-item.active {
   color: #7fb3ff;
   background: rgba(72, 144, 255, 0.16);
   box-shadow: 0 0 0 1px rgba(72, 144, 255, 0.3) inset;
-}
-
-.nav-item-blank {
-  background: rgba(0, 0, 0, 0.08);
-}
-
-html[data-theme="dark"] .nav-item-blank,
-html[data-theme="system"][data-resolved-theme="dark"] .nav-item-blank {
-  background: rgba(255, 255, 255, 0.04);
 }
 
 @media (min-width: 961px) {

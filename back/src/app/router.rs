@@ -4,7 +4,7 @@ use axum::{
 };
 
 use crate::app::state::AppState;
-use crate::{admin, auth, categories, incidents, maintenances, projects, translations};
+use crate::{admin, api_tokens, auth, categories, incidents, maintenances, projects, translations};
 
 pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
     Router::new()
@@ -68,6 +68,12 @@ pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
         )
         .route("/translations", get(translations::http::list_matrix))
         .route("/translations/bulk", post(translations::http::upsert_bulk))
+        .route(
+            "/settings/token",
+            get(api_tokens::http::get_token)
+                .post(api_tokens::http::create_token)
+                .delete(api_tokens::http::revoke_token),
+        )
         .layer(cors)
         .with_state(state)
 }
