@@ -3,7 +3,9 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import AuthGuard from "./auth/AuthGuard.vue";
-import { currentUserRoles, hasAnyRole, hasRole } from "./auth/session";
+import { currentUserRoles, hasAnyRole, hasRole, initAuth } from "./auth/session";
+
+initAuth();
 import MobileBottomNav from "./common/components/MobileBottomNav.vue";
 import MobileMenu from "./common/components/MobileMenu.vue";
 import SidebarNav from "./common/components/SidebarNav.vue";
