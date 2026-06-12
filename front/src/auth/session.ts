@@ -40,7 +40,7 @@ let currentUserRolesRequest: Promise<boolean> | null = null;
 
 function readRefreshToken(): string {
   try {
-    return sessionStorage.getItem(REFRESH_TOKEN_STORAGE_KEY) ?? "";
+    return localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY) ?? "";
   } catch {
     return "";
   }
@@ -48,13 +48,13 @@ function readRefreshToken(): string {
 
 function writeRefreshToken(value: string): void {
   try {
-    sessionStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, value);
+    localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, value);
   } catch {}
 }
 
 function clearRefreshToken(): void {
   try {
-    sessionStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
   } catch {}
 }
 
@@ -111,43 +111,71 @@ export function isAccessTokenUsable(): boolean {
   return memoryExpiresAtUnix - REFRESH_SKEW_SECONDS > nowUnix();
 }
 
+let refreshAccessTokenPromise: Promise<boolean> | null = null;
+
 export async function refreshAccessToken(): Promise<boolean> {
-  const refreshToken = readRefreshToken();
-  if (!refreshToken) {
-    clearSession();
-    return false;
+  if (refreshAccessTokenPromise) {
+    return refreshAccessTokenPromise;
   }
+
+  refreshAccessTokenPromise = (async () => {
+    const refreshToken = readRefreshToken();
+    if (!refreshToken) {
+      clearSession();
+      return false;
+    }
+
+    try {
+      const response = await fetch(`${apiBaseUrl()}/auth/refresh`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+
+      if (!response.ok) {
+        clearSession();
+        return false;
+      }
+
+      const payload = (await response.json()) as RefreshResponse;
+      if (!payload.access_token || !payload.refresh_token) {
+        clearSession();
+        return false;
+      }
+
+      setSession({
+        accessToken: payload.access_token,
+        expiresAtUnix: payload.expires_at_unix,
+      });
+      writeRefreshToken(payload.refresh_token);
+
+      return true;
+    } catch {
+      return false;
+    }
+  })();
 
   try {
-    const response = await fetch(`${apiBaseUrl()}/auth/refresh`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
-
-    if (!response.ok) {
-      clearSession();
-      return false;
-    }
-
-    const payload = (await response.json()) as RefreshResponse;
-    if (!payload.access_token || !payload.refresh_token) {
-      clearSession();
-      return false;
-    }
-
-    setSession({
-      accessToken: payload.access_token,
-      expiresAtUnix: payload.expires_at_unix,
-    });
-    writeRefreshToken(payload.refresh_token);
-
-    return true;
-  } catch {
-    return false;
+    return await refreshAccessTokenPromise;
+  } finally {
+    refreshAccessTokenPromise = null;
   }
+}
+
+let authInitPromise: Promise<boolean> | null = null;
+
+export function initAuth(): Promise<boolean> {
+  if (authInitPromise) {
+    return authInitPromise;
+  }
+  if (useMockData()) {
+    authInitPromise = Promise.resolve(true);
+    return authInitPromise;
+  }
+  authInitPromise = ensureAuthenticated();
+  return authInitPromise;
 }
 
 export async function exchangeCallbackCode(code: string): Promise<{ ok: boolean; redirect: string }> {
