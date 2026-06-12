@@ -20,6 +20,7 @@ mod config;
 mod incidents;
 mod maintenances;
 mod projects;
+mod api_tokens;
 mod translations;
 
 #[tokio::main]
