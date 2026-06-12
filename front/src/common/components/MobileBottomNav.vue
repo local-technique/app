@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { BriefcaseBusiness, CalendarClock, FolderTree, Shield, TriangleAlert } from "@lucide/vue";
+import { BriefcaseBusiness, CalendarClock, FolderTree, Settings, Shield, TriangleAlert } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 
@@ -20,7 +20,8 @@ const incidentsActive = computed(() => route.path.startsWith("/incidents"));
 const projectsActive = computed(() => route.path.startsWith("/projects"));
 const adminUsersActive = computed(() => route.path.startsWith("/admin/users"));
 const adminCategoriesActive = computed(() => route.path.startsWith("/admin/categories"));
-const blankSlotCount = computed(() => Math.max(0, 5 - (props.showCoOwnerLinks ? 3 : 0) - (props.showAdminLink ? 2 : 0)));
+const settingsActive = computed(() => route.path.startsWith("/settings"));
+const blankSlotCount = computed(() => Math.max(0, 5 - (props.showCoOwnerLinks ? 3 : 0) - (props.showAdminLink ? 2 : 0) - 1));
 </script>
 
 <template>
@@ -39,6 +40,9 @@ const blankSlotCount = computed(() => Math.max(0, 5 - (props.showCoOwnerLinks ? 
     </a>
     <a v-if="showAdminLink" class="nav-item" :class="{ active: adminCategoriesActive }" href="#/admin/categories" :aria-label="t('nav.adminCategories')">
       <FolderTree :size="18" :stroke-width="2" />
+    </a>
+    <a class="nav-item" :class="{ active: settingsActive }" href="#/settings" :aria-label="t('nav.settings')">
+      <Settings :size="18" :stroke-width="2" />
     </a>
     <span v-for="index in blankSlotCount" :key="index" class="nav-item nav-item-blank" aria-hidden="true"></span>
     <button class="nav-item nav-item-more" type="button" :aria-label="t('labels.openMore')" @click="$emit('openMore')">

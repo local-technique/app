@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { BriefcaseBusiness, CalendarClock, FolderTree, Shield, TriangleAlert } from "@lucide/vue";
+import { BriefcaseBusiness, CalendarClock, FolderTree, Settings, Shield, TriangleAlert } from "@lucide/vue";
 import { useRoute } from "vue-router";
 import type { LocaleCode } from "../i18n";
 import type { ThemeMode } from "../theme";
@@ -24,6 +24,7 @@ const incidentsActive = computed(() => route.path.startsWith("/incidents"));
 const projectsActive = computed(() => route.path.startsWith("/projects"));
 const adminUsersActive = computed(() => route.path.startsWith("/admin/users"));
 const adminCategoriesActive = computed(() => route.path.startsWith("/admin/categories"));
+const settingsActive = computed(() => route.path.startsWith("/settings"));
 </script>
 
 <template>
@@ -48,6 +49,10 @@ const adminCategoriesActive = computed(() => route.path.startsWith("/admin/categ
       <a v-if="showAdminLink" href="#/admin/categories" :class="{ active: adminCategoriesActive }" @click="$emit('navigate')">
         <FolderTree :size="16" :stroke-width="2" />
         <span>{{ $t("nav.adminCategories") }}</span>
+      </a>
+      <a href="#/settings" :class="{ active: settingsActive }" @click="$emit('navigate')">
+        <Settings :size="16" :stroke-width="2" />
+        <span>{{ $t("nav.settings") }}</span>
       </a>
     </section>
 

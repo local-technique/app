@@ -18,7 +18,7 @@ describe("Mobile bottom nav", () => {
       global: { plugins: [router, createAppI18n("en")] },
     });
 
-    expect(container.querySelectorAll(".nav-item")).toHaveLength(6);
+    expect(container.querySelectorAll(".nav-item")).toHaveLength(7);
   });
 
   it("marks only the current admin item active", async () => {
