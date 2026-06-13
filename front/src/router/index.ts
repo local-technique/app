@@ -14,6 +14,7 @@ const ProjectsPage = () => import("../projects/ListingPage.vue");
 const ProjectDetailPage = () => import("../projects/DetailPage.vue");
 const ProjectFormPage = () => import("../projects/FormPage.vue");
 const SettingsPage = () => import("../views/settings/SettingsPage.vue");
+const ApiDocPage = () => import("../views/settings/ApiDocPage.vue");
 const AdminUsersPage = () => import("../admin/UsersPage.vue");
 const AdminCategoriesPage = () => import("../admin/CategoriesPage.vue");
 const AccessPendingPage = () => import("../common/AccessPendingPage.vue");
@@ -43,6 +44,7 @@ const router = createRouter({
     { path: "/admin/users", component: AdminUsersPage, meta: { requiresAuth: true, requiredRole: "ADMIN" } },
     { path: "/admin/categories", component: AdminCategoriesPage, meta: { requiresAuth: true, requiredRole: "ADMIN" } },
     { path: "/settings", component: SettingsPage, meta: { requiresAuth: true } },
+    { path: "/settings/api-doc/:pathMatch(.*)*", component: ApiDocPage, meta: { requiresAuth: true } },
     { path: "/:pathMatch(.*)*", component: NotFoundPage },
   ],
 });

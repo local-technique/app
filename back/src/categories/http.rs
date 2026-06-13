@@ -9,6 +9,18 @@ use crate::common::auth::Principal;
 use crate::common::error::AppError;
 use crate::common::role::Role;
 
+#[utoipa::path(
+    get,
+    path = "/categories",
+    tag = "categories",
+    security((),),
+    params(CategoryListQuery),
+    responses(
+        (status = 200, description = "List of categories available to CO_OWNERSHIP_BOARD", body = Vec<crate::categories::model::CategoryItem>),
+        (status = 403, description = "Forbidden — requires ADMIN or CO_OWNERSHIP_BOARD"),
+    ),
+    description = "List categories. Requires ADMIN or CO_OWNERSHIP_BOARD."
+)]
 pub async fn list(
     principal: Principal,
     State(state): State<AppState>,
@@ -18,6 +30,18 @@ pub async fn list(
     Ok(Json(service::list(&state.db, query.locale.as_deref()).await?))
 }
 
+#[utoipa::path(
+    get,
+    path = "/admin/categories",
+    tag = "categories",
+    security((),),
+    params(CategoryListQuery),
+    responses(
+        (status = 200, description = "Full category list for admins", body = Vec<crate::categories::model::CategoryItem>),
+        (status = 403, description = "Forbidden — requires ADMIN"),
+    ),
+    description = "List all categories (admin view). Requires ADMIN."
+)]
 pub async fn admin_list(
     principal: Principal,
     State(state): State<AppState>,
@@ -27,6 +51,18 @@ pub async fn admin_list(
     Ok(Json(service::list(&state.db, query.locale.as_deref()).await?))
 }
 
+#[utoipa::path(
+    post,
+    path = "/admin/categories",
+    tag = "categories",
+    security((),),
+    request_body = CategoryCreateRequest,
+    responses(
+        (status = 201, description = "Created category", body = crate::categories::model::CategoryItem),
+        (status = 403, description = "Forbidden — requires ADMIN"),
+    ),
+    description = "Create a category. Requires ADMIN."
+)]
 pub async fn create(
     principal: Principal,
     State(state): State<AppState>,
@@ -37,6 +73,21 @@ pub async fn create(
     Ok((StatusCode::CREATED, Json(value)))
 }
 
+#[utoipa::path(
+    put,
+    path = "/admin/categories/{id}",
+    tag = "categories",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Category ID"),
+    ),
+    request_body = CategoryUpdateRequest,
+    responses(
+        (status = 200, description = "Updated category", body = crate::categories::model::CategoryItem),
+        (status = 403, description = "Forbidden — requires ADMIN"),
+    ),
+    description = "Update a category. Requires ADMIN."
+)]
 pub async fn update(
     principal: Principal,
     State(state): State<AppState>,
@@ -47,6 +98,20 @@ pub async fn update(
     Ok(Json(service::update(&state.db, &id, &payload).await?))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/admin/categories/{id}",
+    tag = "categories",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Category ID"),
+    ),
+    responses(
+        (status = 204, description = "Category deleted"),
+        (status = 403, description = "Forbidden — requires ADMIN"),
+    ),
+    description = "Delete a category. Requires ADMIN."
+)]
 pub async fn delete(
     principal: Principal,
     State(state): State<AppState>,

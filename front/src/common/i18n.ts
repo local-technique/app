@@ -161,6 +161,8 @@ export const messages = {
       tokenGenerateSuccess: "Token generated successfully.",
       tokenRevokeSuccess: "Token revoked.",
       tokenError: "Token operation failed.",
+      apiDocumentation: "API documentation",
+      specLoadFailed: "API documentation could not be loaded.",
     },
     controls: {
       language: "Language",
@@ -330,6 +332,8 @@ export const messages = {
       tokenGenerateSuccess: "Jeton généré avec succès.",
       tokenRevokeSuccess: "Jeton révoqué.",
       tokenError: "L'opération sur le jeton a échoué.",
+      apiDocumentation: "Documentation de l'API",
+      specLoadFailed: "La documentation de l'API n'a pas pu être chargée.",
     },
     controls: {
       language: "Langue",

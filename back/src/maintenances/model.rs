@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 use serde::Serialize;
+use utoipa::{IntoParams, ToSchema};
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct CategoryDisplay {
     pub id: String,
     pub key: String,
@@ -11,13 +12,13 @@ pub struct CategoryDisplay {
     pub label: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct AuditUser {
     pub id: String,
     pub email: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct MaintenanceListItem {
     pub key: String,
     pub category_id: String,
@@ -31,7 +32,7 @@ pub struct MaintenanceListItem {
     pub notified_at_utc: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct MaintenanceDetail {
     pub key: String,
     pub category_id: String,
@@ -48,32 +49,32 @@ pub struct MaintenanceDetail {
     pub last_modified_by: Option<AuditUser>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, IntoParams)]
 pub struct MaintenanceListQuery {
     pub locale: Option<String>,
     pub q: Option<String>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, ToSchema)]
 pub struct MaintenanceTranslationsUpdateRequest {
     pub values: Vec<MaintenanceTranslationValue>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, ToSchema)]
 pub struct MaintenanceTranslationValue {
     pub locale: String,
     pub field_key: String,
     pub field_value: String,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, ToSchema)]
 pub struct MaintenanceTranslationMatrixRow {
     pub field_key: String,
     pub locale: String,
     pub field_value: Option<String>,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, ToSchema)]
 pub struct EditFieldValue {
     pub field_key: String,
     pub value: String,
@@ -82,7 +83,7 @@ pub struct EditFieldValue {
     pub fallback_value: Option<String>,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, ToSchema)]
 pub struct MaintenanceEditData {
     pub key: String,
     pub category_id: String,
@@ -94,7 +95,7 @@ pub struct MaintenanceEditData {
     pub fields: Vec<EditFieldValue>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, ToSchema)]
 pub struct MaintenanceSaveRequest {
     #[serde(default)]
     pub key: Option<String>,
@@ -106,7 +107,7 @@ pub struct MaintenanceSaveRequest {
     pub fields: HashMap<String, String>,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, ToSchema)]
 pub struct CreatedKeyResponse {
     pub key: String,
 }

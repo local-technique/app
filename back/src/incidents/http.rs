@@ -11,6 +11,18 @@ use crate::incidents::model::{
 };
 use crate::incidents::service;
 
+#[utoipa::path(
+    get,
+    path = "/incidents",
+    tag = "incidents",
+    security((),),
+    params(IncidentListQuery),
+    responses(
+        (status = 200, description = "List of incidents", body = Vec<crate::incidents::model::IncidentListItem>),
+        (status = 403, description = "Forbidden — requires ADMIN, CO_OWNER, or CO_OWNERSHIP_BOARD"),
+    ),
+    description = "List incidents. Requires ADMIN, CO_OWNER, or CO_OWNERSHIP_BOARD."
+)]
 pub async fn list(
     principal: Principal,
     State(state): State<AppState>,
@@ -21,6 +33,21 @@ pub async fn list(
     Ok(Json(values))
 }
 
+#[utoipa::path(
+    get,
+    path = "/incidents/{id}",
+    tag = "incidents",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Incident ID"),
+        IncidentListQuery,
+    ),
+    responses(
+        (status = 200, description = "Incident detail", body = crate::incidents::model::IncidentDetail),
+        (status = 404, description = "Incident not found"),
+    ),
+    description = "Get incident detail. Requires ADMIN, CO_OWNER, or CO_OWNERSHIP_BOARD."
+)]
 pub async fn detail(
     principal: Principal,
     State(state): State<AppState>,
@@ -34,6 +61,21 @@ pub async fn detail(
     Ok(Json(value))
 }
 
+#[utoipa::path(
+    get,
+    path = "/incidents/{id}/edit",
+    tag = "incidents",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Incident ID"),
+        IncidentListQuery,
+    ),
+    responses(
+        (status = 200, description = "Incident edit data", body = crate::incidents::model::IncidentEditData),
+        (status = 404, description = "Incident not found"),
+    ),
+    description = "Get incident edit data. Requires ADMIN or CO_OWNERSHIP_BOARD."
+)]
 pub async fn edit(
     principal: Principal,
     State(state): State<AppState>,
@@ -47,6 +89,20 @@ pub async fn edit(
     Ok(Json(value))
 }
 
+#[utoipa::path(
+    get,
+    path = "/incidents/{id}/translations",
+    tag = "incidents",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Incident ID"),
+    ),
+    responses(
+        (status = 200, description = "Incident translations matrix", body = Vec<crate::incidents::model::IncidentTranslationMatrixRow>),
+        (status = 403, description = "Forbidden — requires ADMIN"),
+    ),
+    description = "List incident translations. Requires ADMIN."
+)]
 pub async fn translations(
     principal: Principal,
     State(state): State<AppState>,
@@ -57,6 +113,21 @@ pub async fn translations(
     Ok(Json(values))
 }
 
+#[utoipa::path(
+    post,
+    path = "/incidents/{id}/translations/replace",
+    tag = "incidents",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Incident ID"),
+    ),
+    request_body = IncidentTranslationsUpdateRequest,
+    responses(
+        (status = 204, description = "Translations replaced"),
+        (status = 403, description = "Forbidden — requires ADMIN"),
+    ),
+    description = "Replace all incident translations. Requires ADMIN."
+)]
 pub async fn replace_translations(
     principal: Principal,
     State(state): State<AppState>,
@@ -68,6 +139,18 @@ pub async fn replace_translations(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    post,
+    path = "/incidents",
+    tag = "incidents",
+    security((),),
+    request_body = IncidentSaveRequest,
+    responses(
+        (status = 201, description = "Created incident", body = CreatedKeyResponse),
+        (status = 403, description = "Forbidden — requires ADMIN or CO_OWNERSHIP_BOARD"),
+    ),
+    description = "Create an incident. Requires ADMIN or CO_OWNERSHIP_BOARD."
+)]
 pub async fn create(
     principal: Principal,
     State(state): State<AppState>,
@@ -78,6 +161,21 @@ pub async fn create(
     Ok((StatusCode::CREATED, Json(CreatedKeyResponse { key })))
 }
 
+#[utoipa::path(
+    put,
+    path = "/incidents/{id}",
+    tag = "incidents",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Incident ID"),
+    ),
+    request_body = IncidentSaveRequest,
+    responses(
+        (status = 204, description = "Incident updated"),
+        (status = 403, description = "Forbidden — requires ADMIN or CO_OWNERSHIP_BOARD"),
+    ),
+    description = "Update an incident. Requires ADMIN or CO_OWNERSHIP_BOARD."
+)]
 pub async fn update(
     principal: Principal,
     State(state): State<AppState>,
@@ -90,6 +188,21 @@ pub async fn update(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    delete,
+    path = "/incidents/{id}",
+    tag = "incidents",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Incident ID"),
+    ),
+    responses(
+        (status = 204, description = "Incident deleted"),
+        (status = 403, description = "Forbidden — requires ADMIN"),
+        (status = 404, description = "Incident not found"),
+    ),
+    description = "Delete an incident. Requires ADMIN."
+)]
 pub async fn delete(
     principal: Principal,
     State(state): State<AppState>,

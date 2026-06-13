@@ -11,6 +11,18 @@ use crate::maintenances::model::{
 };
 use crate::maintenances::service;
 
+#[utoipa::path(
+    get,
+    path = "/maintenances",
+    tag = "maintenances",
+    security((),),
+    params(MaintenanceListQuery),
+    responses(
+        (status = 200, description = "List of maintenances", body = Vec<crate::maintenances::model::MaintenanceListItem>),
+        (status = 403, description = "Forbidden — requires ADMIN, CO_OWNER, or CO_OWNERSHIP_BOARD"),
+    ),
+    description = "List maintenances. Requires ADMIN, CO_OWNER, or CO_OWNERSHIP_BOARD."
+)]
 pub async fn list(
     principal: Principal,
     State(state): State<AppState>,
@@ -21,6 +33,21 @@ pub async fn list(
     Ok(Json(values))
 }
 
+#[utoipa::path(
+    get,
+    path = "/maintenances/{id}",
+    tag = "maintenances",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Maintenance ID"),
+        MaintenanceListQuery,
+    ),
+    responses(
+        (status = 200, description = "Maintenance detail", body = crate::maintenances::model::MaintenanceDetail),
+        (status = 404, description = "Maintenance not found"),
+    ),
+    description = "Get maintenance detail. Requires ADMIN, CO_OWNER, or CO_OWNERSHIP_BOARD."
+)]
 pub async fn detail(
     principal: Principal,
     State(state): State<AppState>,
@@ -34,6 +61,21 @@ pub async fn detail(
     Ok(Json(value))
 }
 
+#[utoipa::path(
+    get,
+    path = "/maintenances/{id}/edit",
+    tag = "maintenances",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Maintenance ID"),
+        MaintenanceListQuery,
+    ),
+    responses(
+        (status = 200, description = "Maintenance edit data", body = crate::maintenances::model::MaintenanceEditData),
+        (status = 404, description = "Maintenance not found"),
+    ),
+    description = "Get maintenance edit data. Requires ADMIN or CO_OWNERSHIP_BOARD."
+)]
 pub async fn edit(
     principal: Principal,
     State(state): State<AppState>,
@@ -47,6 +89,20 @@ pub async fn edit(
     Ok(Json(value))
 }
 
+#[utoipa::path(
+    get,
+    path = "/maintenances/{id}/translations",
+    tag = "maintenances",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Maintenance ID"),
+    ),
+    responses(
+        (status = 200, description = "Maintenance translations matrix", body = Vec<crate::maintenances::model::MaintenanceTranslationMatrixRow>),
+        (status = 403, description = "Forbidden — requires ADMIN"),
+    ),
+    description = "List maintenance translations. Requires ADMIN."
+)]
 pub async fn translations(
     principal: Principal,
     State(state): State<AppState>,
@@ -57,6 +113,21 @@ pub async fn translations(
     Ok(Json(values))
 }
 
+#[utoipa::path(
+    post,
+    path = "/maintenances/{id}/translations/replace",
+    tag = "maintenances",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Maintenance ID"),
+    ),
+    request_body = MaintenanceTranslationsUpdateRequest,
+    responses(
+        (status = 204, description = "Translations replaced"),
+        (status = 403, description = "Forbidden — requires ADMIN"),
+    ),
+    description = "Replace all maintenance translations. Requires ADMIN."
+)]
 pub async fn replace_translations(
     principal: Principal,
     State(state): State<AppState>,
@@ -68,6 +139,18 @@ pub async fn replace_translations(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    post,
+    path = "/maintenances",
+    tag = "maintenances",
+    security((),),
+    request_body = MaintenanceSaveRequest,
+    responses(
+        (status = 201, description = "Created maintenance", body = CreatedKeyResponse),
+        (status = 403, description = "Forbidden — requires ADMIN or CO_OWNERSHIP_BOARD"),
+    ),
+    description = "Create a maintenance. Requires ADMIN or CO_OWNERSHIP_BOARD."
+)]
 pub async fn create(
     principal: Principal,
     State(state): State<AppState>,
@@ -78,6 +161,21 @@ pub async fn create(
     Ok((StatusCode::CREATED, Json(CreatedKeyResponse { key })))
 }
 
+#[utoipa::path(
+    put,
+    path = "/maintenances/{id}",
+    tag = "maintenances",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Maintenance ID"),
+    ),
+    request_body = MaintenanceSaveRequest,
+    responses(
+        (status = 204, description = "Maintenance updated"),
+        (status = 403, description = "Forbidden — requires ADMIN or CO_OWNERSHIP_BOARD"),
+    ),
+    description = "Update a maintenance. Requires ADMIN or CO_OWNERSHIP_BOARD."
+)]
 pub async fn update(
     principal: Principal,
     State(state): State<AppState>,
@@ -90,6 +188,21 @@ pub async fn update(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    delete,
+    path = "/maintenances/{id}",
+    tag = "maintenances",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Maintenance ID"),
+    ),
+    responses(
+        (status = 204, description = "Maintenance deleted"),
+        (status = 403, description = "Forbidden — requires ADMIN"),
+        (status = 404, description = "Maintenance not found"),
+    ),
+    description = "Delete a maintenance. Requires ADMIN."
+)]
 pub async fn delete(
     principal: Principal,
     State(state): State<AppState>,

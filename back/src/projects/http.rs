@@ -9,6 +9,18 @@ use crate::common::role::Role;
 use crate::projects::model::{CreatedKeyResponse, ProjectListQuery, ProjectSaveRequest, ProjectTranslationsUpdateRequest};
 use crate::projects::service;
 
+#[utoipa::path(
+    get,
+    path = "/projects",
+    tag = "projects",
+    security((),),
+    params(ProjectListQuery),
+    responses(
+        (status = 200, description = "List of projects", body = Vec<crate::projects::model::ProjectListItem>),
+        (status = 403, description = "Forbidden — requires ADMIN, CO_OWNER, or CO_OWNERSHIP_BOARD"),
+    ),
+    description = "List projects. Requires ADMIN, CO_OWNER, or CO_OWNERSHIP_BOARD."
+)]
 pub async fn list(
     principal: Principal,
     State(state): State<AppState>,
@@ -19,6 +31,21 @@ pub async fn list(
     Ok(Json(values))
 }
 
+#[utoipa::path(
+    get,
+    path = "/projects/{id}",
+    tag = "projects",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Project ID"),
+        ProjectListQuery,
+    ),
+    responses(
+        (status = 200, description = "Project detail", body = crate::projects::model::ProjectDetail),
+        (status = 404, description = "Project not found"),
+    ),
+    description = "Get project detail. Requires ADMIN, CO_OWNER, or CO_OWNERSHIP_BOARD."
+)]
 pub async fn detail(
     principal: Principal,
     State(state): State<AppState>,
@@ -32,6 +59,21 @@ pub async fn detail(
     Ok(Json(value))
 }
 
+#[utoipa::path(
+    get,
+    path = "/projects/{id}/edit",
+    tag = "projects",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Project ID"),
+        ProjectListQuery,
+    ),
+    responses(
+        (status = 200, description = "Project edit data", body = crate::projects::model::ProjectEditData),
+        (status = 404, description = "Project not found"),
+    ),
+    description = "Get project edit data. Requires ADMIN or CO_OWNERSHIP_BOARD."
+)]
 pub async fn edit(
     principal: Principal,
     State(state): State<AppState>,
@@ -45,6 +87,20 @@ pub async fn edit(
     Ok(Json(value))
 }
 
+#[utoipa::path(
+    get,
+    path = "/projects/{id}/translations",
+    tag = "projects",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Project ID"),
+    ),
+    responses(
+        (status = 200, description = "Project translations matrix", body = Vec<crate::projects::model::ProjectTranslationMatrixRow>),
+        (status = 403, description = "Forbidden — requires ADMIN"),
+    ),
+    description = "List project translations. Requires ADMIN."
+)]
 pub async fn translations(
     principal: Principal,
     State(state): State<AppState>,
@@ -55,6 +111,21 @@ pub async fn translations(
     Ok(Json(values))
 }
 
+#[utoipa::path(
+    post,
+    path = "/projects/{id}/translations/replace",
+    tag = "projects",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Project ID"),
+    ),
+    request_body = ProjectTranslationsUpdateRequest,
+    responses(
+        (status = 204, description = "Translations replaced"),
+        (status = 403, description = "Forbidden — requires ADMIN"),
+    ),
+    description = "Replace all project translations. Requires ADMIN."
+)]
 pub async fn replace_translations(
     principal: Principal,
     State(state): State<AppState>,
@@ -66,6 +137,18 @@ pub async fn replace_translations(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    post,
+    path = "/projects",
+    tag = "projects",
+    security((),),
+    request_body = ProjectSaveRequest,
+    responses(
+        (status = 201, description = "Created project", body = CreatedKeyResponse),
+        (status = 403, description = "Forbidden — requires ADMIN or CO_OWNERSHIP_BOARD"),
+    ),
+    description = "Create a project. Requires ADMIN or CO_OWNERSHIP_BOARD."
+)]
 pub async fn create(
     principal: Principal,
     State(state): State<AppState>,
@@ -76,6 +159,21 @@ pub async fn create(
     Ok((StatusCode::CREATED, Json(CreatedKeyResponse { key })))
 }
 
+#[utoipa::path(
+    put,
+    path = "/projects/{id}",
+    tag = "projects",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Project ID"),
+    ),
+    request_body = ProjectSaveRequest,
+    responses(
+        (status = 204, description = "Project updated"),
+        (status = 403, description = "Forbidden — requires ADMIN or CO_OWNERSHIP_BOARD"),
+    ),
+    description = "Update a project. Requires ADMIN or CO_OWNERSHIP_BOARD."
+)]
 pub async fn update(
     principal: Principal,
     State(state): State<AppState>,
@@ -88,6 +186,21 @@ pub async fn update(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[utoipa::path(
+    delete,
+    path = "/projects/{id}",
+    tag = "projects",
+    security((),),
+    params(
+        ("id" = String, Path, description = "Project ID"),
+    ),
+    responses(
+        (status = 204, description = "Project deleted"),
+        (status = 403, description = "Forbidden — requires ADMIN"),
+        (status = 404, description = "Project not found"),
+    ),
+    description = "Delete a project. Requires ADMIN."
+)]
 pub async fn delete(
     principal: Principal,
     State(state): State<AppState>,
