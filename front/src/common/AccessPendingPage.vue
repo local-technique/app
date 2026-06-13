@@ -8,6 +8,7 @@ const { t } = useI18n();
   <main class="page-wrap access-state">
     <h1 class="page-title">{{ t("labels.accessPendingTitle") }}</h1>
     <p class="empty-state">{{ t("labels.accessPendingMessage") }}</p>
+    <p class="reload-hint">{{ t("labels.accessPendingReload") }}</p>
   </main>
 </template>
 

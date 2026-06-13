@@ -1,6 +1,6 @@
 import { createRouter, createWebHashHistory } from "vue-router";
 import { sanitizeRedirectPath } from "../auth/redirect";
-import { ensureAuthenticated, ensureCurrentUserRoles, hasAnyRole, hasRole, hasNoRoles } from "../auth/session";
+import { currentUserRoles, ensureAuthenticated, ensureCurrentUserRoles, hasAnyRole, hasRole, hasNoRoles } from "../auth/session";
 
 const LoginPage = () => import("../auth/LoginPage.vue");
 const OAuthCallbackPage = () => import("../auth/OAuthCallbackPage.vue");
@@ -71,6 +71,10 @@ router.beforeEach(async (to) => {
         redirect: sanitizeRedirectPath(to.fullPath),
       },
     };
+  }
+
+  if (to.path === "/access-pending" && currentUserRoles.loaded && currentUserRoles.roles.length > 0) {
+    return { path: "/" };
   }
 
   const requiredRole = to.matched.find((entry) => typeof entry.meta.requiredRole === "string")?.meta.requiredRole;
