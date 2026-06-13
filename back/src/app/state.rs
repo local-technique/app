@@ -16,16 +16,18 @@ pub struct AppState {
     pub http_client: reqwest::Client,
     pub db: PgPool,
     pub exchange_codes: Arc<Mutex<HashMap<String, ExchangeCodeRecord>>>,
+    pub openapi_spec: serde_json::Value,
 }
 
 impl AppState {
-    pub fn new(config: Config, cookie_key: Key, db: PgPool) -> Self {
+    pub fn new(config: Config, cookie_key: Key, db: PgPool, openapi_spec: serde_json::Value) -> Self {
         Self {
             config,
             cookie_key,
             http_client: reqwest::Client::new(),
             db,
             exchange_codes: Arc::new(Mutex::new(HashMap::new())),
+            openapi_spec,
         }
     }
 }

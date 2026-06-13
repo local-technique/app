@@ -74,10 +74,20 @@ pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
                 .post(api_tokens::http::create_token)
                 .delete(api_tokens::http::revoke_token),
         )
+        .route("/openapi.json", get(crate::api_doc::get_openapi_json))
         .layer(cors)
         .with_state(state)
 }
 
-async fn health() -> &'static str {
+#[utoipa::path(
+    get,
+    path = "/health",
+    tag = "health",
+    responses(
+        (status = 200, description = "Service is healthy"),
+    ),
+    description = "Health check endpoint."
+)]
+pub async fn health() -> &'static str {
     "ok"
 }

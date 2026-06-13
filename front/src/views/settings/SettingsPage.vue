@@ -162,6 +162,10 @@ onMounted(loadData);
         </button>
       </div>
     </section>
+
+    <section class="settings-section">
+      <a href="#/settings/api-doc" class="api-doc-link">{{ t("labels.apiDocumentation") }}</a>
+    </section>
   </main>
 </template>
 
@@ -340,5 +344,24 @@ button:disabled {
 
 .empty-state {
   color: var(--muted-fg);
+}
+
+.api-doc-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--control-border);
+  border-radius: 0.55rem;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-decoration: none;
+  color: var(--control-fg);
+  background: transparent;
+}
+
+.api-doc-link:hover {
+  border-color: rgba(72, 144, 255, 0.7);
+  background: rgba(72, 144, 255, 0.22);
 }
 </style>

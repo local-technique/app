@@ -8,6 +8,7 @@ use base64::engine::general_purpose::STANDARD;
 use base64::Engine;
 use http::{header::CONTENT_TYPE, HeaderValue, Method};
 use tower_http::cors::CorsLayer;
+use utoipa::OpenApi;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -20,6 +21,7 @@ mod config;
 mod incidents;
 mod maintenances;
 mod projects;
+mod api_doc;
 mod api_tokens;
 mod translations;
 
@@ -58,7 +60,9 @@ async fn main() {
         .await
         .expect("failed to run database migrations");
 
-    let state = app::state::AppState::new(config.clone(), cookie_key, db);
+    let openapi_spec = serde_json::to_value(api_doc::ApiDoc::openapi())
+        .expect("failed to serialize OpenAPI spec");
+    let state = app::state::AppState::new(config.clone(), cookie_key, db, openapi_spec);
     let app: Router = app::router::build(state, cors);
 
     let addr = config
