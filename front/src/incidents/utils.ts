@@ -42,7 +42,7 @@ function toIncidentStatus(input: IncidentItem): IncidentStatusSection {
   const nowMs = Date.now();
   const startMs = Date.parse(input.startUtc);
   if (!input.endUtc) {
-    return nowMs >= startMs ? "current" : "past";
+    return "current";
   }
   return nowMs >= startMs && nowMs <= Date.parse(input.endUtc) ? "current" : "past";
 }
