@@ -156,17 +156,16 @@ function hasSection(name: "current" | "past"): boolean {
 
 <style scoped>
 .primary-action { display: inline-flex; margin-top: 0.8rem; border: 1px solid rgba(72, 144, 255, 0.7); border-radius: 0.55rem; padding: 0.55rem 0.8rem; background: rgba(72, 144, 255, 0.22); color: var(--control-fg); text-decoration: none; font-weight: 700; }
-.timeline-card { grid-template-columns: auto minmax(0, 1fr); }
-.incident-list-card { overflow: hidden; position: relative; }
+.incident-list-card { align-items: stretch; display: flex; flex-wrap: wrap; gap: 0.72rem; overflow: hidden; position: relative; }
 .incident-list-card::before { background: var(--category-color, rgba(72, 144, 255, 0.55)); content: ""; position: absolute; inset: 0 auto 0 0; width: 0.28rem; }
-.incident-card-main { display: grid; gap: 0.5rem; }
-.latest-timeline-entry { border-top: 1px solid var(--border-color); display: grid; gap: 0.3rem; padding-top: 0.55rem; }
+.incident-card-main { display: grid; gap: 0.5rem; min-width: 0; }
+.latest-timeline-entry { border-top: 1px solid var(--border-color); display: grid; flex: 0 0 100%; gap: 0.3rem; padding-top: 0.55rem; }
 .latest-timeline-title { color: #77b3ff; display: block; margin: 0; font-size: 0.88rem; font-weight: 650; line-height: 1.25; }
 .latest-timeline-title .pending-badge { margin-right: 0.38rem; vertical-align: 0.08em; }
 .pending-badge { background: rgba(255, 139, 26, 0.2); border: 1px solid rgba(255, 139, 26, 0.62); border-radius: 999px; color: #ff8b1a; display: inline-flex; font-size: 0.78rem; line-height: 1.15; padding: 0.18rem 0.45rem; }
 
 @media (min-width: 760px) {
-  .timeline-card { align-items: stretch; grid-template-columns: auto minmax(0, 1fr) minmax(13rem, 30%); column-gap: 1.2rem; }
+  .incident-list-card { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(13rem, 30%); column-gap: 1.2rem; }
   .latest-timeline-entry { align-content: start; border-left: 1px solid var(--border-color); border-top: 0; padding-left: 1rem; padding-top: 0; }
 }
 </style>
