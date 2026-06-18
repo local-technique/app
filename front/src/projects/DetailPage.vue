@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { Activity, ArrowLeft, CheckCircle2, Hourglass } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
-import { currentUserRoles, hasAnyRole, hasRole } from "../auth/session";
+import { currentUserRoles, hasAnyRole } from "../auth/session";
 import CategoryBadge from "../categories/CategoryBadge.vue";
 import AttachmentList from "../common/components/AttachmentList.vue";
 import type { LocaleCode } from "../common/localeContent";
@@ -42,8 +42,8 @@ const backQuery = computed(() => {
   const q = route.query.q;
   return typeof q === "string" && q.length > 0 ? { q } : {};
 });
-const canEdit = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD"]));
-const canDelete = computed(() => currentUserRoles.loaded && hasRole("ADMIN"));
+const canEdit = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD", "CO_OWNERSHIP_BOARD_OPS"]));
+const canDelete = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD_OPS"]));
 const auditLabel = computed(() => {
   if (!project.value?.lastModifiedAt) return "";
   return t("labels.lastModified", {

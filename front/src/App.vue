@@ -20,8 +20,9 @@ const selectedLocale = ref<LocaleCode>(getStoredLocale());
 const selectedTheme = ref<ThemeMode>(getStoredTheme());
 const mobileMenuOpen = ref(false);
 const routerReady = ref(router.currentRoute.value.matched.length > 0);
-const showCoOwnerLinks = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNER", "CO_OWNERSHIP_BOARD"]));
+const showCoOwnerLinks = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNER", "CO_OWNERSHIP_BOARD", "CO_OWNERSHIP_BOARD_OPS"]));
 const showAdminLink = computed(() => currentUserRoles.loaded && hasRole("ADMIN"));
+const showAdminCategoryLink = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD_OPS"]));
 
 let mediaQuery: MediaQueryList | null = null;
 let mediaQueryListener: (() => void) | null = null;
@@ -83,6 +84,7 @@ onBeforeUnmount(() => {
           :theme="selectedTheme"
           :show-co-owner-links="showCoOwnerLinks"
           :show-admin-link="showAdminLink"
+          :show-admin-category-link="showAdminCategoryLink"
           @update:locale="selectedLocale = $event"
           @update:theme="selectedTheme = $event"
         />
@@ -102,6 +104,7 @@ onBeforeUnmount(() => {
       :theme="selectedTheme"
       :show-co-owner-links="showCoOwnerLinks"
       :show-admin-link="showAdminLink"
+      :show-admin-category-link="showAdminCategoryLink"
       @close="mobileMenuOpen = false"
       @navigate="mobileMenuOpen = false"
       @update:locale="selectedLocale = $event"
@@ -112,6 +115,7 @@ onBeforeUnmount(() => {
       v-if="route.path !== '/login'"
       :show-co-owner-links="showCoOwnerLinks"
       :show-admin-link="showAdminLink"
+      :show-admin-category-link="showAdminCategoryLink"
       @open-more="mobileMenuOpen = true"
     />
   </div>

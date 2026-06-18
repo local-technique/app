@@ -19,6 +19,7 @@ export const messages = {
       admin: "Admin",
       coOwner: "Co-owner",
       coOwnershipBoard: "Co-ownership board",
+      coOwnershipBoardOps: "Co-ownership board ops",
     },
     labels: {
       current: "Current",
@@ -190,6 +191,7 @@ export const messages = {
       admin: "Administrateur",
       coOwner: "Copropriétaire",
       coOwnershipBoard: "Conseil syndical",
+      coOwnershipBoardOps: "Conseil syndical ops",
     },
     labels: {
       current: "En cours",

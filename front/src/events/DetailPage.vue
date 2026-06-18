@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { ArrowLeft } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
-import { currentUserRoles, hasAnyRole, hasRole } from "../auth/session";
+import { currentUserRoles, hasAnyRole } from "../auth/session";
 import CategoryBadge from "../categories/CategoryBadge.vue";
 import AttachmentList from "../common/components/AttachmentList.vue";
 import AttachmentPreview from "../common/components/AttachmentPreview.vue";
@@ -67,8 +67,8 @@ const selectedAttachment = computed<AttachmentItem | null>(() => {
 
   return attachments.find((item) => item.id === selectedAttachmentId.value) ?? attachments[0] ?? null;
 });
-const canEdit = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD"]));
-const canDelete = computed(() => currentUserRoles.loaded && hasRole("ADMIN"));
+const canEdit = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD", "CO_OWNERSHIP_BOARD_OPS"]));
+const canDelete = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD_OPS"]));
 const auditLabel = computed(() => {
   if (!event.value?.lastModifiedAt) return "";
   return t("labels.lastModified", {

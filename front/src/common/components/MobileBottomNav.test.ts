@@ -14,7 +14,7 @@ describe("Mobile bottom nav", () => {
     await router.isReady();
 
     const { container } = render(MobileBottomNav, {
-      props: { showCoOwnerLinks: true, showAdminLink: true },
+      props: { showCoOwnerLinks: true, showAdminLink: true, showAdminCategoryLink: true },
       global: { plugins: [router, createAppI18n("en")] },
     });
 
@@ -30,7 +30,7 @@ describe("Mobile bottom nav", () => {
     await router.isReady();
 
     const { container } = render(MobileBottomNav, {
-      props: { showCoOwnerLinks: false, showAdminLink: false },
+      props: { showCoOwnerLinks: false, showAdminLink: false, showAdminCategoryLink: false },
       global: { plugins: [router, createAppI18n("en")] },
     });
 
@@ -49,7 +49,7 @@ describe("Mobile bottom nav", () => {
     await router.isReady();
 
     render(MobileBottomNav, {
-      props: { showCoOwnerLinks: true, showAdminLink: true },
+      props: { showCoOwnerLinks: true, showAdminLink: true, showAdminCategoryLink: true },
       global: { plugins: [router, createAppI18n("en")] },
     });
 
@@ -65,7 +65,7 @@ describe("Mobile bottom nav", () => {
     await router.isReady();
 
     render(MobileBottomNav, {
-      props: { showCoOwnerLinks: true, showAdminLink: true },
+      props: { showCoOwnerLinks: true, showAdminLink: true, showAdminCategoryLink: true },
       global: { plugins: [router, createAppI18n("en")] },
     });
 

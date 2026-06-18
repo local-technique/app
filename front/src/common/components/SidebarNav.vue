@@ -10,6 +10,7 @@ defineProps<{
   theme: ThemeMode;
   showCoOwnerLinks: boolean;
   showAdminLink: boolean;
+  showAdminCategoryLink: boolean;
 }>();
 
 defineEmits<{
@@ -46,7 +47,7 @@ const settingsActive = computed(() => route.path.startsWith("/settings"));
         <Shield :size="16" :stroke-width="2" />
         <span>{{ $t("nav.adminUsers") }}</span>
       </a>
-      <a v-if="showAdminLink" href="#/admin/categories" :class="{ active: adminCategoriesActive }" @click="$emit('navigate')">
+      <a v-if="showAdminCategoryLink" href="#/admin/categories" :class="{ active: adminCategoriesActive }" @click="$emit('navigate')">
         <FolderTree :size="16" :stroke-width="2" />
         <span>{{ $t("nav.adminCategories") }}</span>
       </a>

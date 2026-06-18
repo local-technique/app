@@ -11,6 +11,7 @@ defineEmits<{
 const props = defineProps<{
   showCoOwnerLinks: boolean;
   showAdminLink: boolean;
+  showAdminCategoryLink: boolean;
 }>();
 
 const { t } = useI18n();
@@ -54,22 +55,23 @@ const allItems = computed<NavItem[]>(() => {
   }
 
   if (props.showAdminLink) {
-    items.push(
-      {
-        key: "users",
-        isActive: route.path.startsWith("/admin/users"),
-        label: t("nav.adminUsers"),
-        href: "#/admin/users",
-        icon: Shield,
-      },
-      {
-        key: "categories",
-        isActive: route.path.startsWith("/admin/categories"),
-        label: t("nav.adminCategories"),
-        href: "#/admin/categories",
-        icon: FolderTree,
-      },
-    );
+    items.push({
+      key: "users",
+      isActive: route.path.startsWith("/admin/users"),
+      label: t("nav.adminUsers"),
+      href: "#/admin/users",
+      icon: Shield,
+    });
+  }
+
+  if (props.showAdminCategoryLink) {
+    items.push({
+      key: "categories",
+      isActive: route.path.startsWith("/admin/categories"),
+      label: t("nav.adminCategories"),
+      href: "#/admin/categories",
+      icon: FolderTree,
+    });
   }
 
   items.push({

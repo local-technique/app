@@ -28,7 +28,7 @@ pub async fn list(
     State(state): State<AppState>,
     Query(query): Query<MaintenanceListQuery>,
 ) -> Result<Json<Vec<crate::maintenances::model::MaintenanceListItem>>, AppError> {
-    principal.ensure_any_role(&[Role::Admin, Role::CoOwner, Role::CoOwnershipBoard])?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwner, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
     let values = service::list(&state.db, query.locale.as_deref(), query.q.as_deref()).await?;
     Ok(Json(values))
 }
@@ -54,7 +54,7 @@ pub async fn detail(
     Path(id): Path<String>,
     Query(query): Query<MaintenanceListQuery>,
 ) -> Result<Json<crate::maintenances::model::MaintenanceDetail>, AppError> {
-    principal.ensure_any_role(&[Role::Admin, Role::CoOwner, Role::CoOwnershipBoard])?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwner, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
     let Some(value) = service::by_id(&state.db, &id, query.locale.as_deref()).await? else {
         return Err(AppError::not_found("maintenance not found"));
     };
@@ -82,7 +82,7 @@ pub async fn edit(
     Path(id): Path<String>,
     Query(query): Query<MaintenanceListQuery>,
 ) -> Result<Json<crate::maintenances::model::MaintenanceEditData>, AppError> {
-    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard])?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
     let Some(value) = service::edit_data(&state.db, &id, query.locale.as_deref()).await? else {
         return Err(AppError::not_found("maintenance not found"));
     };
@@ -156,7 +156,7 @@ pub async fn create(
     State(state): State<AppState>,
     Json(payload): Json<MaintenanceSaveRequest>,
 ) -> Result<(StatusCode, Json<CreatedKeyResponse>), AppError> {
-    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard])?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
     let key = service::save_partial(&state.db, &payload, principal.user_id).await?;
     Ok((StatusCode::CREATED, Json(CreatedKeyResponse { key })))
 }
@@ -182,7 +182,7 @@ pub async fn update(
     Path(id): Path<String>,
     Json(mut payload): Json<MaintenanceSaveRequest>,
 ) -> Result<StatusCode, AppError> {
-    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard])?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
     payload.key = Some(id);
     service::save_partial(&state.db, &payload, principal.user_id).await?;
     Ok(StatusCode::NO_CONTENT)
@@ -208,7 +208,7 @@ pub async fn delete(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    principal.ensure_role(Role::Admin)?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoardOps])?;
     let deleted = service::delete(&state.db, &id).await?;
     if deleted {
         Ok(StatusCode::NO_CONTENT)

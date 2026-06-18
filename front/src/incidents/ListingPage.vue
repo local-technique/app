@@ -81,7 +81,7 @@ const hasAnyMatch = computed(() => {
 });
 
 const isSearchActive = computed(() => query.value.trim().length > 0);
-const canCreate = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD"]));
+const canCreate = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD", "CO_OWNERSHIP_BOARD_OPS"]));
 const detailQuery = computed(() => {
   const trimmed = query.value.trim();
   return trimmed ? { q: trimmed } : {};
