@@ -2,20 +2,14 @@
 import { computed } from "vue";
 import { BriefcaseBusiness, CalendarClock, FolderTree, Settings, Shield, TriangleAlert } from "@lucide/vue";
 import { useRoute } from "vue-router";
-import type { LocaleCode } from "../i18n";
-import type { ThemeMode } from "../theme";
 
 defineProps<{
-  locale: LocaleCode;
-  theme: ThemeMode;
   showCoOwnerLinks: boolean;
   showAdminLink: boolean;
   showAdminCategoryLink: boolean;
 }>();
 
 defineEmits<{
-  "update:locale": [value: LocaleCode];
-  "update:theme": [value: ThemeMode];
   navigate: [];
 }>();
 
@@ -55,29 +49,6 @@ const settingsActive = computed(() => route.path.startsWith("/settings"));
         <Settings :size="16" :stroke-width="2" />
         <span>{{ $t("nav.settings") }}</span>
       </a>
-    </section>
-
-    <section class="controls-panel">
-      <label for="app-locale">{{ $t("controls.language") }}</label>
-      <select
-        id="app-locale"
-        :value="locale"
-        @change="$emit('update:locale', ($event.target as HTMLSelectElement).value as LocaleCode)"
-      >
-        <option value="fr">FR</option>
-        <option value="en">EN</option>
-      </select>
-
-      <label for="app-theme">{{ $t("controls.theme") }}</label>
-      <select
-        id="app-theme"
-        :value="theme"
-        @change="$emit('update:theme', ($event.target as HTMLSelectElement).value as ThemeMode)"
-      >
-        <option value="system">{{ $t("options.system") }}</option>
-        <option value="light">{{ $t("options.light") }}</option>
-        <option value="dark">{{ $t("options.dark") }}</option>
-      </select>
     </section>
   </nav>
 </template>
@@ -120,34 +91,5 @@ const settingsActive = computed(() => route.path.startsWith("/settings"));
   box-shadow: 0 0 0 1px rgba(72, 144, 255, 0.2) inset;
 }
 
-.controls-panel {
-  display: grid;
-  gap: 0.55rem;
-  margin-top: 0.4rem;
-  padding: 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: 0.9rem;
-  background: rgba(0, 0, 0, 0.03);
-}
 
-html[data-theme="dark"] .controls-panel,
-html[data-theme="system"][data-resolved-theme="dark"] .controls-panel {
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.sidebar-nav label {
-  font-size: 0.76rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted-fg);
-}
-
-.sidebar-nav select {
-  border: 1px solid var(--control-border);
-  border-radius: 0.5rem;
-  padding: 0.4rem 0.5rem;
-  background: var(--control-bg);
-  color: var(--control-fg);
-  min-height: 2.2rem;
-}
 </style>

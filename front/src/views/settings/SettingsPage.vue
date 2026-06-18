@@ -1,10 +1,23 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { inject, onMounted, ref, type Ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Check, Copy, RefreshCcw, Trash2 } from "@lucide/vue";
 import { createToken, getToken, revokeToken, type CreateTokenResponse, type TokenInfoResponse } from "./api";
+import type { LocaleCode } from "../../common/i18n";
+import type { ThemeMode } from "../../common/theme";
 
 const { t } = useI18n();
+
+const selectedLocale = inject("selectedLocale", ref<LocaleCode>("en")) as Ref<LocaleCode>;
+const selectedTheme = inject("selectedTheme", ref<ThemeMode>("system")) as Ref<ThemeMode>;
+
+function setLocale(value: LocaleCode) {
+  selectedLocale.value = value;
+}
+
+function setTheme(value: ThemeMode) {
+  selectedTheme.value = value;
+}
 
 const ROLE_LABEL_KEYS: Record<string, string> = {
   ADMIN: "roles.admin",
@@ -113,6 +126,29 @@ onMounted(loadData);
         <span v-for="role in (userInfo.roles ?? [])" :key="role" class="role-badge">{{ t(ROLE_LABEL_KEYS[role] ?? role) }}</span>
         <span v-if="(userInfo.roles ?? []).length === 0" class="empty-state">{{ t("labels.noRole") }}</span>
       </div>
+    </section>
+
+    <section class="settings-section controls-section">
+      <label for="app-locale">{{ t("controls.language") }}</label>
+      <select
+        id="app-locale"
+        :value="selectedLocale"
+        @change="setLocale(($event.target as HTMLSelectElement).value as LocaleCode)"
+      >
+        <option value="fr">FR</option>
+        <option value="en">EN</option>
+      </select>
+
+      <label for="app-theme">{{ t("controls.theme") }}</label>
+      <select
+        id="app-theme"
+        :value="selectedTheme"
+        @change="setTheme(($event.target as HTMLSelectElement).value as ThemeMode)"
+      >
+        <option value="system">{{ t("options.system") }}</option>
+        <option value="light">{{ t("options.light") }}</option>
+        <option value="dark">{{ t("options.dark") }}</option>
+      </select>
     </section>
 
     <section class="settings-section">
@@ -363,5 +399,22 @@ button:disabled {
 .api-doc-link:hover {
   border-color: rgba(72, 144, 255, 0.7);
   background: rgba(72, 144, 255, 0.22);
+}
+
+.controls-section select {
+  display: block;
+  border: 1px solid var(--control-border);
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  background: var(--control-bg);
+  color: var(--control-fg);
+  min-height: 2.35rem;
+  font-size: 0.92rem;
+  margin-bottom: 0.75rem;
+  max-width: 260px;
+}
+
+.controls-section select:last-child {
+  margin-bottom: 0;
 }
 </style>

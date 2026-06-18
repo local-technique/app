@@ -16,7 +16,7 @@ function renderNav(path: string) {
   return router.push(path).then(async () => {
     await router.isReady();
     render(SidebarNav, {
-      props: { locale: "en", theme: "system", showCoOwnerLinks: true, showAdminLink: true, showAdminCategoryLink: true },
+      props: { showCoOwnerLinks: true, showAdminLink: true, showAdminCategoryLink: true },
       global: { plugins: [router, createAppI18n("en")] },
     });
   });

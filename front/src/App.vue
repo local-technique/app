@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import AuthGuard from "./auth/AuthGuard.vue";
@@ -19,6 +19,9 @@ const router = useRouter();
 const selectedLocale = ref<LocaleCode>(getStoredLocale());
 const selectedTheme = ref<ThemeMode>(getStoredTheme());
 const mobileMenuOpen = ref(false);
+
+provide("selectedLocale", selectedLocale);
+provide("selectedTheme", selectedTheme);
 const routerReady = ref(router.currentRoute.value.matched.length > 0);
 const showCoOwnerLinks = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNER", "CO_OWNERSHIP_BOARD", "CO_OWNERSHIP_BOARD_OPS"]));
 const showAdminLink = computed(() => currentUserRoles.loaded && hasRole("ADMIN"));
@@ -80,13 +83,9 @@ onBeforeUnmount(() => {
       <aside class="desktop-sidebar" v-if="route.path !== '/login'">
         <div class="desktop-brand">CoPro</div>
         <SidebarNav
-          :locale="selectedLocale"
-          :theme="selectedTheme"
           :show-co-owner-links="showCoOwnerLinks"
           :show-admin-link="showAdminLink"
           :show-admin-category-link="showAdminCategoryLink"
-          @update:locale="selectedLocale = $event"
-          @update:theme="selectedTheme = $event"
         />
       </aside>
 
@@ -100,15 +99,11 @@ onBeforeUnmount(() => {
     <MobileMenu
       v-if="route.path !== '/login'"
       :open="mobileMenuOpen"
-      :locale="selectedLocale"
-      :theme="selectedTheme"
       :show-co-owner-links="showCoOwnerLinks"
       :show-admin-link="showAdminLink"
       :show-admin-category-link="showAdminCategoryLink"
       @close="mobileMenuOpen = false"
       @navigate="mobileMenuOpen = false"
-      @update:locale="selectedLocale = $event"
-      @update:theme="selectedTheme = $event"
     />
 
     <MobileBottomNav

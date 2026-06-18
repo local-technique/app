@@ -1,12 +1,8 @@
 <script setup lang="ts">
-import type { LocaleCode } from "../i18n";
-import type { ThemeMode } from "../theme";
 import SidebarNav from "./SidebarNav.vue";
 
 defineProps<{
   open: boolean;
-  locale: LocaleCode;
-  theme: ThemeMode;
   showCoOwnerLinks: boolean;
   showAdminLink: boolean;
   showAdminCategoryLink: boolean;
@@ -15,8 +11,6 @@ defineProps<{
 defineEmits<{
   close: [];
   navigate: [];
-  "update:locale": [value: LocaleCode];
-  "update:theme": [value: ThemeMode];
 }>();
 </script>
 
@@ -31,14 +25,10 @@ defineEmits<{
 
       <nav aria-label="Mobile menu">
         <SidebarNav
-          :locale="locale"
-          :theme="theme"
           :show-co-owner-links="showCoOwnerLinks"
           :show-admin-link="showAdminLink"
           :show-admin-category-link="showAdminCategoryLink"
           @navigate="$emit('navigate')"
-          @update:locale="$emit('update:locale', $event)"
-          @update:theme="$emit('update:theme', $event)"
         />
       </nav>
     </div>

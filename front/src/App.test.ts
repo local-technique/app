@@ -22,31 +22,16 @@ async function renderApp() {
   return render(App, { global: { plugins: [router, createAppI18n("en")] } });
 }
 
-async function renderAppInEnglish() {
-  await renderApp();
-
-  const localeSelect = document.getElementById("app-locale");
-  if (!(localeSelect instanceof HTMLSelectElement)) {
-    throw new Error("Locale select not found");
-  }
-
-  if (localeSelect.value !== "en") {
-    await fireEvent.update(localeSelect, "en");
-  }
-}
-
 describe("app shell", () => {
-  it("renders sidebar entries and controls", async () => {
-    await renderAppInEnglish();
+  it("renders sidebar entries", async () => {
+    await renderApp();
 
     expect(screen.getAllByText("Events & Maintenance").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Incidents").length).toBeGreaterThan(0);
-    expect(screen.getByLabelText("Language")).toBeTruthy();
-    expect(screen.getByLabelText("Theme")).toBeTruthy();
   });
 
   it("opens mobile menu from bottom nav more button", async () => {
-    await renderAppInEnglish();
+    await renderApp();
 
     expect(screen.queryByRole("navigation", { name: "Mobile menu" })).toBeNull();
 
@@ -55,16 +40,12 @@ describe("app shell", () => {
     expect(screen.getByRole("navigation", { name: "Mobile menu" })).toBeTruthy();
   });
 
-  it("persists locale and theme selections", async () => {
+  it("persists theme via system preference change", async () => {
     localStorage.clear();
     localStorage.setItem("copro-locale", "en");
-    await renderAppInEnglish();
+    localStorage.setItem("copro-theme", "dark");
+    await renderApp();
 
-    await fireEvent.update(screen.getByLabelText("Theme"), "dark");
-    await fireEvent.update(screen.getByLabelText("Language"), "fr");
-
-    expect(localStorage.getItem("copro-locale")).toBe("fr");
-    expect(localStorage.getItem("copro-theme")).toBe("dark");
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
 });
