@@ -25,6 +25,8 @@ export type EventItem = {
   startUtc: string;
   endUtc?: string;
   notifiedAtUtc?: string;
+  statusType: EventStoredStatus;
+  statusText: EventLocalizedText;
   timeline: EventTimelineEntry[];
   handlers?: string[];
   attachments: AttachmentItem[];
@@ -53,6 +55,7 @@ export type EventEditData = {
   startUtc: string;
   endUtc?: string;
   notifiedAtUtc?: string;
+  statusType: EventStoredStatus;
   locale: string;
   enabledLocales: string[];
   fields: EditFieldValue[];
@@ -65,10 +68,13 @@ export type EventSavePayload = {
   startUtc: string;
   endUtc?: string | null;
   notifiedAtUtc?: string | null;
+  statusType: EventStoredStatus;
   locale: string;
   fields: Record<string, string>;
   replaceTimeline?: boolean;
   timeline: Array<{ id: string; atUtc: string | null; sortOrder: number; fields: Record<string, string> }>;
 };
+
+export type EventStoredStatus = "waiting" | "ongoing";
 
 export type EventStatusSection = "current" | "toCome" | "past";

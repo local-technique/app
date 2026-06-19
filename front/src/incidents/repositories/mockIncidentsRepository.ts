@@ -24,6 +24,7 @@ export class MockIncidentsRepository implements IncidentsRepository {
       categoryId: item.categoryCode,
       startUtc: item.startUtc,
       endUtc: item.endUtc,
+      statusType: item.statusType,
       locale: preferredLanguage,
       enabledLocales: ["en", "fr"],
       fields: [
@@ -31,6 +32,7 @@ export class MockIncidentsRepository implements IncidentsRepository {
         { fieldKey: "short_description", value: item.shortDescription[preferredLanguage] ?? "" },
         { fieldKey: "long_description", value: item.longDescription[preferredLanguage] ?? "" },
         { fieldKey: "location", value: item.location?.[preferredLanguage] ?? "" },
+        { fieldKey: "status_text", value: item.statusText?.[preferredLanguage] ?? "" },
       ],
       timeline: item.timeline.map((entry, index) => ({
         id: entry.id,

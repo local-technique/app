@@ -12,8 +12,9 @@ use crate::maintenances::model::{
 };
 use crate::maintenances::repository;
 
-const MAINTENANCE_TRANSLATION_FIELD_KEYS: [&str; 5] =
-    ["title", "warning", "short_description", "long_description", "location"];
+const MAINTENANCE_STATUSES: [&str; 2] = ["waiting", "ongoing"];
+const MAINTENANCE_TRANSLATION_FIELD_KEYS: [&str; 6] =
+    ["title", "warning", "short_description", "long_description", "location", "status_text"];
 const MAINTENANCE_TIMELINE_TRANSLATION_FIELD_KEYS: [&str; 2] = ["title", "details"];
 
 pub async fn list(
@@ -76,6 +77,10 @@ pub async fn save_partial(
     let enabled_locales = load_enabled_locales(db).await?;
     let locale = normalize_locale(&payload.locale)?;
     ensure_locale_enabled(&locale, &enabled_locales)?;
+    let status_type = normalize_text_value(&payload.status_type).to_lowercase();
+    if !MAINTENANCE_STATUSES.contains(&status_type.as_str()) {
+        return Err(AppError::bad_request("unsupported maintenance status"));
+    }
     let mut fields = std::collections::HashMap::new();
     for (field_key, field_value) in &payload.fields {
         let field_key = normalize_field_key(field_key)?;
@@ -107,6 +112,7 @@ pub async fn save_partial(
         start_utc: payload.start_utc.clone(),
         end_utc: payload.end_utc.clone(),
         notified_at_utc: payload.notified_at_utc.clone(),
+        status_type,
         locale,
         fields,
         replace_timeline: payload.replace_timeline,

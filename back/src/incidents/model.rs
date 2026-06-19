@@ -28,6 +28,8 @@ pub struct IncidentListItem {
     pub location: String,
     pub start_utc: String,
     pub end_utc: Option<String>,
+    pub status_type: String,
+    pub status_text: String,
     pub timeline: Vec<IncidentTimelineItem>,
 }
 
@@ -50,6 +52,8 @@ pub struct IncidentDetail {
     pub location: String,
     pub start_utc: String,
     pub end_utc: Option<String>,
+    pub status_type: String,
+    pub status_text: String,
     pub timeline: Vec<IncidentTimelineItem>,
     pub last_modified_at: Option<String>,
     pub last_modified_by: Option<AuditUser>,
@@ -96,6 +100,7 @@ pub struct IncidentEditData {
     pub category_id: String,
     pub start_utc: String,
     pub end_utc: Option<String>,
+    pub status_type: String,
     pub locale: String,
     pub enabled_locales: Vec<String>,
     pub fields: Vec<EditFieldValue>,
@@ -117,6 +122,7 @@ pub struct IncidentSaveRequest {
     pub category_id: String,
     pub start_utc: String,
     pub end_utc: Option<String>,
+    pub status_type: String,
     pub locale: String,
     pub fields: HashMap<String, String>,
     #[serde(default)]

@@ -47,6 +47,11 @@ export const MOCK_EVENTS: EventItem[] = [
     timeline: [],
     startUtc: "2020-05-01T07:00:00Z",
     endUtc: "2099-05-31T17:00:00Z",
+    statusType: "ongoing",
+    statusText: {
+      en: "Boiler checks in progress",
+      fr: "Controles chaudiere en cours",
+    },
     notifiedAtUtc: "2020-04-29T10:00:00Z",
     handlers: ["Thermo Services"],
     attachments: [
@@ -81,6 +86,11 @@ export const MOCK_EVENTS: EventItem[] = [
     },
     timeline: [],
     startUtc: "2099-06-12T08:30:00Z",
+    statusType: "waiting",
+    statusText: {
+      en: "Awaiting start",
+      fr: "En attente de debut",
+    },
     notifiedAtUtc: "2099-05-28T09:00:00Z",
     handlers: ["LiftCare"],
     attachments: [
@@ -122,6 +132,11 @@ export const MOCK_EVENTS: EventItem[] = [
     },
     timeline: [],
     startUtc: "2099-06-18T13:30:00Z",
+    statusType: "waiting",
+    statusText: {
+      en: "Scheduled",
+      fr: "Planifie",
+    },
     notifiedAtUtc: "2099-06-10T11:30:00Z",
     handlers: ["Gestion Plus"],
     attachments: [],
@@ -149,6 +164,11 @@ export const MOCK_EVENTS: EventItem[] = [
     timeline: [],
     startUtc: "2020-02-15T08:00:00Z",
     endUtc: "2020-02-15T10:00:00Z",
+    statusType: "waiting",
+    statusText: {
+      en: "Completed",
+      fr: "Termine",
+    },
     attachments: [],
   },
   {
@@ -174,6 +194,11 @@ export const MOCK_EVENTS: EventItem[] = [
     timeline: [],
     startUtc: "2020-03-21T06:30:00Z",
     endUtc: "2020-03-21T12:00:00Z",
+    statusType: "waiting",
+    statusText: {
+      en: "Completed",
+      fr: "Termine",
+    },
     attachments: [],
   },
   {
@@ -199,6 +224,11 @@ export const MOCK_EVENTS: EventItem[] = [
     timeline: [],
     startUtc: "2020-01-28T09:00:00Z",
     endUtc: "2020-01-28T15:30:00Z",
+    statusType: "waiting",
+    statusText: {
+      en: "Completed",
+      fr: "Termine",
+    },
     attachments: [],
   },
 ];

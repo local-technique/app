@@ -111,6 +111,7 @@ function hasSection(name: "current" | "past"): boolean {
             <h3 class="timeline-card-title">
               <RouterLink :to="{ path: `/incidents/${incident.id}`, query: detailQuery }">{{ incident.title }}</RouterLink>
             </h3>
+            <p class="timeline-meta incident-status-line">{{ incident.statusText }}</p>
             <p class="timeline-meta">{{ incident.dateLabel }}</p>
             <p class="timeline-meta" v-if="incident.location">{{ incident.location }}</p>
           </div>
@@ -135,6 +136,7 @@ function hasSection(name: "current" | "past"): boolean {
             <h3 class="timeline-card-title">
               <RouterLink :to="{ path: `/incidents/${incident.id}`, query: detailQuery }">{{ incident.title }}</RouterLink>
             </h3>
+            <p class="timeline-meta incident-status-line">{{ incident.statusText }}</p>
             <p class="timeline-meta">{{ incident.dateLabel }}</p>
             <p class="timeline-meta" v-if="incident.location">{{ incident.location }}</p>
           </div>
@@ -159,6 +161,7 @@ function hasSection(name: "current" | "past"): boolean {
 .incident-list-card { align-items: stretch; display: flex; flex-wrap: wrap; gap: 0.72rem; overflow: hidden; position: relative; }
 .incident-list-card::before { background: var(--category-color, rgba(72, 144, 255, 0.55)); content: ""; position: absolute; inset: 0 auto 0 0; width: 0.28rem; }
 .incident-card-main { display: grid; flex: 1; gap: 0.5rem; min-width: 0; }
+.incident-status-line { color: var(--muted-fg); font-weight: 600; }
 .latest-timeline-entry { border-top: 1px solid var(--border-color); display: grid; flex: 0 0 100%; gap: 0.3rem; padding-top: 0.55rem; }
 .latest-timeline-title { color: #77b3ff; display: block; margin: 0; font-size: 0.88rem; font-weight: 650; line-height: 1.25; }
 .latest-timeline-title .pending-badge { margin-right: 0.38rem; vertical-align: 0.08em; }

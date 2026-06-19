@@ -6,6 +6,7 @@ import type {
   IncidentItem,
   IncidentLocalizedText,
   IncidentStatusSection,
+  IncidentStoredStatus,
   IncidentTimelineEntry,
 } from "./types";
 
@@ -22,6 +23,8 @@ export type IncidentTimelineEntryViewModel = {
 export type IncidentViewModel = {
   id: string;
   status: IncidentStatusSection;
+  statusType: IncidentStoredStatus;
+  statusText: string;
   title: string;
   shortDescription: string;
   longDescription: string;
@@ -75,6 +78,8 @@ export function toIncidentViewModel(incident: IncidentItem, locale: LocaleCode):
   return {
     id: incident.id,
     status: toIncidentStatus(incident),
+    statusType: incident.statusType,
+    statusText: resolve(incident.statusText, locale),
     title: resolve(incident.title, locale),
     shortDescription: resolve(incident.shortDescription, locale),
     longDescription: resolve(incident.longDescription, locale),

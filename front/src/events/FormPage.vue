@@ -8,6 +8,7 @@ import type { CategoryItem } from "../categories/types";
 import { toDateTimeLocalInput, toUtcFromDateTimeLocalInput } from "../common/dateInput";
 import type { LocaleCode } from "../common/i18n";
 import { apiEventsRepository } from "./repositories/apiEventsRepository";
+import type { EventStoredStatus } from "./types";
 
 const { t, locale } = useI18n();
 const route = useRoute();
@@ -27,6 +28,8 @@ const form = ref({
   startUtc: "",
   endUtc: "",
   notifiedAtUtc: "",
+  statusType: "ongoing" as EventStoredStatus,
+  statusText: "",
   title: "",
   shortDescription: "",
   longDescription: "",
@@ -53,6 +56,7 @@ function applyFields(fields: Array<{ fieldKey: string; value: string; fallbackLo
     if (field.fieldKey === "long_description") form.value.longDescription = field.value;
     if (field.fieldKey === "warning") form.value.warning = field.value;
     if (field.fieldKey === "location") form.value.location = field.value;
+    if (field.fieldKey === "status_text") form.value.statusText = field.value;
   }
 }
 
@@ -78,6 +82,7 @@ async function load(): Promise<void> {
     form.value.startUtc = toDateTimeLocalInput(data.startUtc);
     form.value.endUtc = toDateTimeLocalInput(data.endUtc);
     form.value.notifiedAtUtc = toDateTimeLocalInput(data.notifiedAtUtc);
+    form.value.statusType = data.statusType;
     applyFields(data.fields);
     timeline.value = data.timeline.map((item) => ({ id: item.id, atUtc: toDateTimeLocalInput(item.atUtc), title: field(item.fields, "title"), details: field(item.fields, "details") }));
   } catch {
@@ -100,6 +105,7 @@ async function save(): Promise<void> {
         startUtc: toUtcFromDateTimeLocalInput(form.value.startUtc) ?? "",
         endUtc: toUtcFromDateTimeLocalInput(form.value.endUtc),
         notifiedAtUtc: toUtcFromDateTimeLocalInput(form.value.notifiedAtUtc),
+        statusType: form.value.statusType,
         locale: activeLocale(),
         fields: {
           title: form.value.title,
@@ -107,6 +113,7 @@ async function save(): Promise<void> {
           long_description: form.value.longDescription,
           warning: form.value.warning,
           location: form.value.location,
+          status_text: form.value.statusText,
         },
         replaceTimeline: true,
         timeline: timeline.value.map((item, index) => ({ id: item.id, atUtc: toUtcFromDateTimeLocalInput(item.atUtc), sortOrder: index + 1, fields: { title: item.title, details: item.details } })),
@@ -138,6 +145,17 @@ async function save(): Promise<void> {
       <label>{{ t("labels.longDescription") }}<textarea v-model="form.longDescription" required /></label>
       <label>{{ t("labels.warning") }}<input v-model="form.warning" /></label>
       <label>{{ t("labels.location") }}<input v-model="form.location" /></label>
+      <label class="status-field">
+        <span>{{ t("labels.eventStatus") }}</span>
+        <span class="status-input-group">
+          <select v-model="form.statusType" required :aria-label="t('labels.eventStatusType')">
+            <option value="waiting">{{ t("labels.waiting") }}</option>
+            <option value="ongoing">{{ t("labels.ongoing") }}</option>
+          </select>
+          <input v-model="form.statusText" required :aria-label="t('labels.eventStatusText')" />
+        </span>
+        <small v-if="fallbackByField.status_text">{{ t("labels.prefilledFrom", { locale: fallbackByField.status_text }) }}</small>
+      </label>
       <section class="timeline-section"><h2>{{ t("labels.maintenanceTimeline") }}</h2><button class="secondary-button" type="button" @click="addTimeline">{{ t("labels.addTimelineEntry") }}</button><article class="timeline-card" v-for="entry in timeline" :key="entry.id"><label>{{ t("labels.startUtc") }}<input v-model="entry.atUtc" type="datetime-local" /></label><label>{{ t("labels.title") }}<input v-model="entry.title" required /></label><label>{{ t("labels.details") }}<textarea v-model="entry.details" /></label><button class="secondary-button" type="button" @click="removeTimeline(entry.id)">{{ t("labels.remove") }}</button></article></section>
       <p v-if="saveFailed" class="empty-state">{{ t("labels.saveFailed") }}</p>
       <footer class="form-actions"><RouterLink class="secondary-button" :to="isEdit ? `/events/${existingId}` : '/events'">{{ t("labels.cancel") }}</RouterLink><button class="primary-button" type="submit" :disabled="saving">{{ saving ? t("labels.saving") : t("labels.save") }}</button></footer>
@@ -152,6 +170,9 @@ async function save(): Promise<void> {
 .event-form textarea { min-height: 7rem; }
 .category-select-row { align-items: center; display: flex; gap: 0.6rem; }
 .category-select-row select { flex: 1 1 auto; min-width: 0; }
+.status-input-group { display: flex; align-items: stretch; width: 100%; }
+.status-input-group select { flex: 0 0 auto; min-width: 9.5rem; border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: 0; font-weight: 700; }
+.status-input-group input { flex: 1 1 auto; min-width: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .form-actions { display: flex; gap: 0.7rem; justify-content: flex-end; }
 .secondary-button, .primary-button { border: 1px solid var(--control-border); border-radius: 0.55rem; padding: 0.55rem 0.8rem; background: var(--control-bg); color: var(--control-fg); text-decoration: none; }
 .primary-button { border-color: rgba(72, 144, 255, 0.7); background: rgba(72, 144, 255, 0.22); }

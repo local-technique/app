@@ -111,6 +111,7 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
             <h3 class="timeline-card-title">
               <RouterLink :to="{ path: `/events/${event.id}`, query: detailQuery }">{{ event.title }}</RouterLink>
             </h3>
+            <p class="timeline-meta event-status-line">{{ event.statusText }}</p>
             <p class="timeline-warning" v-if="event.warning">{{ t("labels.warningPrefix") }} {{ event.warning }}</p>
             <p class="timeline-meta">{{ event.dateLabel }}</p>
             <p class="timeline-meta" v-if="event.location">{{ event.location }}</p>
@@ -129,6 +130,7 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
             <h3 class="timeline-card-title">
               <RouterLink :to="{ path: `/events/${event.id}`, query: detailQuery }">{{ event.title }}</RouterLink>
             </h3>
+            <p class="timeline-meta event-status-line">{{ event.statusText }}</p>
             <p class="timeline-warning" v-if="event.warning">{{ t("labels.warningPrefix") }} {{ event.warning }}</p>
             <p class="timeline-meta">{{ event.dateLabel }}</p>
             <p class="timeline-meta" v-if="event.location">{{ event.location }}</p>
@@ -147,6 +149,7 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
             <h3 class="timeline-card-title">
               <RouterLink :to="{ path: `/events/${event.id}`, query: detailQuery }">{{ event.title }}</RouterLink>
             </h3>
+            <p class="timeline-meta event-status-line">{{ event.statusText }}</p>
             <p class="timeline-warning" v-if="event.warning">{{ t("labels.warningPrefix") }} {{ event.warning }}</p>
             <p class="timeline-meta">{{ event.dateLabel }}</p>
             <p class="timeline-meta" v-if="event.location">{{ event.location }}</p>
@@ -166,6 +169,7 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
 .category-card { align-items: stretch; display: flex; gap: 0.72rem; overflow: hidden; position: relative; flex-wrap: wrap; }
 .category-card::before { background: var(--category-color, rgba(72, 144, 255, 0.55)); content: ""; position: absolute; inset: 0 auto 0 0; width: 0.28rem; }
 .category-card-content { min-width: 0; }
+.event-status-line { color: var(--muted-fg); font-weight: 600; }
 @media (min-width: 760px) {
   .category-card { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(13rem, 30%); column-gap: 1.2rem; }
 }

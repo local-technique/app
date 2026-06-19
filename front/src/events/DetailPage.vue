@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { ArrowLeft } from "@lucide/vue";
+import { Activity, ArrowLeft, Hourglass } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { currentUserRoles, hasAnyRole } from "../auth/session";
@@ -112,6 +112,7 @@ async function deleteEvent(): Promise<void> {
 
     <section class="timeline-card detail-block">
       <p class="timeline-meta">{{ model.dateLabel }}</p>
+      <p class="event-status"><component :is="model.statusType === 'ongoing' ? Activity : Hourglass" :size="16" /> {{ model.statusText }}</p>
       <p class="timeline-warning" v-if="model.warning">{{ t("labels.warningPrefix") }} {{ model.warning }}</p>
       <p class="timeline-meta" v-if="model.location">{{ model.location }}</p>
       <p>{{ model.shortDescription }}</p>
@@ -188,4 +189,5 @@ async function deleteEvent(): Promise<void> {
 .detail-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
 .secondary-button { border: 1px solid var(--control-border); border-radius: 0.55rem; padding: 0.45rem 0.7rem; background: var(--control-bg); color: var(--control-fg); cursor: pointer; text-decoration: none; }
 .category-meta { align-items: center; display: flex; gap: 0.35rem; }
+.event-status { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--muted-fg); font-weight: 700; }
 </style>

@@ -33,6 +33,7 @@ SELECT
   ), c.key) AS category_label,
   i.start_utc,
   i.end_utc,
+  i.status_type,
   coalesce((
     SELECT ii.field_value
     FROM incident_i18n ii
@@ -57,6 +58,14 @@ SELECT
     ORDER BY lp.ord
     LIMIT 1
   ), '') AS location,
+  coalesce((
+    SELECT ii.field_value
+    FROM incident_i18n ii
+    JOIN unnest($1::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ii.locale
+    WHERE ii.incident_id = i.id AND ii.field_key = 'status_text'
+    ORDER BY lp.ord
+    LIMIT 1
+  ), '') AS status_text,
   lt.id AS latest_timeline_id,
   lt.at_utc AS latest_timeline_at_utc,
   coalesce((
@@ -144,6 +153,8 @@ fn to_list_item(row: sqlx::postgres::PgRow) -> Result<IncidentListItem, AppError
         location: row.try_get("location")?,
         start_utc: start_utc.to_rfc3339(),
         end_utc: end_utc.map(|value| value.to_rfc3339()),
+        status_type: row.try_get("status_type")?,
+        status_text: row.try_get("status_text")?,
         timeline,
     })
 }
@@ -172,6 +183,7 @@ SELECT
   ), c.key) AS category_label,
   i.start_utc,
   i.end_utc,
+  i.status_type,
   i.last_modified_at,
   u.id AS last_modified_by_user_id,
   u.email AS last_modified_by_email,
@@ -206,7 +218,15 @@ SELECT
     WHERE ii.incident_id = i.id AND ii.field_key = 'location'
     ORDER BY lp.ord
     LIMIT 1
-  ), '') AS location
+  ), '') AS location,
+  coalesce((
+    SELECT ii.field_value
+    FROM incident_i18n ii
+    JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ii.locale
+    WHERE ii.incident_id = i.id AND ii.field_key = 'status_text'
+    ORDER BY lp.ord
+    LIMIT 1
+  ), '') AS status_text
 FROM incidents i
 JOIN event_categories c ON c.id = i.category_id
 LEFT JOIN users u ON u.id = i.last_modified_by_user_id
@@ -290,6 +310,8 @@ ORDER BY t.at_utc DESC NULLS FIRST, t.sort_order ASC
         location: row.try_get("location")?,
         start_utc: start_utc.to_rfc3339(),
         end_utc: end_utc.map(|value| value.to_rfc3339()),
+        status_type: row.try_get("status_type")?,
+        status_text: row.try_get("status_text")?,
         timeline,
         last_modified_at: last_modified_at.map(|value| value.to_rfc3339()),
         last_modified_by: last_modified_by_user_id.zip(last_modified_by_email).map(|(id, email)| AuditUser {
@@ -306,7 +328,7 @@ pub async fn edit_data(
     locale_chain: &[String],
     enabled_locales: Vec<String>,
 ) -> Result<Option<IncidentEditData>, AppError> {
-    let row = sqlx::query("SELECT id, key, category_id::TEXT AS category_id, start_utc, end_utc FROM incidents WHERE key = $1")
+    let row = sqlx::query("SELECT id, key, category_id::TEXT AS category_id, start_utc, end_utc, status_type FROM incidents WHERE key = $1")
         .bind(incident_code)
         .fetch_optional(db)
         .await?;
@@ -338,6 +360,7 @@ pub async fn edit_data(
         category_id: row.try_get("category_id")?,
         start_utc: start_utc.to_rfc3339(),
         end_utc: end_utc.map(|value| value.to_rfc3339()),
+        status_type: row.try_get("status_type")?,
         locale: locale.to_string(),
         enabled_locales,
         fields: edit_fields(db, incident_id, locale, locale_chain, &INCIDENT_FIELDS).await?,
@@ -345,7 +368,7 @@ pub async fn edit_data(
     }))
 }
 
-const INCIDENT_FIELDS: [&str; 4] = ["title", "short_description", "long_description", "location"];
+const INCIDENT_FIELDS: [&str; 5] = ["title", "short_description", "long_description", "location", "status_text"];
 const INCIDENT_TIMELINE_FIELDS: [&str; 2] = ["title", "details"];
 
 async fn edit_fields(
@@ -421,9 +444,10 @@ UPDATE incidents
 SET category_id = $2::uuid,
     start_utc = $3,
     end_utc = $4,
+    status_type = $5,
     updated_at = now(),
     last_modified_at = now(),
-    last_modified_by_user_id = $5
+    last_modified_by_user_id = $6
 WHERE key = $1
 RETURNING id, key
 "#,
@@ -432,6 +456,7 @@ RETURNING id, key
         .bind(&payload.category_id)
         .bind(start_utc)
         .bind(end_utc)
+        .bind(&payload.status_type)
         .bind(user_id)
         .fetch_optional(&mut *tx)
         .await?
@@ -440,14 +465,15 @@ RETURNING id, key
     } else {
         let row = sqlx::query(
             r#"
-INSERT INTO incidents (id, key, category_id, start_utc, end_utc, updated_at, last_modified_at, last_modified_by_user_id)
-VALUES (gen_random_uuid(), 'INC-' || nextval('incident_key_seq'), $1::uuid, $2, $3, now(), now(), $4)
+INSERT INTO incidents (id, key, category_id, start_utc, end_utc, status_type, updated_at, last_modified_at, last_modified_by_user_id)
+VALUES (gen_random_uuid(), 'INC-' || nextval('incident_key_seq'), $1::uuid, $2, $3, $4, now(), now(), $5)
 RETURNING id, key
 "#,
         )
         .bind(&payload.category_id)
         .bind(start_utc)
         .bind(end_utc)
+        .bind(&payload.status_type)
         .bind(user_id)
         .fetch_one(&mut *tx)
         .await?;

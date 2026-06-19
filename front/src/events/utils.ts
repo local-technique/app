@@ -2,7 +2,7 @@ import { classifyEventStatus, formatLocalDateTime, parseUtc } from "../common/da
 import type { LocaleCode } from "../common/localeContent";
 import { resolveLocalized } from "../common/localeContent";
 import { fuzzyMatch } from "../common/search";
-import type { EventItem, EventLocalizedText, EventStatusSection, EventTimelineEntry } from "./types";
+import type { EventItem, EventLocalizedText, EventStatusSection, EventStoredStatus, EventTimelineEntry } from "./types";
 
 export type EventTimelineEntryViewModel = {
   id: string;
@@ -17,6 +17,8 @@ export type EventTimelineEntryViewModel = {
 export type EventViewModel = {
   id: string;
   status: EventStatusSection;
+  statusType: EventStoredStatus;
+  statusText: string;
   title: string;
   warning: string;
   shortDescription: string;
@@ -61,6 +63,8 @@ export function toEventViewModel(event: EventItem, locale: LocaleCode): EventVie
   return {
     id: event.id,
     status: classifyEventStatus({ startUtc: event.startUtc, endUtc: event.endUtc }),
+    statusType: event.statusType,
+    statusText: resolve(event.statusText, locale),
     title: resolve(event.title, locale),
     warning: resolve(event.warning, locale),
     shortDescription: resolve(event.shortDescription, locale),

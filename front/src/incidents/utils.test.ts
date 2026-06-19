@@ -11,6 +11,8 @@ describe("incident view model", () => {
       shortDescription: { en: "Open" },
       longDescription: { en: "Open incident without end date" },
       startUtc: "2020-01-01T00:00:00Z",
+      statusType: "ongoing",
+      statusText: { en: "In progress" },
       timeline: [],
       attachments: [],
     };

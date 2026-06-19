@@ -23,6 +23,7 @@ export class MockEventsRepository implements EventsRepository {
       startUtc: item.startUtc,
       endUtc: item.endUtc,
       notifiedAtUtc: item.notifiedAtUtc,
+      statusType: item.statusType,
       locale: preferredLanguage,
       enabledLocales: ["en", "fr"],
       fields: [
@@ -31,6 +32,7 @@ export class MockEventsRepository implements EventsRepository {
         { fieldKey: "long_description", value: item.longDescription[preferredLanguage] ?? "" },
         { fieldKey: "warning", value: item.warning?.[preferredLanguage] ?? "" },
         { fieldKey: "location", value: item.location?.[preferredLanguage] ?? "" },
+        { fieldKey: "status_text", value: item.statusText?.[preferredLanguage] ?? "" },
       ],
       timeline: [],
     };

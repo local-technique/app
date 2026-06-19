@@ -8,6 +8,7 @@ import type { CategoryItem } from "../categories/types";
 import { toDateTimeLocalInput, toUtcFromDateTimeLocalInput } from "../common/dateInput";
 import type { LocaleCode } from "../common/i18n";
 import { apiIncidentsRepository } from "./repositories/apiIncidentsRepository";
+import type { IncidentStoredStatus } from "./types";
 
 const { t, locale } = useI18n();
 const route = useRoute();
@@ -20,12 +21,25 @@ const editLocale = ref<LocaleCode>(locale.value === "en" ? "en" : "fr");
 const saving = ref(false);
 const loadFailed = ref(false);
 const saveFailed = ref(false);
-const form = ref({ id: "", categoryId: "", startUtc: "", endUtc: "", title: "", shortDescription: "", longDescription: "", location: "" });
+const fallbackByField = ref<Record<string, string>>({});
+const form = ref({ id: "", categoryId: "", startUtc: "", endUtc: "", statusType: "ongoing" as IncidentStoredStatus, statusText: "", title: "", shortDescription: "", longDescription: "", location: "" });
 const timeline = ref<Array<{ id: string; atUtc: string; title: string; details: string }>>([]);
 const selectedCategory = computed(() => categories.value.find((category) => category.id === form.value.categoryId) ?? null);
 
 function activeLocale(): LocaleCode { return editLocale.value === "en" ? "en" : "fr"; }
 function field(fields: Array<{ fieldKey: string; value: string }>, key: string): string { return fields.find((item) => item.fieldKey === key)?.value ?? ""; }
+
+function applyFields(fields: Array<{ fieldKey: string; value: string; fallbackLocale?: string | null }>): void {
+  fallbackByField.value = {};
+  for (const item of fields) {
+    if (item.fallbackLocale) fallbackByField.value[item.fieldKey] = item.fallbackLocale;
+    if (item.fieldKey === "title") form.value.title = item.value;
+    if (item.fieldKey === "short_description") form.value.shortDescription = item.value;
+    if (item.fieldKey === "long_description") form.value.longDescription = item.value;
+    if (item.fieldKey === "location") form.value.location = item.value;
+    if (item.fieldKey === "status_text") form.value.statusText = item.value;
+  }
+}
 
 async function load(): Promise<void> {
   loadFailed.value = false;
@@ -36,7 +50,12 @@ async function load(): Promise<void> {
     const data = await apiIncidentsRepository.editData(existingId.value, activeLocale());
     if (!data) { loadFailed.value = true; return; }
     enabledLocales.value = data.enabledLocales;
-    form.value = { id: data.id, categoryId: data.categoryId, startUtc: toDateTimeLocalInput(data.startUtc), endUtc: toDateTimeLocalInput(data.endUtc), title: field(data.fields, "title"), shortDescription: field(data.fields, "short_description"), longDescription: field(data.fields, "long_description"), location: field(data.fields, "location") };
+    form.value.id = data.id;
+    form.value.categoryId = data.categoryId;
+    form.value.startUtc = toDateTimeLocalInput(data.startUtc);
+    form.value.endUtc = toDateTimeLocalInput(data.endUtc);
+    form.value.statusType = data.statusType;
+    applyFields(data.fields);
     timeline.value = data.timeline.map((item) => ({ id: item.id, atUtc: toDateTimeLocalInput(item.atUtc), title: field(item.fields, "title"), details: field(item.fields, "details") }));
   } catch { loadFailed.value = true; }
 }
@@ -49,7 +68,7 @@ function removeTimeline(id: string): void { timeline.value = timeline.value.filt
 async function save(): Promise<void> {
   saving.value = true; saveFailed.value = false;
   try {
-    const createdKey = await apiIncidentsRepository.save({ categoryId: form.value.categoryId, startUtc: toUtcFromDateTimeLocalInput(form.value.startUtc) ?? "", endUtc: toUtcFromDateTimeLocalInput(form.value.endUtc), locale: activeLocale(), fields: { title: form.value.title, short_description: form.value.shortDescription, long_description: form.value.longDescription, location: form.value.location }, replaceTimeline: true, timeline: timeline.value.map((item, index) => ({ id: item.id, atUtc: toUtcFromDateTimeLocalInput(item.atUtc), sortOrder: index + 1, fields: { title: item.title, details: item.details } })) }, isEdit.value ? existingId.value : undefined);
+    const createdKey = await apiIncidentsRepository.save({ categoryId: form.value.categoryId, startUtc: toUtcFromDateTimeLocalInput(form.value.startUtc) ?? "", endUtc: toUtcFromDateTimeLocalInput(form.value.endUtc), statusType: form.value.statusType, locale: activeLocale(), fields: { title: form.value.title, short_description: form.value.shortDescription, long_description: form.value.longDescription, location: form.value.location, status_text: form.value.statusText }, replaceTimeline: true, timeline: timeline.value.map((item, index) => ({ id: item.id, atUtc: toUtcFromDateTimeLocalInput(item.atUtc), sortOrder: index + 1, fields: { title: item.title, details: item.details } })) }, isEdit.value ? existingId.value : undefined);
     await router.push(`/incidents/${encodeURIComponent(isEdit.value ? existingId.value : String(createdKey))}`);
   } catch { saveFailed.value = true; } finally { saving.value = false; }
 }
@@ -69,6 +88,17 @@ async function save(): Promise<void> {
       <label>{{ t("labels.shortDescription") }}<textarea v-model="form.shortDescription" required /></label>
       <label>{{ t("labels.longDescription") }}<textarea v-model="form.longDescription" required /></label>
       <label>{{ t("labels.location") }}<input v-model="form.location" /></label>
+      <label class="status-field">
+        <span>{{ t("labels.incidentStatus") }}</span>
+        <span class="status-input-group">
+          <select v-model="form.statusType" required :aria-label="t('labels.incidentStatusType')">
+            <option value="waiting">{{ t("labels.waiting") }}</option>
+            <option value="ongoing">{{ t("labels.ongoing") }}</option>
+          </select>
+          <input v-model="form.statusText" required :aria-label="t('labels.incidentStatusText')" />
+        </span>
+        <small v-if="fallbackByField.status_text">{{ t("labels.prefilledFrom", { locale: fallbackByField.status_text }) }}</small>
+      </label>
       <section class="timeline-section"><h2>{{ t("labels.incidentTimeline") }}</h2><button class="secondary-button" type="button" @click="addTimeline">{{ t("labels.addTimelineEntry") }}</button><article class="timeline-card" v-for="entry in timeline" :key="entry.id"><label>{{ t("labels.startUtc") }}<input v-model="entry.atUtc" type="datetime-local" /></label><label>{{ t("labels.title") }}<input v-model="entry.title" required /></label><label>{{ t("labels.details") }}<textarea v-model="entry.details" /></label><button class="secondary-button" type="button" @click="removeTimeline(entry.id)">{{ t("labels.remove") }}</button></article></section>
       <p v-if="saveFailed" class="empty-state">{{ t("labels.saveFailed") }}</p>
       <footer class="form-actions"><RouterLink class="secondary-button" :to="isEdit ? `/incidents/${existingId}` : '/incidents'">{{ t("labels.cancel") }}</RouterLink><button class="primary-button" type="submit" :disabled="saving">{{ saving ? t("labels.saving") : t("labels.save") }}</button></footer>
@@ -83,6 +113,9 @@ async function save(): Promise<void> {
 .event-form textarea { min-height: 7rem; }
 .category-select-row { align-items: center; display: flex; gap: 0.6rem; }
 .category-select-row select { flex: 1 1 auto; min-width: 0; }
+.status-input-group { display: flex; align-items: stretch; width: 100%; }
+.status-input-group select { flex: 0 0 auto; min-width: 9.5rem; border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: 0; font-weight: 700; }
+.status-input-group input { flex: 1 1 auto; min-width: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .form-actions { display: flex; gap: 0.7rem; justify-content: flex-end; }
 .secondary-button, .primary-button { border: 1px solid var(--control-border); border-radius: 0.55rem; padding: 0.55rem 0.8rem; background: var(--control-bg); color: var(--control-fg); text-decoration: none; }
 .primary-button { border-color: rgba(72, 144, 255, 0.7); background: rgba(72, 144, 255, 0.22); }

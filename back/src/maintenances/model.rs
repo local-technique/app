@@ -38,6 +38,8 @@ pub struct MaintenanceListItem {
     pub start_utc: String,
     pub end_utc: Option<String>,
     pub notified_at_utc: Option<String>,
+    pub status_type: String,
+    pub status_text: String,
     pub timeline: Vec<MaintenanceTimelineItem>,
 }
 
@@ -54,6 +56,8 @@ pub struct MaintenanceDetail {
     pub start_utc: String,
     pub end_utc: Option<String>,
     pub notified_at_utc: Option<String>,
+    pub status_type: String,
+    pub status_text: String,
     pub timeline: Vec<MaintenanceTimelineItem>,
     pub last_modified_at: Option<String>,
     pub last_modified_by: Option<AuditUser>,
@@ -101,6 +105,7 @@ pub struct MaintenanceEditData {
     pub start_utc: String,
     pub end_utc: Option<String>,
     pub notified_at_utc: Option<String>,
+    pub status_type: String,
     pub locale: String,
     pub enabled_locales: Vec<String>,
     pub fields: Vec<EditFieldValue>,
@@ -123,6 +128,7 @@ pub struct MaintenanceSaveRequest {
     pub start_utc: String,
     pub end_utc: Option<String>,
     pub notified_at_utc: Option<String>,
+    pub status_type: String,
     pub locale: String,
     pub fields: HashMap<String, String>,
     #[serde(default)]

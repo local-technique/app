@@ -40,6 +40,11 @@ export const MOCK_INCIDENTS: IncidentItem[] = [
     },
     startUtc: "2020-05-01T07:00:00Z",
     endUtc: "2099-05-31T17:00:00Z",
+    statusType: "ongoing",
+    statusText: {
+      en: "Installing replacement valve",
+      fr: "Installation de la vanne de remplacement",
+    },
     timeline: [
       {
         id: "INC-001-T3",
@@ -106,6 +111,11 @@ export const MOCK_INCIDENTS: IncidentItem[] = [
     },
     startUtc: "2020-03-10T09:15:00Z",
     endUtc: "2020-03-10T10:05:00Z",
+    statusType: "waiting",
+    statusText: {
+      en: "Resolved",
+      fr: "Resolu",
+    },
     timeline: [
       {
         id: "INC-002-T1",
@@ -163,6 +173,11 @@ export const MOCK_INCIDENTS: IncidentItem[] = [
     },
     startUtc: "2020-02-15T06:40:00Z",
     endUtc: "2020-02-15T07:20:00Z",
+    statusType: "waiting",
+    statusText: {
+      en: "Awaiting review",
+      fr: "En attente de verification",
+    },
     timeline: [
       {
         id: "INC-003-T1",
@@ -205,6 +220,11 @@ export const MOCK_INCIDENTS: IncidentItem[] = [
     },
     startUtc: "2020-01-20T05:30:00Z",
     endUtc: "2020-01-20T09:10:00Z",
+    statusType: "waiting",
+    statusText: {
+      en: "Resolved",
+      fr: "Resolu",
+    },
     timeline: [
       {
         id: "INC-004-T1",

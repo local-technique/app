@@ -1,6 +1,6 @@
 import type { LocaleCode } from "../../common/localeContent";
 import { getAccessToken } from "../../auth/session";
-import type { EditFieldValue, EventEditData, EventItem, EventLocalizedText, EventSavePayload, EventTimelineEditItem, EventTimelineEntry } from "../types";
+import type { EditFieldValue, EventEditData, EventItem, EventLocalizedText, EventSavePayload, EventStoredStatus, EventTimelineEditItem, EventTimelineEntry } from "../types";
 import type { EventsRepository } from "./eventsRepository";
 import { mockEventsRepository } from "./mockEventsRepository";
 
@@ -21,6 +21,8 @@ type ApiMaintenanceListItem = {
   start_utc: string;
   end_utc?: string;
   notified_at_utc?: string;
+  status_type: string;
+  status_text: string;
   category?: { id: string; key: string; icon: string; color: string; label: string };
   timeline?: ApiMaintenanceTimelineItem[];
 };
@@ -36,6 +38,8 @@ type ApiMaintenanceDetail = {
   start_utc: string;
   end_utc?: string;
   notified_at_utc?: string;
+  status_type: string;
+  status_text: string;
   category?: { id: string; key: string; icon: string; color: string; label: string };
   timeline: ApiMaintenanceTimelineItem[];
   last_modified_at?: string | null;
@@ -63,6 +67,7 @@ type ApiMaintenanceEditData = {
   start_utc: string;
   end_utc?: string;
   notified_at_utc?: string;
+  status_type: string;
   locale: string;
   enabled_locales: string[];
   fields: ApiEditFieldValue[];
@@ -105,6 +110,8 @@ function toEventItem(locale: LocaleCode, value: ApiMaintenanceListItem | ApiMain
     startUtc: value.start_utc,
     endUtc: value.end_utc,
     notifiedAtUtc: value.notified_at_utc,
+    statusType: value.status_type as EventStoredStatus,
+    statusText: localized(locale, value.status_text ?? ""),
     timeline: "timeline" in value ? (value.timeline ?? []).map((item) => toTimelineEntry(locale, item)) : [],
     attachments: [],
     lastModifiedAt: "last_modified_at" in value ? (value.last_modified_at ?? undefined) : undefined,
@@ -138,6 +145,7 @@ function toEditData(value: ApiMaintenanceEditData): EventEditData {
     startUtc: value.start_utc,
     endUtc: value.end_utc,
     notifiedAtUtc: value.notified_at_utc,
+    statusType: value.status_type as EventStoredStatus,
     locale: value.locale,
     enabledLocales: value.enabled_locales,
     fields: value.fields.map(toEditField),
@@ -193,6 +201,7 @@ function toApiPayload(payload: EventSavePayload, existingId?: string): Record<st
     start_utc: payload.startUtc,
     end_utc: payload.endUtc ?? null,
     notified_at_utc: payload.notifiedAtUtc ?? null,
+    status_type: payload.statusType,
     locale: payload.locale,
     fields: payload.fields,
     replace_timeline: payload.replaceTimeline ?? false,
@@ -239,6 +248,7 @@ export class ApiEventsRepository implements EventsRepository {
         startUtc: item.startUtc,
         endUtc: item.endUtc,
         notifiedAtUtc: item.notifiedAtUtc,
+        statusType: item.statusType,
         locale: preferredLanguage,
         enabledLocales: ["en", "fr"],
         fields: [
@@ -247,6 +257,7 @@ export class ApiEventsRepository implements EventsRepository {
           { fieldKey: "long_description", value: item.longDescription[preferredLanguage] ?? "" },
           { fieldKey: "warning", value: item.warning?.[preferredLanguage] ?? "" },
           { fieldKey: "location", value: item.location?.[preferredLanguage] ?? "" },
+          { fieldKey: "status_text", value: item.statusText?.[preferredLanguage] ?? "" },
         ],
         timeline: item.timeline.map((entry, index) => ({
           id: entry.id,
