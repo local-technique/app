@@ -263,6 +263,19 @@ onBeforeUnmount(() => {
   color: var(--muted-fg);
 }
 
+:deep(.entity-key) {
+  font-weight: 400;
+  margin-right: 0.4rem;
+}
+
+:deep(.card-status) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted-fg);
+  font-weight: 700;
+}
+
 :deep(.timeline-warning) {
   margin: 0;
   font-size: 0.89rem;

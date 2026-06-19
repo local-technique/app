@@ -94,8 +94,7 @@ function projectPath(id: string): string {
         <article v-for="project in grouped.ongoing" :key="project.id" class="timeline-card project-card project-card-ongoing" :style="project.raw.category ? { '--category-color': project.raw.category.color } : undefined">
           <CategoryBadge v-if="project.raw.category" :category-key="project.raw.category.key" :icon="project.raw.category.icon" :color="project.raw.category.color" :label="project.raw.category.label" variant="rail" />
           <div class="project-card-content">
-            <p class="project-kicker">{{ project.id }}</p>
-            <h3 class="timeline-card-title"><RouterLink :to="{ path: projectPath(project.id), query: detailQuery }">{{ project.title }}</RouterLink></h3>
+            <h3 class="timeline-card-title"><span class="timeline-meta entity-key">{{ project.id }}</span><RouterLink :to="{ path: projectPath(project.id), query: detailQuery }">{{ project.title }}</RouterLink></h3>
             <p class="timeline-meta">{{ project.dateLabel }}</p>
             <p class="project-status"><Activity :size="16" /> {{ project.statusText }}</p>
           </div>
@@ -110,8 +109,7 @@ function projectPath(id: string): string {
         <article v-for="project in grouped.toCome" :key="project.id" class="timeline-card project-card project-card-tocome" :style="project.raw.category ? { '--category-color': project.raw.category.color } : undefined">
           <CategoryBadge v-if="project.raw.category" :category-key="project.raw.category.key" :icon="project.raw.category.icon" :color="project.raw.category.color" :label="project.raw.category.label" variant="rail" />
           <div class="project-card-content">
-            <p class="project-kicker">{{ project.id }}</p>
-            <h3 class="timeline-card-title"><RouterLink :to="{ path: projectPath(project.id), query: detailQuery }">{{ project.title }}</RouterLink></h3>
+            <h3 class="timeline-card-title"><span class="timeline-meta entity-key">{{ project.id }}</span><RouterLink :to="{ path: projectPath(project.id), query: detailQuery }">{{ project.title }}</RouterLink></h3>
             <p class="timeline-meta">{{ project.dateLabel }}</p>
             <p class="project-status"><Hourglass :size="16" /> {{ project.statusText }}</p>
           </div>
@@ -126,8 +124,7 @@ function projectPath(id: string): string {
         <article v-for="project in grouped.finished" :key="project.id" class="timeline-card timeline-card-past project-card" :style="project.raw.category ? { '--category-color': project.raw.category.color } : undefined">
           <CategoryBadge v-if="project.raw.category" :category-key="project.raw.category.key" :icon="project.raw.category.icon" :color="project.raw.category.color" :label="project.raw.category.label" variant="rail" />
           <div class="project-card-content">
-            <p class="project-kicker">{{ project.id }}</p>
-            <h3 class="timeline-card-title"><RouterLink :to="{ path: projectPath(project.id), query: detailQuery }">{{ project.title }}</RouterLink></h3>
+            <h3 class="timeline-card-title"><span class="timeline-meta entity-key">{{ project.id }}</span><RouterLink :to="{ path: projectPath(project.id), query: detailQuery }">{{ project.title }}</RouterLink></h3>
             <p class="timeline-meta">{{ project.dateLabel }}</p>
             <p class="project-status"><CheckCircle2 :size="16" /> {{ project.statusText }}</p>
           </div>
@@ -143,9 +140,8 @@ function projectPath(id: string): string {
 
 <style scoped>
 .primary-action { display: inline-flex; margin-top: 0.8rem; border: 1px solid rgba(72, 144, 255, 0.7); border-radius: 0.55rem; padding: 0.55rem 0.8rem; background: rgba(72, 144, 255, 0.22); color: var(--control-fg); text-decoration: none; font-weight: 700; }
-.project-card { align-items: stretch; display: flex; gap: 0.72rem; position: relative; overflow: hidden; }
+.project-card { align-items: stretch; display: flex; flex-wrap: wrap; gap: 0.72rem; position: relative; overflow: hidden; }
 .project-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 0.28rem; background: var(--category-color, rgba(72, 144, 255, 0.55)); }
-.project-kicker { margin: 0 0 0.35rem; color: var(--muted-fg); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
 .project-card-content { min-width: 0; }
 .project-status { display: inline-flex; align-items: center; gap: 0.35rem; margin: 0.5rem 0 0; color: var(--muted-fg); font-weight: 700; }
 @media (min-width: 760px) {

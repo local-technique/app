@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { Activity, CheckCircle2, Hourglass } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { currentUserRoles, hasAnyRole } from "../auth/session";
 import CategoryBadge from "../categories/CategoryBadge.vue";
+import LatestTimelineEntry from "../common/components/LatestTimelineEntry.vue";
 import type { LocaleCode } from "../common/localeContent";
 import { apiIncidentsRepository } from "./repositories/apiIncidentsRepository";
 import { groupByStatus, toIncidentViewModel } from "./utils";
@@ -107,21 +109,17 @@ function hasSection(name: "current" | "past"): boolean {
         <article class="timeline-card incident-list-card" v-for="incident in grouped.current" :key="incident.id" :style="incident.raw.category ? { '--category-color': incident.raw.category.color } : undefined">
           <CategoryBadge v-if="incident.raw.category" :category-key="incident.raw.category.key" :icon="incident.raw.category.icon" :color="incident.raw.category.color" :label="incident.raw.category.label" variant="rail" />
           <div class="incident-card-main">
-            <p class="timeline-meta">{{ incident.id }}</p>
             <h3 class="timeline-card-title">
+              <span class="timeline-meta entity-key">{{ incident.id }}</span>
               <RouterLink :to="{ path: `/incidents/${incident.id}`, query: detailQuery }">{{ incident.title }}</RouterLink>
             </h3>
-            <p class="timeline-meta incident-status-line">{{ incident.statusText }}</p>
+            <template v-if="incident.statusText || incident.statusType !== 'ongoing'">
+              <p class="card-status"><component :is="incident.statusType === 'ongoing' ? Activity : Hourglass" :size="16" /> {{ incident.statusText || t('labels.blocked') }}</p>
+            </template>
             <p class="timeline-meta">{{ incident.dateLabel }}</p>
             <p class="timeline-meta" v-if="incident.location">{{ incident.location }}</p>
           </div>
-          <aside v-if="incident.timeline[0]" class="latest-timeline-entry latest-timeline-entry-stretched">
-            <p class="timeline-meta" v-if="!incident.timeline[0].isPending">{{ incident.timeline[0].atLabel }}</p>
-            <p class="latest-timeline-title">
-              <span v-if="incident.timeline[0].isPending" class="pending-badge">{{ incident.timeline[0].atLabel }}</span>
-              <span>{{ incident.timeline[0].title }}</span>
-            </p>
-          </aside>
+          <LatestTimelineEntry v-if="incident.timeline[0]" :entry="incident.timeline[0]" />
         </article>
       </div>
     </section>
@@ -132,21 +130,17 @@ function hasSection(name: "current" | "past"): boolean {
         <article class="timeline-card timeline-card-past incident-list-card" v-for="incident in grouped.past" :key="incident.id" :style="incident.raw.category ? { '--category-color': incident.raw.category.color } : undefined">
           <CategoryBadge v-if="incident.raw.category" :category-key="incident.raw.category.key" :icon="incident.raw.category.icon" :color="incident.raw.category.color" :label="incident.raw.category.label" variant="rail" />
           <div class="incident-card-main">
-            <p class="timeline-meta">{{ incident.id }}</p>
             <h3 class="timeline-card-title">
+              <span class="timeline-meta entity-key">{{ incident.id }}</span>
               <RouterLink :to="{ path: `/incidents/${incident.id}`, query: detailQuery }">{{ incident.title }}</RouterLink>
             </h3>
-            <p class="timeline-meta incident-status-line">{{ incident.statusText }}</p>
+            <template v-if="incident.statusText || incident.statusType !== 'ongoing'">
+              <p class="card-status"><CheckCircle2 :size="16" /> {{ incident.statusText || t('labels.finished') }}</p>
+            </template>
             <p class="timeline-meta">{{ incident.dateLabel }}</p>
             <p class="timeline-meta" v-if="incident.location">{{ incident.location }}</p>
           </div>
-          <aside v-if="incident.timeline[0]" class="latest-timeline-entry latest-timeline-entry-stretched">
-            <p class="timeline-meta" v-if="!incident.timeline[0].isPending">{{ incident.timeline[0].atLabel }}</p>
-            <p class="latest-timeline-title">
-              <span v-if="incident.timeline[0].isPending" class="pending-badge">{{ incident.timeline[0].atLabel }}</span>
-              <span>{{ incident.timeline[0].title }}</span>
-            </p>
-          </aside>
+          <LatestTimelineEntry v-if="incident.timeline[0]" :entry="incident.timeline[0]" />
         </article>
       </div>
     </section>
@@ -161,14 +155,8 @@ function hasSection(name: "current" | "past"): boolean {
 .incident-list-card { align-items: stretch; display: flex; flex-wrap: wrap; gap: 0.72rem; overflow: hidden; position: relative; }
 .incident-list-card::before { background: var(--category-color, rgba(72, 144, 255, 0.55)); content: ""; position: absolute; inset: 0 auto 0 0; width: 0.28rem; }
 .incident-card-main { display: grid; flex: 1; gap: 0.5rem; min-width: 0; }
-.incident-status-line { color: var(--muted-fg); font-weight: 600; }
-.latest-timeline-entry { border-top: 1px solid var(--border-color); display: grid; flex: 0 0 100%; gap: 0.3rem; padding-top: 0.55rem; }
-.latest-timeline-title { color: #77b3ff; display: block; margin: 0; font-size: 0.88rem; font-weight: 650; line-height: 1.25; }
-.latest-timeline-title .pending-badge { margin-right: 0.38rem; vertical-align: 0.08em; }
-.pending-badge { background: rgba(255, 139, 26, 0.2); border: 1px solid rgba(255, 139, 26, 0.62); border-radius: 999px; color: #ff8b1a; display: inline-flex; font-size: 0.78rem; line-height: 1.15; padding: 0.18rem 0.45rem; }
 
 @media (min-width: 760px) {
   .incident-list-card { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(13rem, 30%); column-gap: 1.2rem; }
-  .latest-timeline-entry { align-content: start; border-left: 1px solid var(--border-color); border-top: 0; padding-left: 1rem; padding-top: 0; }
 }
 </style>

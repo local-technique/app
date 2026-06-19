@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Activity, CheckCircle2, Hourglass } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
@@ -109,9 +110,12 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
           <CategoryBadge v-if="event.raw.category" :category-key="event.raw.category.key" :icon="event.raw.category.icon" :color="event.raw.category.color" :label="event.raw.category.label" variant="rail" />
           <div class="category-card-content">
             <h3 class="timeline-card-title">
+              <span class="timeline-meta entity-key">{{ event.id }}</span>
               <RouterLink :to="{ path: `/events/${event.id}`, query: detailQuery }">{{ event.title }}</RouterLink>
             </h3>
-            <p class="timeline-meta event-status-line">{{ event.statusText }}</p>
+            <template v-if="event.statusText || event.statusType !== 'ongoing'">
+              <p class="card-status"><component :is="event.statusType === 'ongoing' ? Activity : Hourglass" :size="16" /> {{ event.statusText || t('labels.blocked') }}</p>
+            </template>
             <p class="timeline-warning" v-if="event.warning">{{ t("labels.warningPrefix") }} {{ event.warning }}</p>
             <p class="timeline-meta">{{ event.dateLabel }}</p>
             <p class="timeline-meta" v-if="event.location">{{ event.location }}</p>
@@ -128,9 +132,12 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
           <CategoryBadge v-if="event.raw.category" :category-key="event.raw.category.key" :icon="event.raw.category.icon" :color="event.raw.category.color" :label="event.raw.category.label" variant="rail" />
           <div class="category-card-content">
             <h3 class="timeline-card-title">
+              <span class="timeline-meta entity-key">{{ event.id }}</span>
               <RouterLink :to="{ path: `/events/${event.id}`, query: detailQuery }">{{ event.title }}</RouterLink>
             </h3>
-            <p class="timeline-meta event-status-line">{{ event.statusText }}</p>
+            <template v-if="event.statusText || event.statusType !== 'ongoing'">
+              <p class="card-status"><Hourglass :size="16" /> {{ event.statusText || t('labels.waiting') }}</p>
+            </template>
             <p class="timeline-warning" v-if="event.warning">{{ t("labels.warningPrefix") }} {{ event.warning }}</p>
             <p class="timeline-meta">{{ event.dateLabel }}</p>
             <p class="timeline-meta" v-if="event.location">{{ event.location }}</p>
@@ -147,9 +154,12 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
           <CategoryBadge v-if="event.raw.category" :category-key="event.raw.category.key" :icon="event.raw.category.icon" :color="event.raw.category.color" :label="event.raw.category.label" variant="rail" />
           <div class="category-card-content">
             <h3 class="timeline-card-title">
+              <span class="timeline-meta entity-key">{{ event.id }}</span>
               <RouterLink :to="{ path: `/events/${event.id}`, query: detailQuery }">{{ event.title }}</RouterLink>
             </h3>
-            <p class="timeline-meta event-status-line">{{ event.statusText }}</p>
+            <template v-if="event.statusText || event.statusType !== 'ongoing'">
+              <p class="card-status"><CheckCircle2 :size="16" /> {{ event.statusText || t('labels.finished') }}</p>
+            </template>
             <p class="timeline-warning" v-if="event.warning">{{ t("labels.warningPrefix") }} {{ event.warning }}</p>
             <p class="timeline-meta">{{ event.dateLabel }}</p>
             <p class="timeline-meta" v-if="event.location">{{ event.location }}</p>
@@ -168,8 +178,7 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
 .primary-action { display: inline-flex; margin-top: 0.8rem; border: 1px solid rgba(72, 144, 255, 0.7); border-radius: 0.55rem; padding: 0.55rem 0.8rem; background: rgba(72, 144, 255, 0.22); color: var(--control-fg); text-decoration: none; font-weight: 700; }
 .category-card { align-items: stretch; display: flex; gap: 0.72rem; overflow: hidden; position: relative; flex-wrap: wrap; }
 .category-card::before { background: var(--category-color, rgba(72, 144, 255, 0.55)); content: ""; position: absolute; inset: 0 auto 0 0; width: 0.28rem; }
-.category-card-content { min-width: 0; }
-.event-status-line { color: var(--muted-fg); font-weight: 600; }
+.category-card-content { display: grid; gap: 0.5rem; min-width: 0; }
 @media (min-width: 760px) {
   .category-card { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(13rem, 30%); column-gap: 1.2rem; }
 }

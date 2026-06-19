@@ -95,7 +95,7 @@ async function save(): Promise<void> {
             <option value="waiting">{{ t("labels.waiting") }}</option>
             <option value="ongoing">{{ t("labels.ongoing") }}</option>
           </select>
-          <input v-model="form.statusText" required :aria-label="t('labels.incidentStatusText')" />
+          <input v-model="form.statusText" :required="form.statusType !== 'ongoing'" :aria-label="t('labels.incidentStatusText')" />
         </span>
         <small v-if="fallbackByField.status_text">{{ t("labels.prefilledFrom", { locale: fallbackByField.status_text }) }}</small>
       </label>
