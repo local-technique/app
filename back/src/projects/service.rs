@@ -6,15 +6,16 @@ use crate::common::error::AppError;
 use crate::common::i18n::locale_chain;
 use crate::common::validation::{
     ensure_field_key_allowed, ensure_locale_enabled, load_enabled_locales, normalize_field_key, normalize_locale,
-    normalize_text_value,
+    normalize_text_value, validate_field_map,
 };
 use crate::projects::model::{
-    ProjectDetail, ProjectEditData, ProjectListItem, ProjectSaveRequest, ProjectTranslationMatrixRow,
-    ProjectTranslationValue,
+    ProjectDetail, ProjectEditData, ProjectListItem, ProjectSaveRequest,
+    ProjectTranslationMatrixRow, ProjectTranslationValue,
 };
 use crate::projects::repository;
 
 const PROJECT_TRANSLATION_FIELD_KEYS: [&str; 3] = ["title", "description", "status_text"];
+const PROJECT_TIMELINE_TRANSLATION_FIELD_KEYS: [&str; 2] = ["title", "details"];
 const PROJECT_STATUSES: [&str; 2] = ["waiting", "ongoing"];
 
 pub async fn list(
@@ -119,6 +120,16 @@ fn validate_save_payload(
         }
     }
 
+    let mut timeline = Vec::with_capacity(payload.timeline.len());
+    for item in &payload.timeline {
+        timeline.push(crate::projects::model::ProjectTimelineSaveItem {
+            id: normalize_text_value(&item.id),
+            at_utc: item.at_utc.clone(),
+            sort_order: item.sort_order,
+            fields: validate_field_map(&item.fields, &PROJECT_TIMELINE_TRANSLATION_FIELD_KEYS, &["title"])?,
+        });
+    }
+
     let validated = ProjectSaveRequest {
         key: payload.key.as_deref().map(normalize_text_value).filter(|value| !value.is_empty()),
         category_id: normalize_text_value(&payload.category_id),
@@ -127,6 +138,8 @@ fn validate_save_payload(
         status_type,
         locale,
         fields,
+        replace_timeline: payload.replace_timeline,
+        timeline,
     };
     if validated.category_id.is_empty() {
         return Err(AppError::bad_request("category_id is required"));
@@ -196,6 +209,8 @@ mod tests {
                 ("description".to_string(), "Replace controller".to_string()),
                 ("status_text".to_string(), "Installing controller".to_string()),
             ]),
+            replace_timeline: false,
+            timeline: vec![],
         }
     }
 

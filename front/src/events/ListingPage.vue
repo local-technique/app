@@ -4,6 +4,7 @@ import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { currentUserRoles, hasAnyRole } from "../auth/session";
 import CategoryBadge from "../categories/CategoryBadge.vue";
+import LatestTimelineEntry from "../common/components/LatestTimelineEntry.vue";
 import type { LocaleCode } from "../common/localeContent";
 import { apiEventsRepository } from "./repositories/apiEventsRepository";
 import { groupByStatus, toEventViewModel } from "./utils";
@@ -114,6 +115,7 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
             <p class="timeline-meta">{{ event.dateLabel }}</p>
             <p class="timeline-meta" v-if="event.location">{{ event.location }}</p>
           </div>
+          <LatestTimelineEntry v-if="event.timeline[0]" :entry="event.timeline[0]" />
         </article>
       </div>
     </section>
@@ -131,6 +133,7 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
             <p class="timeline-meta">{{ event.dateLabel }}</p>
             <p class="timeline-meta" v-if="event.location">{{ event.location }}</p>
           </div>
+          <LatestTimelineEntry v-if="event.timeline[0]" :entry="event.timeline[0]" />
         </article>
       </div>
     </section>
@@ -148,6 +151,7 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
             <p class="timeline-meta">{{ event.dateLabel }}</p>
             <p class="timeline-meta" v-if="event.location">{{ event.location }}</p>
           </div>
+          <LatestTimelineEntry v-if="event.timeline[0]" :entry="event.timeline[0]" />
         </article>
       </div>
     </section>
@@ -159,7 +163,10 @@ function hasSection(name: "current" | "toCome" | "past"): boolean {
 
 <style scoped>
 .primary-action { display: inline-flex; margin-top: 0.8rem; border: 1px solid rgba(72, 144, 255, 0.7); border-radius: 0.55rem; padding: 0.55rem 0.8rem; background: rgba(72, 144, 255, 0.22); color: var(--control-fg); text-decoration: none; font-weight: 700; }
-.category-card { align-items: stretch; display: flex; gap: 0.72rem; overflow: hidden; position: relative; }
+.category-card { align-items: stretch; display: flex; gap: 0.72rem; overflow: hidden; position: relative; flex-wrap: wrap; }
 .category-card::before { background: var(--category-color, rgba(72, 144, 255, 0.55)); content: ""; position: absolute; inset: 0 auto 0 0; width: 0.28rem; }
 .category-card-content { min-width: 0; }
+@media (min-width: 760px) {
+  .category-card { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(13rem, 30%); column-gap: 1.2rem; }
+}
 </style>

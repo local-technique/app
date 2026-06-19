@@ -32,6 +32,7 @@ export class MockEventsRepository implements EventsRepository {
         { fieldKey: "warning", value: item.warning?.[preferredLanguage] ?? "" },
         { fieldKey: "location", value: item.location?.[preferredLanguage] ?? "" },
       ],
+      timeline: [],
     };
   }
 

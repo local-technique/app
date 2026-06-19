@@ -6,6 +6,7 @@ import { useRoute } from "vue-router";
 import { currentUserRoles, hasAnyRole } from "../auth/session";
 import CategoryBadge from "../categories/CategoryBadge.vue";
 import AttachmentList from "../common/components/AttachmentList.vue";
+import TimelineList from "../common/components/TimelineList.vue";
 import type { LocaleCode } from "../common/localeContent";
 import { apiProjectsRepository } from "./repositories/apiProjectsRepository";
 import { renderProjectMarkdown, toProjectViewModel } from "./utils";
@@ -94,6 +95,12 @@ async function deleteProject(): Promise<void> {
     </section>
 
     <AttachmentList :items="model.raw.attachments" />
+
+    <section v-if="model.timeline.length" class="timeline-section">
+      <h2>{{ t("labels.projectTimeline") }}</h2>
+      <TimelineList :entries="model.timeline" />
+    </section>
+
     <p class="back-link"><RouterLink class="back-link-ui" :to="{ path: '/projects', query: backQuery }"><ArrowLeft :size="15" :stroke-width="2" /><span>{{ t("labels.backToProjects") }}</span></RouterLink></p>
   </main>
   <main v-else-if="loadFailed" class="page-wrap">

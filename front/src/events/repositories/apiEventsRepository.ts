@@ -1,8 +1,15 @@
 import type { LocaleCode } from "../../common/localeContent";
 import { getAccessToken } from "../../auth/session";
-import type { EditFieldValue, EventEditData, EventItem, EventLocalizedText, EventSavePayload } from "../types";
+import type { EditFieldValue, EventEditData, EventItem, EventLocalizedText, EventSavePayload, EventTimelineEditItem, EventTimelineEntry } from "../types";
 import type { EventsRepository } from "./eventsRepository";
 import { mockEventsRepository } from "./mockEventsRepository";
+
+type ApiMaintenanceTimelineItem = {
+  id: string;
+  at_utc: string | null;
+  title: string;
+  details: string;
+};
 
 type ApiMaintenanceListItem = {
   key: string;
@@ -15,6 +22,7 @@ type ApiMaintenanceListItem = {
   end_utc?: string;
   notified_at_utc?: string;
   category?: { id: string; key: string; icon: string; color: string; label: string };
+  timeline?: ApiMaintenanceTimelineItem[];
 };
 
 type ApiMaintenanceDetail = {
@@ -29,6 +37,7 @@ type ApiMaintenanceDetail = {
   end_utc?: string;
   notified_at_utc?: string;
   category?: { id: string; key: string; icon: string; color: string; label: string };
+  timeline: ApiMaintenanceTimelineItem[];
   last_modified_at?: string | null;
   last_modified_by?: { id: string; email: string } | null;
 };
@@ -41,6 +50,13 @@ type ApiEditFieldValue = {
   fallback_value?: string | null;
 };
 
+type ApiMaintenanceTimelineEditItem = {
+  id: string;
+  at_utc: string | null;
+  sort_order: number;
+  fields: ApiEditFieldValue[];
+};
+
 type ApiMaintenanceEditData = {
   key: string;
   category_id: string;
@@ -50,6 +66,7 @@ type ApiMaintenanceEditData = {
   locale: string;
   enabled_locales: string[];
   fields: ApiEditFieldValue[];
+  timeline: ApiMaintenanceTimelineEditItem[];
 };
 
 type ApiCreatedKeyResponse = { key: string };
@@ -66,6 +83,15 @@ function localized(locale: LocaleCode, value: string): EventLocalizedText {
   return locale === "en" ? { en: value } : { fr: value };
 }
 
+function toTimelineEntry(locale: LocaleCode, item: ApiMaintenanceTimelineItem): EventTimelineEntry {
+  return {
+    id: item.id,
+    atUtc: item.at_utc,
+    title: localized(locale, item.title ?? ""),
+    details: localized(locale, item.details ?? ""),
+  };
+}
+
 function toEventItem(locale: LocaleCode, value: ApiMaintenanceListItem | ApiMaintenanceDetail): EventItem {
   return {
     id: value.key,
@@ -79,6 +105,7 @@ function toEventItem(locale: LocaleCode, value: ApiMaintenanceListItem | ApiMain
     startUtc: value.start_utc,
     endUtc: value.end_utc,
     notifiedAtUtc: value.notified_at_utc,
+    timeline: "timeline" in value ? (value.timeline ?? []).map((item) => toTimelineEntry(locale, item)) : [],
     attachments: [],
     lastModifiedAt: "last_modified_at" in value ? (value.last_modified_at ?? undefined) : undefined,
     lastModifiedBy: "last_modified_by" in value ? (value.last_modified_by ?? null) : undefined,
@@ -95,6 +122,15 @@ function toEditField(value: ApiEditFieldValue): EditFieldValue {
   };
 }
 
+function toTimelineEditItem(value: ApiMaintenanceTimelineEditItem): EventTimelineEditItem {
+  return {
+    id: value.id,
+    atUtc: value.at_utc,
+    sortOrder: value.sort_order,
+    fields: value.fields.map(toEditField),
+  };
+}
+
 function toEditData(value: ApiMaintenanceEditData): EventEditData {
   return {
     id: value.key,
@@ -105,6 +141,7 @@ function toEditData(value: ApiMaintenanceEditData): EventEditData {
     locale: value.locale,
     enabledLocales: value.enabled_locales,
     fields: value.fields.map(toEditField),
+    timeline: value.timeline.map(toTimelineEditItem),
   };
 }
 
@@ -158,6 +195,13 @@ function toApiPayload(payload: EventSavePayload, existingId?: string): Record<st
     notified_at_utc: payload.notifiedAtUtc ?? null,
     locale: payload.locale,
     fields: payload.fields,
+    replace_timeline: payload.replaceTimeline ?? false,
+    timeline: payload.timeline.map((item) => ({
+      id: item.id,
+      at_utc: item.atUtc,
+      sort_order: item.sortOrder,
+      fields: item.fields,
+    })),
   };
 }
 
@@ -204,6 +248,15 @@ export class ApiEventsRepository implements EventsRepository {
           { fieldKey: "warning", value: item.warning?.[preferredLanguage] ?? "" },
           { fieldKey: "location", value: item.location?.[preferredLanguage] ?? "" },
         ],
+        timeline: item.timeline.map((entry, index) => ({
+          id: entry.id,
+          atUtc: entry.atUtc,
+          sortOrder: index + 1,
+          fields: [
+            { fieldKey: "title", value: entry.title[preferredLanguage] ?? "" },
+            { fieldKey: "details", value: entry.details?.[preferredLanguage] ?? "" },
+          ],
+        })),
       };
     }
     const params = new URLSearchParams({ locale: preferredLanguage });

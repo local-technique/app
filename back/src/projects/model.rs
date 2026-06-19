@@ -19,6 +19,14 @@ pub struct AuditUser {
 }
 
 #[derive(Serialize, ToSchema)]
+pub struct ProjectTimelineItem {
+    pub id: String,
+    pub at_utc: Option<String>,
+    pub title: String,
+    pub details: String,
+}
+
+#[derive(Serialize, ToSchema)]
 pub struct ProjectListItem {
     pub key: String,
     pub category_id: String,
@@ -29,6 +37,7 @@ pub struct ProjectListItem {
     pub end_utc: Option<String>,
     pub status_type: String,
     pub status_text: String,
+    pub timeline: Vec<ProjectTimelineItem>,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -42,6 +51,7 @@ pub struct ProjectDetail {
     pub end_utc: Option<String>,
     pub status_type: String,
     pub status_text: String,
+    pub timeline: Vec<ProjectTimelineItem>,
     pub last_modified_at: Option<String>,
     pub last_modified_by: Option<AuditUser>,
 }
@@ -71,13 +81,14 @@ pub struct ProjectTranslationMatrixRow {
     pub field_value: Option<String>,
 }
 
+pub use crate::common::validation::EditFieldValue;
+
 #[derive(serde::Serialize, ToSchema)]
-pub struct EditFieldValue {
-    pub field_key: String,
-    pub value: String,
-    pub exact_value: Option<String>,
-    pub fallback_locale: Option<String>,
-    pub fallback_value: Option<String>,
+pub struct ProjectTimelineEditItem {
+    pub id: String,
+    pub at_utc: Option<String>,
+    pub sort_order: i32,
+    pub fields: Vec<EditFieldValue>,
 }
 
 #[derive(serde::Serialize, ToSchema)]
@@ -90,6 +101,15 @@ pub struct ProjectEditData {
     pub locale: String,
     pub enabled_locales: Vec<String>,
     pub fields: Vec<EditFieldValue>,
+    pub timeline: Vec<ProjectTimelineEditItem>,
+}
+
+#[derive(serde::Deserialize, Debug, PartialEq, Eq, ToSchema)]
+pub struct ProjectTimelineSaveItem {
+    pub id: String,
+    pub at_utc: Option<String>,
+    pub sort_order: i32,
+    pub fields: HashMap<String, String>,
 }
 
 #[derive(serde::Deserialize, Debug, PartialEq, Eq, ToSchema)]
@@ -102,6 +122,9 @@ pub struct ProjectSaveRequest {
     pub status_type: String,
     pub locale: String,
     pub fields: HashMap<String, String>,
+    #[serde(default)]
+    pub replace_timeline: bool,
+    pub timeline: Vec<ProjectTimelineSaveItem>,
 }
 
 #[derive(serde::Serialize, ToSchema)]

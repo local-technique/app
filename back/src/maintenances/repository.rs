@@ -5,7 +5,8 @@ use uuid::Uuid;
 use crate::common::error::AppError;
 use crate::maintenances::model::{
     AuditUser, CategoryDisplay, EditFieldValue, MaintenanceDetail, MaintenanceEditData, MaintenanceListItem,
-    MaintenanceSaveRequest, MaintenanceTranslationMatrixRow, MaintenanceTranslationValue,
+    MaintenanceSaveRequest, MaintenanceTimelineEditItem, MaintenanceTimelineItem,
+    MaintenanceTranslationMatrixRow, MaintenanceTranslationValue,
 };
 
 pub async fn list(
@@ -64,8 +65,33 @@ SELECT
     WHERE mi.maintenance_id = m.id AND mi.field_key = 'location'
     ORDER BY lp.ord
     LIMIT 1
-  ), '') AS location
+  ), '') AS location,
+  lt.id AS latest_timeline_id,
+  lt.at_utc AS latest_timeline_at_utc,
+  coalesce((
+    SELECT ti.field_value
+    FROM maintenance_timeline_i18n ti
+    JOIN unnest($1::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale
+    WHERE ti.timeline_id = lt.id AND ti.field_key = 'title'
+    ORDER BY lp.ord
+    LIMIT 1
+  ), '') AS latest_timeline_title,
+  coalesce((
+    SELECT ti.field_value
+    FROM maintenance_timeline_i18n ti
+    JOIN unnest($1::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale
+    WHERE ti.timeline_id = lt.id AND ti.field_key = 'details'
+    ORDER BY lp.ord
+    LIMIT 1
+  ), '') AS latest_timeline_details
 FROM maintenances m
+LEFT JOIN LATERAL (
+  SELECT t.id, t.at_utc
+  FROM maintenance_timeline t
+  WHERE t.maintenance_id = m.id
+  ORDER BY t.at_utc DESC NULLS FIRST, t.sort_order ASC
+  LIMIT 1
+) lt ON TRUE
 JOIN event_categories c ON c.id = m.category_id
 WHERE ($2::TEXT IS NULL OR $2 = '') OR (
   coalesce((
@@ -103,6 +129,16 @@ fn to_list_item(row: sqlx::postgres::PgRow) -> Result<MaintenanceListItem, AppEr
     let start_utc: DateTime<Utc> = row.try_get("start_utc")?;
     let end_utc: Option<DateTime<Utc>> = row.try_get("end_utc")?;
     let notified_at_utc: Option<DateTime<Utc>> = row.try_get("notified_at_utc")?;
+    let latest_timeline_id: Option<Uuid> = row.try_get("latest_timeline_id")?;
+    let latest_timeline_at_utc: Option<DateTime<Utc>> = row.try_get("latest_timeline_at_utc")?;
+    let timeline = latest_timeline_id.map_or_else(Vec::new, |id| {
+        vec![MaintenanceTimelineItem {
+            id: id.to_string(),
+            at_utc: latest_timeline_at_utc.map(|value| value.to_rfc3339()),
+            title: row.try_get("latest_timeline_title").unwrap_or_default(),
+            details: row.try_get("latest_timeline_details").unwrap_or_default(),
+        }]
+    });
     Ok(MaintenanceListItem {
         key,
         category_id: row.try_get("category_id")?,
@@ -120,6 +156,7 @@ fn to_list_item(row: sqlx::postgres::PgRow) -> Result<MaintenanceListItem, AppEr
         start_utc: start_utc.to_rfc3339(),
         end_utc: end_utc.map(|value| value.to_rfc3339()),
         notified_at_utc: notified_at_utc.map(|value| value.to_rfc3339()),
+        timeline,
     })
 }
 
@@ -206,6 +243,52 @@ WHERE m.key = $1
         return Ok(None);
     };
 
+    let maintenance_id: Uuid = row.try_get("id")?;
+    let timeline_rows = sqlx::query(
+        r#"
+SELECT
+  t.id,
+  t.at_utc,
+  coalesce((
+    SELECT ti.field_value
+    FROM maintenance_timeline_i18n ti
+    JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale
+    WHERE ti.timeline_id = t.id AND ti.field_key = 'title'
+    ORDER BY lp.ord
+    LIMIT 1
+  ), '') AS title,
+  coalesce((
+    SELECT ti.field_value
+    FROM maintenance_timeline_i18n ti
+    JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale
+    WHERE ti.timeline_id = t.id AND ti.field_key = 'details'
+    ORDER BY lp.ord
+    LIMIT 1
+  ), '') AS details
+FROM maintenance_timeline t
+WHERE t.maintenance_id = $1
+ORDER BY t.at_utc DESC NULLS FIRST, t.sort_order ASC
+"#,
+    )
+    .bind(maintenance_id)
+    .bind(locale_chain)
+    .fetch_all(db)
+    .await?;
+
+    let timeline = timeline_rows
+        .into_iter()
+        .map(|value| {
+            let id: Uuid = value.try_get("id")?;
+            let at_utc: Option<DateTime<Utc>> = value.try_get("at_utc")?;
+            Ok(MaintenanceTimelineItem {
+                id: id.to_string(),
+                at_utc: at_utc.map(|value| value.to_rfc3339()),
+                title: value.try_get("title")?,
+                details: value.try_get("details")?,
+            })
+        })
+        .collect::<Result<Vec<_>, AppError>>()?;
+
     let key: String = row.try_get("key")?;
     let start_utc: DateTime<Utc> = row.try_get("start_utc")?;
     let end_utc: Option<DateTime<Utc>> = row.try_get("end_utc")?;
@@ -231,6 +314,7 @@ WHERE m.key = $1
         start_utc: start_utc.to_rfc3339(),
         end_utc: end_utc.map(|value| value.to_rfc3339()),
         notified_at_utc: notified_at_utc.map(|value| value.to_rfc3339()),
+        timeline,
         last_modified_at: last_modified_at.map(|value| value.to_rfc3339()),
         last_modified_by: last_modified_by_user_id.zip(last_modified_by_email).map(|(id, email)| AuditUser {
             id: id.to_string(),
@@ -238,6 +322,8 @@ WHERE m.key = $1
         }),
     }))
 }
+
+const MAINTENANCE_TIMELINE_FIELDS: [&str; 2] = ["title", "details"];
 
 pub async fn edit_data(
     db: &sqlx::PgPool,
@@ -259,6 +345,23 @@ pub async fn edit_data(
     let start_utc: DateTime<Utc> = row.try_get("start_utc")?;
     let end_utc: Option<DateTime<Utc>> = row.try_get("end_utc")?;
     let notified_at_utc: Option<DateTime<Utc>> = row.try_get("notified_at_utc")?;
+    let timeline_rows = sqlx::query(
+        "SELECT id, at_utc, sort_order FROM maintenance_timeline WHERE maintenance_id = $1 ORDER BY at_utc DESC NULLS FIRST, sort_order ASC",
+    )
+    .bind(maintenance_id)
+    .fetch_all(db)
+    .await?;
+    let mut timeline = Vec::with_capacity(timeline_rows.len());
+    for timeline_row in timeline_rows {
+        let timeline_id: Uuid = timeline_row.try_get("id")?;
+        let at_utc: Option<DateTime<Utc>> = timeline_row.try_get("at_utc")?;
+        timeline.push(MaintenanceTimelineEditItem {
+            id: timeline_id.to_string(),
+            at_utc: at_utc.map(|value| value.to_rfc3339()),
+            sort_order: timeline_row.try_get("sort_order")?,
+            fields: crate::common::timeline::edit_timeline_fields(db, "maintenance_timeline_i18n", timeline_id, locale, locale_chain, &MAINTENANCE_TIMELINE_FIELDS).await?,
+        });
+    }
     Ok(Some(MaintenanceEditData {
         key: row.try_get("key")?,
         category_id: row.try_get("category_id")?,
@@ -268,6 +371,7 @@ pub async fn edit_data(
         locale: locale.to_string(),
         enabled_locales,
         fields: edit_fields(db, maintenance_id, locale, locale_chain, &MAINTENANCE_FIELDS).await?,
+        timeline,
     }))
 }
 
@@ -416,6 +520,81 @@ ON CONFLICT (maintenance_id, locale, field_key) DO UPDATE SET field_value = EXCL
             .bind(trimmed)
             .execute(&mut *tx)
             .await?;
+        }
+    }
+
+    let submitted_ids = payload
+        .timeline
+        .iter()
+        .map(|item| Uuid::parse_str(&item.id).map_err(|_| AppError::bad_request("invalid timeline id")))
+        .collect::<Result<Vec<_>, AppError>>()?;
+    if !submitted_ids.is_empty() {
+        let foreign_timeline_id: Option<Uuid> = sqlx::query_scalar(
+            "SELECT id FROM maintenance_timeline WHERE id = ANY($1) AND maintenance_id <> $2 LIMIT 1",
+        )
+        .bind(&submitted_ids)
+        .bind(maintenance_id)
+        .fetch_optional(&mut *tx)
+        .await?;
+        if foreign_timeline_id.is_some() {
+            return Err(AppError::bad_request("timeline id does not belong to maintenance"));
+        }
+    }
+    if payload.replace_timeline && !submitted_ids.is_empty() {
+        sqlx::query("DELETE FROM maintenance_timeline WHERE maintenance_id = $1 AND NOT (id = ANY($2))")
+            .bind(maintenance_id)
+            .bind(&submitted_ids)
+            .execute(&mut *tx)
+            .await?;
+    }
+    for item in &payload.timeline {
+        let timeline_id = Uuid::parse_str(&item.id).map_err(|_| AppError::bad_request("invalid timeline id"))?;
+        let at_utc = item
+            .at_utc
+            .as_deref()
+            .filter(|value| !value.trim().is_empty())
+            .map(DateTime::parse_from_rfc3339)
+            .transpose()
+            .map_err(|_| AppError::bad_request("invalid timeline at_utc"))?
+            .map(|value| value.with_timezone(&Utc));
+        sqlx::query(
+            r#"
+INSERT INTO maintenance_timeline (id, maintenance_id, at_utc, sort_order)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (id) DO UPDATE SET at_utc = EXCLUDED.at_utc, sort_order = EXCLUDED.sort_order
+WHERE maintenance_timeline.maintenance_id = EXCLUDED.maintenance_id
+"#,
+        )
+        .bind(timeline_id)
+        .bind(maintenance_id)
+        .bind(at_utc)
+        .bind(item.sort_order)
+        .execute(&mut *tx)
+        .await?;
+        for (field_key, field_value) in &item.fields {
+            let trimmed = field_value.trim();
+            if trimmed.is_empty() {
+                sqlx::query("DELETE FROM maintenance_timeline_i18n WHERE timeline_id = $1 AND locale = $2 AND field_key = $3")
+                    .bind(timeline_id)
+                    .bind(&payload.locale)
+                    .bind(field_key)
+                    .execute(&mut *tx)
+                    .await?;
+            } else {
+                sqlx::query(
+                    r#"
+INSERT INTO maintenance_timeline_i18n (timeline_id, locale, field_key, field_value)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (timeline_id, locale, field_key) DO UPDATE SET field_value = EXCLUDED.field_value
+"#,
+                )
+                .bind(timeline_id)
+                .bind(&payload.locale)
+                .bind(field_key)
+                .bind(trimmed)
+                .execute(&mut *tx)
+                .await?;
+            }
         }
     }
     tx.commit().await?;

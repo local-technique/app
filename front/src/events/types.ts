@@ -6,6 +6,13 @@ export type EventLocalizedText = {
   fr?: string;
 };
 
+export type EventTimelineEntry = {
+  id: string;
+  atUtc: string | null;
+  title: EventLocalizedText;
+  details?: EventLocalizedText;
+};
+
 export type EventItem = {
   id: string;
   categoryCode: string;
@@ -18,6 +25,7 @@ export type EventItem = {
   startUtc: string;
   endUtc?: string;
   notifiedAtUtc?: string;
+  timeline: EventTimelineEntry[];
   handlers?: string[];
   attachments: AttachmentItem[];
   lastModifiedAt?: string;
@@ -32,6 +40,13 @@ export type EditFieldValue = {
   fallbackValue?: string | null;
 };
 
+export type EventTimelineEditItem = {
+  id: string;
+  atUtc: string | null;
+  sortOrder: number;
+  fields: EditFieldValue[];
+};
+
 export type EventEditData = {
   id: string;
   categoryId: string;
@@ -41,6 +56,7 @@ export type EventEditData = {
   locale: string;
   enabledLocales: string[];
   fields: EditFieldValue[];
+  timeline: EventTimelineEditItem[];
 };
 
 export type EventSavePayload = {
@@ -51,6 +67,8 @@ export type EventSavePayload = {
   notifiedAtUtc?: string | null;
   locale: string;
   fields: Record<string, string>;
+  replaceTimeline?: boolean;
+  timeline: Array<{ id: string; atUtc: string | null; sortOrder: number; fields: Record<string, string> }>;
 };
 
 export type EventStatusSection = "current" | "toCome" | "past";

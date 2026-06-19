@@ -80,14 +80,7 @@ pub struct IncidentTranslationMatrixRow {
     pub field_value: Option<String>,
 }
 
-#[derive(serde::Serialize, ToSchema)]
-pub struct EditFieldValue {
-    pub field_key: String,
-    pub value: String,
-    pub exact_value: Option<String>,
-    pub fallback_locale: Option<String>,
-    pub fallback_value: Option<String>,
-}
+pub use crate::common::validation::EditFieldValue;
 
 #[derive(serde::Serialize, ToSchema)]
 pub struct IncidentTimelineEditItem {

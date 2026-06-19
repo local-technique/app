@@ -29,6 +29,7 @@ export class MockProjectsRepository implements ProjectsRepository {
         { fieldKey: "description", value: item.description[preferredLanguage] ?? "" },
         { fieldKey: "status_text", value: item.statusText[preferredLanguage] ?? "" },
       ],
+      timeline: [],
     };
   }
 

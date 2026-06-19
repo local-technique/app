@@ -13,6 +13,7 @@ function project(overrides: Partial<ProjectItem> = {}): ProjectItem {
     endUtc: undefined,
     statusType: "waiting",
     statusText: { en: "Awaiting quote" },
+    timeline: [],
     attachments: [],
     ...overrides,
   };

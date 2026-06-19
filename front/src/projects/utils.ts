@@ -7,7 +7,18 @@ import type {
   ProjectItem,
   ProjectLocalizedText,
   ProjectStatusSection,
+  ProjectTimelineEntry,
 } from "./types";
+
+export type ProjectTimelineEntryViewModel = {
+  id: string;
+  atLabel: string;
+  atDateLabel: string;
+  atTimeLabel: string;
+  isPending: boolean;
+  title: string;
+  details: string;
+};
 
 export type ProjectViewModel = {
   id: string;
@@ -18,6 +29,7 @@ export type ProjectViewModel = {
   title: string;
   description: string;
   dateLabel: string;
+  timeline: ProjectTimelineEntryViewModel[];
   raw: ProjectItem;
 };
 
@@ -53,8 +65,22 @@ function formatProjectDateLabel(project: ProjectItem, locale: LocaleCode): strin
   return locale === "fr" ? `jusqu'au ${end}` : `until ${end}`;
 }
 
+function toTimelineEntryViewModel(entry: ProjectTimelineEntry, locale: LocaleCode): ProjectTimelineEntryViewModel {
+  const atDate = entry.atUtc ? parseUtc(entry.atUtc) : null;
+  return {
+    id: entry.id,
+    atLabel: atDate ? formatLocalDateTime(atDate, locale) : "Pending",
+    atDateLabel: atDate ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(atDate) : "",
+    atTimeLabel: atDate ? new Intl.DateTimeFormat(locale, { timeStyle: "short" }).format(atDate) : "",
+    isPending: !entry.atUtc,
+    title: resolve(entry.title, locale),
+    details: resolve(entry.details, locale),
+  };
+}
+
 export function toProjectViewModel(project: ProjectItem, locale: LocaleCode): ProjectViewModel {
   const classification = classifyProject(project);
+  const timeline = project.timeline.map((entry) => toTimelineEntryViewModel(entry, locale));
   return {
     id: project.id,
     section: classification.section,
@@ -64,6 +90,7 @@ export function toProjectViewModel(project: ProjectItem, locale: LocaleCode): Pr
     title: resolve(project.title, locale),
     description: resolve(project.description, locale),
     dateLabel: formatProjectDateLabel(project, locale),
+    timeline,
     raw: project,
   };
 }
@@ -83,6 +110,9 @@ export function matchesProjectQuery(project: ProjectItem, query: string, locale:
     return true;
   }
   const model = toProjectViewModel(project, locale);
+  const timelineText = project.timeline
+    .map((entry) => `${resolve(entry.title, locale)} ${resolve(entry.details, locale)}`)
+    .join(" ");
   const haystack = [
     project.id,
     resolve(project.title, locale),
@@ -93,6 +123,7 @@ export function matchesProjectQuery(project: ProjectItem, query: string, locale:
     project.statusType,
     model.displayStatus,
     model.statusText,
+    timelineText,
   ]
     .join(" ")
     .trim();

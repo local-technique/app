@@ -7,6 +7,7 @@ import { currentUserRoles, hasAnyRole } from "../auth/session";
 import CategoryBadge from "../categories/CategoryBadge.vue";
 import AttachmentList from "../common/components/AttachmentList.vue";
 import AttachmentPreview from "../common/components/AttachmentPreview.vue";
+import TimelineList from "../common/components/TimelineList.vue";
 import type { AttachmentItem } from "../common/attachments";
 import type { LocaleCode } from "../common/localeContent";
 import { apiEventsRepository } from "./repositories/apiEventsRepository";
@@ -123,6 +124,11 @@ async function deleteEvent(): Promise<void> {
       @select="handleAttachmentSelect"
     />
     <AttachmentPreview v-if="selectedAttachment" :attachment="selectedAttachment" />
+
+    <section v-if="model.timeline.length" class="timeline-section">
+      <h2>{{ t("labels.maintenanceTimeline") }}</h2>
+      <TimelineList :entries="model.timeline" />
+    </section>
 
     <p class="back-link">
       <RouterLink class="back-link-ui" :to="{ path: '/events', query: backQuery }">

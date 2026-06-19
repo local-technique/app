@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { currentUserRoles, hasAnyRole } from "../auth/session";
 import CategoryBadge from "../categories/CategoryBadge.vue";
+import LatestTimelineEntry from "../common/components/LatestTimelineEntry.vue";
 import type { LocaleCode } from "../common/localeContent";
 import { apiProjectsRepository } from "./repositories/apiProjectsRepository";
 import { groupByStatus, toProjectViewModel } from "./utils";
@@ -98,6 +99,7 @@ function projectPath(id: string): string {
             <p class="timeline-meta">{{ project.dateLabel }}</p>
             <p class="project-status"><Activity :size="16" /> {{ project.statusText }}</p>
           </div>
+          <LatestTimelineEntry v-if="project.timeline[0]" :entry="project.timeline[0]" />
         </article>
       </div>
     </section>
@@ -113,6 +115,7 @@ function projectPath(id: string): string {
             <p class="timeline-meta">{{ project.dateLabel }}</p>
             <p class="project-status"><Hourglass :size="16" /> {{ project.statusText }}</p>
           </div>
+          <LatestTimelineEntry v-if="project.timeline[0]" :entry="project.timeline[0]" />
         </article>
       </div>
     </section>
@@ -128,6 +131,7 @@ function projectPath(id: string): string {
             <p class="timeline-meta">{{ project.dateLabel }}</p>
             <p class="project-status"><CheckCircle2 :size="16" /> {{ project.statusText }}</p>
           </div>
+          <LatestTimelineEntry v-if="project.timeline[0]" :entry="project.timeline[0]" />
         </article>
       </div>
     </section>
@@ -144,4 +148,7 @@ function projectPath(id: string): string {
 .project-kicker { margin: 0 0 0.35rem; color: var(--muted-fg); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
 .project-card-content { min-width: 0; }
 .project-status { display: inline-flex; align-items: center; gap: 0.35rem; margin: 0.5rem 0 0; color: var(--muted-fg); font-weight: 700; }
+@media (min-width: 760px) {
+  .project-card { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(13rem, 30%); column-gap: 1.2rem; }
+}
 </style>

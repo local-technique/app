@@ -4,16 +4,17 @@ use crate::common::error::AppError;
 use crate::common::i18n::locale_chain;
 use crate::common::validation::{
     ensure_field_key_allowed, ensure_locale_enabled, load_enabled_locales, normalize_field_key, normalize_locale,
-    normalize_text_value,
+    normalize_text_value, validate_field_map,
 };
 use crate::maintenances::model::{
-    MaintenanceDetail, MaintenanceEditData, MaintenanceListItem, MaintenanceSaveRequest, MaintenanceTranslationMatrixRow,
-    MaintenanceTranslationValue,
+    MaintenanceDetail, MaintenanceEditData, MaintenanceListItem, MaintenanceSaveRequest,
+    MaintenanceTimelineSaveItem, MaintenanceTranslationMatrixRow, MaintenanceTranslationValue,
 };
 use crate::maintenances::repository;
 
 const MAINTENANCE_TRANSLATION_FIELD_KEYS: [&str; 5] =
     ["title", "warning", "short_description", "long_description", "location"];
+const MAINTENANCE_TIMELINE_TRANSLATION_FIELD_KEYS: [&str; 2] = ["title", "details"];
 
 pub async fn list(
     db: &sqlx::PgPool,
@@ -90,6 +91,16 @@ pub async fn save_partial(
             return Err(AppError::bad_request("required localized fields are missing"));
         }
     }
+    let mut timeline = Vec::with_capacity(payload.timeline.len());
+    for item in &payload.timeline {
+        timeline.push(MaintenanceTimelineSaveItem {
+            id: normalize_text_value(&item.id),
+            at_utc: item.at_utc.clone(),
+            sort_order: item.sort_order,
+            fields: validate_field_map(&item.fields, &MAINTENANCE_TIMELINE_TRANSLATION_FIELD_KEYS, &["title"])?,
+        });
+    }
+
     let validated = MaintenanceSaveRequest {
         key: payload.key.as_deref().map(normalize_text_value).filter(|value| !value.is_empty()),
         category_id: normalize_text_value(&payload.category_id),
@@ -98,6 +109,8 @@ pub async fn save_partial(
         notified_at_utc: payload.notified_at_utc.clone(),
         locale,
         fields,
+        replace_timeline: payload.replace_timeline,
+        timeline,
     };
     if validated.category_id.is_empty() {
         return Err(AppError::bad_request("category_id is required"));

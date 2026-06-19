@@ -4,7 +4,7 @@ use crate::common::error::AppError;
 use crate::common::i18n::locale_chain;
 use crate::common::validation::{
     ensure_field_key_allowed, ensure_locale_enabled, load_enabled_locales, normalize_field_key, normalize_locale,
-    normalize_text_value,
+    normalize_text_value, validate_field_map,
 };
 use crate::incidents::model::{
     IncidentDetail, IncidentEditData, IncidentListItem, IncidentSaveRequest, IncidentTranslationMatrixRow,
@@ -123,25 +123,4 @@ fn validate_translation_value(
     })
 }
 
-fn validate_field_map(
-    input: &std::collections::HashMap<String, String>,
-    allowed_field_keys: &[&str],
-    required_field_keys: &[&str],
-) -> Result<std::collections::HashMap<String, String>, AppError> {
-    let mut result = std::collections::HashMap::new();
-    for (field_key, field_value) in input {
-        let field_key = normalize_field_key(field_key)?;
-        ensure_field_key_allowed(&field_key, allowed_field_keys)?;
-        let value = normalize_text_value(field_value);
-        if required_field_keys.contains(&field_key.as_str()) && value.is_empty() {
-            return Err(AppError::bad_request("required localized fields cannot be empty"));
-        }
-        result.insert(field_key, value);
-    }
-    for required in required_field_keys {
-        if !result.contains_key(*required) {
-            return Err(AppError::bad_request("required localized fields are missing"));
-        }
-    }
-    Ok(result)
-}
+

@@ -1,6 +1,41 @@
 use std::collections::HashSet;
 
+use serde::Serialize;
+use utoipa::ToSchema;
+
 use crate::common::error::AppError;
+
+#[derive(Serialize, ToSchema)]
+pub struct EditFieldValue {
+    pub field_key: String,
+    pub value: String,
+    pub exact_value: Option<String>,
+    pub fallback_locale: Option<String>,
+    pub fallback_value: Option<String>,
+}
+
+pub fn validate_field_map(
+    input: &std::collections::HashMap<String, String>,
+    allowed_field_keys: &[&str],
+    required_field_keys: &[&str],
+) -> Result<std::collections::HashMap<String, String>, AppError> {
+    let mut result = std::collections::HashMap::new();
+    for (field_key, field_value) in input {
+        let field_key = normalize_field_key(field_key)?;
+        ensure_field_key_allowed(&field_key, allowed_field_keys)?;
+        let value = normalize_text_value(field_value);
+        if required_field_keys.contains(&field_key.as_str()) && value.is_empty() {
+            return Err(AppError::bad_request("required localized fields cannot be empty"));
+        }
+        result.insert(field_key, value);
+    }
+    for required in required_field_keys {
+        if !result.contains_key(*required) {
+            return Err(AppError::bad_request("required localized fields are missing"));
+        }
+    }
+    Ok(result)
+}
 
 pub fn normalize_locale(value: &str) -> Result<String, AppError> {
     let locale = value.trim().to_lowercase();

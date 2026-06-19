@@ -330,7 +330,7 @@ pub async fn edit_data(
             id: timeline_id.to_string(),
             at_utc: at_utc.map(|value| value.to_rfc3339()),
             sort_order: timeline_row.try_get("sort_order")?,
-            fields: edit_timeline_fields(db, timeline_id, locale, locale_chain, &INCIDENT_TIMELINE_FIELDS).await?,
+            fields: crate::common::timeline::edit_timeline_fields(db, "incident_timeline_i18n", timeline_id, locale, locale_chain, &INCIDENT_TIMELINE_FIELDS).await?,
         });
     }
     Ok(Some(IncidentEditData {
@@ -377,56 +377,6 @@ LIMIT 1
 "#,
             )
             .bind(incident_id)
-            .bind(locale_chain)
-            .bind(field_key)
-            .fetch_optional(db)
-            .await?
-            .map(|row| Ok::<_, AppError>((row.try_get::<String, _>("locale")?, row.try_get::<String, _>("field_value")?)))
-            .transpose()?
-        } else {
-            None
-        };
-        let (fallback_locale, fallback_value) = fallback.map_or((None, None), |(locale, value)| (Some(locale), Some(value)));
-        result.push(EditFieldValue {
-            field_key: (*field_key).to_string(),
-            value: exact.clone().or_else(|| fallback_value.clone()).unwrap_or_default(),
-            exact_value: exact,
-            fallback_locale,
-            fallback_value,
-        });
-    }
-    Ok(result)
-}
-
-async fn edit_timeline_fields(
-    db: &sqlx::PgPool,
-    timeline_id: Uuid,
-    locale: &str,
-    locale_chain: &[String],
-    field_keys: &[&str],
-) -> Result<Vec<EditFieldValue>, AppError> {
-    let mut result = Vec::with_capacity(field_keys.len());
-    for field_key in field_keys {
-        let exact: Option<String> = sqlx::query_scalar(
-            "SELECT field_value FROM incident_timeline_i18n WHERE timeline_id = $1 AND locale = $2 AND field_key = $3",
-        )
-        .bind(timeline_id)
-        .bind(locale)
-        .bind(field_key)
-        .fetch_optional(db)
-        .await?;
-        let fallback = if exact.is_none() {
-            sqlx::query(
-                r#"
-SELECT ti.locale, ti.field_value
-FROM incident_timeline_i18n ti
-JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale
-WHERE ti.timeline_id = $1 AND ti.field_key = $3
-ORDER BY lp.ord
-LIMIT 1
-"#,
-            )
-            .bind(timeline_id)
             .bind(locale_chain)
             .bind(field_key)
             .fetch_optional(db)

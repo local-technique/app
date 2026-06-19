@@ -19,6 +19,14 @@ pub struct AuditUser {
 }
 
 #[derive(Serialize, ToSchema)]
+pub struct MaintenanceTimelineItem {
+    pub id: String,
+    pub at_utc: Option<String>,
+    pub title: String,
+    pub details: String,
+}
+
+#[derive(Serialize, ToSchema)]
 pub struct MaintenanceListItem {
     pub key: String,
     pub category_id: String,
@@ -30,6 +38,7 @@ pub struct MaintenanceListItem {
     pub start_utc: String,
     pub end_utc: Option<String>,
     pub notified_at_utc: Option<String>,
+    pub timeline: Vec<MaintenanceTimelineItem>,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -45,6 +54,7 @@ pub struct MaintenanceDetail {
     pub start_utc: String,
     pub end_utc: Option<String>,
     pub notified_at_utc: Option<String>,
+    pub timeline: Vec<MaintenanceTimelineItem>,
     pub last_modified_at: Option<String>,
     pub last_modified_by: Option<AuditUser>,
 }
@@ -74,13 +84,14 @@ pub struct MaintenanceTranslationMatrixRow {
     pub field_value: Option<String>,
 }
 
+pub use crate::common::validation::EditFieldValue;
+
 #[derive(serde::Serialize, ToSchema)]
-pub struct EditFieldValue {
-    pub field_key: String,
-    pub value: String,
-    pub exact_value: Option<String>,
-    pub fallback_locale: Option<String>,
-    pub fallback_value: Option<String>,
+pub struct MaintenanceTimelineEditItem {
+    pub id: String,
+    pub at_utc: Option<String>,
+    pub sort_order: i32,
+    pub fields: Vec<EditFieldValue>,
 }
 
 #[derive(serde::Serialize, ToSchema)]
@@ -93,6 +104,15 @@ pub struct MaintenanceEditData {
     pub locale: String,
     pub enabled_locales: Vec<String>,
     pub fields: Vec<EditFieldValue>,
+    pub timeline: Vec<MaintenanceTimelineEditItem>,
+}
+
+#[derive(serde::Deserialize, ToSchema)]
+pub struct MaintenanceTimelineSaveItem {
+    pub id: String,
+    pub at_utc: Option<String>,
+    pub sort_order: i32,
+    pub fields: HashMap<String, String>,
 }
 
 #[derive(serde::Deserialize, ToSchema)]
@@ -105,6 +125,9 @@ pub struct MaintenanceSaveRequest {
     pub notified_at_utc: Option<String>,
     pub locale: String,
     pub fields: HashMap<String, String>,
+    #[serde(default)]
+    pub replace_timeline: bool,
+    pub timeline: Vec<MaintenanceTimelineSaveItem>,
 }
 
 #[derive(serde::Serialize, ToSchema)]

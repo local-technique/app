@@ -33,11 +33,14 @@ const form = ref({
   warning: "",
   location: "",
 });
+const timeline = ref<Array<{ id: string; atUtc: string; title: string; details: string }>>([]);
 const selectedCategory = computed(() => categories.value.find((category) => category.id === form.value.categoryId) ?? null);
 
 function activeLocale(): LocaleCode {
   return editLocale.value === "en" ? "en" : "fr";
 }
+
+function field(fields: Array<{ fieldKey: string; value: string }>, key: string): string { return fields.find((item) => item.fieldKey === key)?.value ?? ""; }
 
 function applyFields(fields: Array<{ fieldKey: string; value: string; fallbackLocale?: string | null }>): void {
   fallbackByField.value = {};
@@ -76,6 +79,7 @@ async function load(): Promise<void> {
     form.value.endUtc = toDateTimeLocalInput(data.endUtc);
     form.value.notifiedAtUtc = toDateTimeLocalInput(data.notifiedAtUtc);
     applyFields(data.fields);
+    timeline.value = data.timeline.map((item) => ({ id: item.id, atUtc: toDateTimeLocalInput(item.atUtc), title: field(item.fields, "title"), details: field(item.fields, "details") }));
   } catch {
     loadFailed.value = true;
   }
@@ -83,11 +87,14 @@ async function load(): Promise<void> {
 
 watch([() => route.params.id, editLocale], () => void load(), { immediate: true });
 
+function addTimeline(): void { timeline.value.push({ id: crypto.randomUUID(), atUtc: "", title: "", details: "" }); }
+function removeTimeline(id: string): void { timeline.value = timeline.value.filter((item) => item.id !== id); }
+
 async function save(): Promise<void> {
   saving.value = true;
   saveFailed.value = false;
   try {
-    const createdKey = await apiEventsRepository.save(
+      const createdKey = await apiEventsRepository.save(
       {
         categoryId: form.value.categoryId,
         startUtc: toUtcFromDateTimeLocalInput(form.value.startUtc) ?? "",
@@ -101,6 +108,8 @@ async function save(): Promise<void> {
           warning: form.value.warning,
           location: form.value.location,
         },
+        replaceTimeline: true,
+        timeline: timeline.value.map((item, index) => ({ id: item.id, atUtc: toUtcFromDateTimeLocalInput(item.atUtc), sortOrder: index + 1, fields: { title: item.title, details: item.details } })),
       },
       isEdit.value ? existingId.value : undefined,
     );
@@ -129,6 +138,7 @@ async function save(): Promise<void> {
       <label>{{ t("labels.longDescription") }}<textarea v-model="form.longDescription" required /></label>
       <label>{{ t("labels.warning") }}<input v-model="form.warning" /></label>
       <label>{{ t("labels.location") }}<input v-model="form.location" /></label>
+      <section class="timeline-section"><h2>{{ t("labels.maintenanceTimeline") }}</h2><button class="secondary-button" type="button" @click="addTimeline">{{ t("labels.addTimelineEntry") }}</button><article class="timeline-card" v-for="entry in timeline" :key="entry.id"><label>{{ t("labels.startUtc") }}<input v-model="entry.atUtc" type="datetime-local" /></label><label>{{ t("labels.title") }}<input v-model="entry.title" required /></label><label>{{ t("labels.details") }}<textarea v-model="entry.details" /></label><button class="secondary-button" type="button" @click="removeTimeline(entry.id)">{{ t("labels.remove") }}</button></article></section>
       <p v-if="saveFailed" class="empty-state">{{ t("labels.saveFailed") }}</p>
       <footer class="form-actions"><RouterLink class="secondary-button" :to="isEdit ? `/events/${existingId}` : '/events'">{{ t("labels.cancel") }}</RouterLink><button class="primary-button" type="submit" :disabled="saving">{{ saving ? t("labels.saving") : t("labels.save") }}</button></footer>
     </form>

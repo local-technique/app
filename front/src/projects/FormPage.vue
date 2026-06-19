@@ -24,11 +24,14 @@ const loadFailed = ref(false);
 const saveFailed = ref(false);
 const fallbackByField = ref<Record<string, string>>({});
 const form = ref({ id: "", categoryId: "", startUtc: "", endUtc: "", statusType: "waiting" as ProjectStoredStatus, statusText: "", title: "", description: "" });
+const timeline = ref<Array<{ id: string; atUtc: string; title: string; details: string }>>([]);
 const selectedCategory = computed(() => categories.value.find((category) => category.id === form.value.categoryId) ?? null);
 
 function activeLocale(): LocaleCode {
   return editLocale.value === "en" ? "en" : "fr";
 }
+
+function field(fields: Array<{ fieldKey: string; value: string }>, key: string): string { return fields.find((item) => item.fieldKey === key)?.value ?? ""; }
 
 function applyFields(fields: Array<{ fieldKey: string; value: string; fallbackLocale?: string | null }>): void {
   fallbackByField.value = {};
@@ -61,6 +64,7 @@ async function load(): Promise<void> {
     form.value.endUtc = toDateTimeLocalInput(data.endUtc);
     form.value.statusType = data.statusType;
     applyFields(data.fields);
+    timeline.value = data.timeline.map((item) => ({ id: item.id, atUtc: toDateTimeLocalInput(item.atUtc), title: field(item.fields, "title"), details: field(item.fields, "details") }));
   } catch {
     loadFailed.value = true;
   }
@@ -68,11 +72,14 @@ async function load(): Promise<void> {
 
 watch([() => route.params.id, editLocale], () => void load(), { immediate: true });
 
+function addTimeline(): void { timeline.value.push({ id: crypto.randomUUID(), atUtc: "", title: "", details: "" }); }
+function removeTimeline(id: string): void { timeline.value = timeline.value.filter((item) => item.id !== id); }
+
 async function save(): Promise<void> {
   saving.value = true;
   saveFailed.value = false;
   try {
-    const createdKey = await apiProjectsRepository.save(
+      const createdKey = await apiProjectsRepository.save(
       {
         categoryId: form.value.categoryId,
         startUtc: toUtcFromDateTimeLocalInput(form.value.startUtc),
@@ -80,6 +87,8 @@ async function save(): Promise<void> {
         statusType: form.value.statusType,
         locale: activeLocale(),
         fields: { title: form.value.title, description: form.value.description, status_text: form.value.statusText },
+        replaceTimeline: true,
+        timeline: timeline.value.map((item, index) => ({ id: item.id, atUtc: toUtcFromDateTimeLocalInput(item.atUtc), sortOrder: index + 1, fields: { title: item.title, details: item.details } })),
       },
       isEdit.value ? existingId.value : undefined,
     );
@@ -115,6 +124,7 @@ async function save(): Promise<void> {
       </label>
       <label>{{ t("labels.title") }}<input v-model="form.title" required /><small v-if="fallbackByField.title">{{ t("labels.prefilledFrom", { locale: fallbackByField.title }) }}</small></label>
       <label>{{ t("labels.description") }}<textarea v-model="form.description" required /></label>
+      <section class="timeline-section"><h2>{{ t("labels.projectTimeline") }}</h2><button class="secondary-button" type="button" @click="addTimeline">{{ t("labels.addTimelineEntry") }}</button><article class="timeline-card" v-for="entry in timeline" :key="entry.id"><label>{{ t("labels.startUtc") }}<input v-model="entry.atUtc" type="datetime-local" /></label><label>{{ t("labels.title") }}<input v-model="entry.title" required /></label><label>{{ t("labels.details") }}<textarea v-model="entry.details" /></label><button class="secondary-button" type="button" @click="removeTimeline(entry.id)">{{ t("labels.remove") }}</button></article></section>
       <p v-if="saveFailed" class="empty-state">{{ t("labels.saveFailed") }}</p>
       <footer class="form-actions"><RouterLink class="secondary-button" :to="cancelPath">{{ t("labels.cancel") }}</RouterLink><button class="primary-button" type="submit" :disabled="saving">{{ saving ? t("labels.saving") : t("labels.save") }}</button></footer>
     </form>
