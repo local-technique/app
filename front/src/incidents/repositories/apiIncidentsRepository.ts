@@ -17,7 +17,7 @@ type ApiIncidentListItem = {
   key: string;
   category_id: string;
   title: string;
-  short_description: string;
+  description: string;
   location: string;
   start_utc: string;
   end_utc?: string;
@@ -38,8 +38,7 @@ type ApiIncidentDetail = {
   key: string;
   category_id: string;
   title: string;
-  short_description: string;
-  long_description: string;
+  description: string;
   location: string;
   start_utc: string;
   end_utc?: string;
@@ -107,8 +106,7 @@ function toIncidentItem(locale: LocaleCode, value: ApiIncidentListItem | ApiInci
     categoryCode: value.category_id,
     category: value.category,
     title: localized(locale, value.title ?? ""),
-    shortDescription: localized(locale, value.short_description ?? ""),
-    longDescription: localized(locale, "long_description" in value ? (value.long_description ?? "") : ""),
+    description: localized(locale, value.description ?? ""),
     location: localized(locale, value.location ?? ""),
     startUtc: value.start_utc,
     endUtc: value.end_utc,
@@ -253,8 +251,7 @@ export class ApiIncidentsRepository implements IncidentsRepository {
         enabledLocales: ["en", "fr"],
         fields: [
           { fieldKey: "title", value: item.title[preferredLanguage] ?? "" },
-          { fieldKey: "short_description", value: item.shortDescription[preferredLanguage] ?? "" },
-          { fieldKey: "long_description", value: item.longDescription[preferredLanguage] ?? "" },
+          { fieldKey: "description", value: item.description[preferredLanguage] ?? "" },
           { fieldKey: "location", value: item.location?.[preferredLanguage] ?? "" },
           { fieldKey: "status_text", value: item.statusText?.[preferredLanguage] ?? "" },
         ],

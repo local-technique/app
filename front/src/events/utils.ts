@@ -21,8 +21,7 @@ export type EventViewModel = {
   statusText: string;
   title: string;
   warning: string;
-  shortDescription: string;
-  longDescription: string;
+  description: string;
   location: string;
   dateLabel: string;
   timeline: EventTimelineEntryViewModel[];
@@ -67,8 +66,7 @@ export function toEventViewModel(event: EventItem, locale: LocaleCode): EventVie
     statusText: resolve(event.statusText, locale),
     title: resolve(event.title, locale),
     warning: resolve(event.warning, locale),
-    shortDescription: resolve(event.shortDescription, locale),
-    longDescription: resolve(event.longDescription, locale),
+    description: resolve(event.description, locale),
     location: resolve(event.location, locale),
     dateLabel: formatEventDateLabel(event, locale),
     timeline,
@@ -87,8 +85,7 @@ export function matchesEventQuery(event: EventItem, query: string, locale: Local
 
   const haystack = [
     resolve(event.title, locale),
-    resolve(event.shortDescription, locale),
-    resolve(event.longDescription, locale),
+    resolve(event.description, locale),
     resolve(event.location, locale),
     event.categoryCode,
     timelineText,

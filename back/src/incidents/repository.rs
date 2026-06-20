@@ -46,10 +46,10 @@ SELECT
     SELECT ii.field_value
     FROM incident_i18n ii
     JOIN unnest($1::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ii.locale
-    WHERE ii.incident_id = i.id AND ii.field_key = 'short_description'
+    WHERE ii.incident_id = i.id AND ii.field_key = 'description'
     ORDER BY lp.ord
     LIMIT 1
-  ), '') AS short_description,
+  ), '') AS description,
   coalesce((
     SELECT ii.field_value
     FROM incident_i18n ii
@@ -106,7 +106,7 @@ WHERE ($2::TEXT IS NULL OR $2 = '') OR (
     SELECT ii.field_value
     FROM incident_i18n ii
     JOIN unnest($1::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ii.locale
-    WHERE ii.incident_id = i.id AND ii.field_key = 'short_description'
+    WHERE ii.incident_id = i.id AND ii.field_key = 'description'
     ORDER BY lp.ord
     LIMIT 1
   ), '') ILIKE ('%' || $2 || '%')
@@ -149,7 +149,7 @@ fn to_list_item(row: sqlx::postgres::PgRow) -> Result<IncidentListItem, AppError
             label: row.try_get("category_label")?,
         },
         title: row.try_get("title")?,
-        short_description: row.try_get("short_description")?,
+        description: row.try_get("description")?,
         location: row.try_get("location")?,
         start_utc: start_utc.to_rfc3339(),
         end_utc: end_utc.map(|value| value.to_rfc3339()),
@@ -199,18 +199,10 @@ SELECT
     SELECT ii.field_value
     FROM incident_i18n ii
     JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ii.locale
-    WHERE ii.incident_id = i.id AND ii.field_key = 'short_description'
+    WHERE ii.incident_id = i.id AND ii.field_key = 'description'
     ORDER BY lp.ord
     LIMIT 1
-  ), '') AS short_description,
-  coalesce((
-    SELECT ii.field_value
-    FROM incident_i18n ii
-    JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ii.locale
-    WHERE ii.incident_id = i.id AND ii.field_key = 'long_description'
-    ORDER BY lp.ord
-    LIMIT 1
-  ), '') AS long_description,
+  ), '') AS description,
   coalesce((
     SELECT ii.field_value
     FROM incident_i18n ii
@@ -305,8 +297,7 @@ ORDER BY t.at_utc DESC NULLS FIRST, t.sort_order ASC
             label: row.try_get("category_label")?,
         },
         title: row.try_get("title")?,
-        short_description: row.try_get("short_description")?,
-        long_description: row.try_get("long_description")?,
+        description: row.try_get("description")?,
         location: row.try_get("location")?,
         start_utc: start_utc.to_rfc3339(),
         end_utc: end_utc.map(|value| value.to_rfc3339()),
@@ -368,7 +359,7 @@ pub async fn edit_data(
     }))
 }
 
-const INCIDENT_FIELDS: [&str; 5] = ["title", "short_description", "long_description", "location", "status_text"];
+const INCIDENT_FIELDS: [&str; 4] = ["title", "description", "location", "status_text"];
 const INCIDENT_TIMELINE_FIELDS: [&str; 2] = ["title", "details"];
 
 async fn edit_fields(

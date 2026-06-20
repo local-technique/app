@@ -13,8 +13,8 @@ use crate::maintenances::model::{
 use crate::maintenances::repository;
 
 const MAINTENANCE_STATUSES: [&str; 2] = ["waiting", "ongoing"];
-const MAINTENANCE_TRANSLATION_FIELD_KEYS: [&str; 6] =
-    ["title", "warning", "short_description", "long_description", "location", "status_text"];
+const MAINTENANCE_TRANSLATION_FIELD_KEYS: [&str; 5] =
+    ["title", "warning", "description", "location", "status_text"];
 const MAINTENANCE_TIMELINE_TRANSLATION_FIELD_KEYS: [&str; 2] = ["title", "details"];
 
 pub async fn list(
@@ -86,12 +86,12 @@ pub async fn save_partial(
         let field_key = normalize_field_key(field_key)?;
         ensure_field_key_allowed(&field_key, &MAINTENANCE_TRANSLATION_FIELD_KEYS)?;
         let value = normalize_text_value(field_value);
-        if matches!(field_key.as_str(), "title" | "short_description" | "long_description") && value.is_empty() {
+        if matches!(field_key.as_str(), "title" | "description") && value.is_empty() {
             return Err(AppError::bad_request("required localized fields cannot be empty"));
         }
         fields.insert(field_key, value);
     }
-    for required in ["title", "short_description", "long_description"] {
+    for required in ["title", "description"] {
         if !fields.contains_key(required) {
             return Err(AppError::bad_request("required localized fields are missing"));
         }

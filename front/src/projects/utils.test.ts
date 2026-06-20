@@ -67,6 +67,22 @@ describe("project utilities", () => {
     expect(html).not.toContain("<script>");
   });
 
+  it("renders bullet lists even when mixed with non-bullet text in same block", () => {
+    let html = renderProjectMarkdown("Steps:\n- first\n- second\n\nNext:\n- alpha");
+    expect(html).toContain("<ul>");
+    expect(html).toContain("<li>first</li>");
+    expect(html).toContain("<li>second</li>");
+    expect(html).toContain("<li>alpha</li>");
+
+    html = renderProjectMarkdown("* tutu\n* toto");
+    expect(html).toContain("<ul>");
+    expect(html).toContain("<li>tutu</li>");
+    expect(html).toContain("<li>toto</li>");
+
+    html = renderProjectMarkdown("_chaufferie_");
+    expect(html).toContain("<em>chaufferie</em>");
+  });
+
   it("renders headings and pipe tables", () => {
     const html = renderProjectMarkdown("# Abri velo\n\nPour proteger les velos.\n\n| type | nombre |\n|-----|------:|\n| vtt | 17 |\n| long-tail | 43 |");
 

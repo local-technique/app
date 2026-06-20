@@ -18,8 +18,7 @@ export type EventItem = {
   categoryCode: string;
   category?: Pick<CategoryItem, "id" | "key" | "icon" | "color" | "label">;
   title: EventLocalizedText;
-  shortDescription: EventLocalizedText;
-  longDescription: EventLocalizedText;
+  description: EventLocalizedText;
   warning?: EventLocalizedText;
   location?: EventLocalizedText;
   startUtc: string;

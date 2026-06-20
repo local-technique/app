@@ -30,8 +30,7 @@ const form = ref({
   statusType: "ongoing" as EventStoredStatus,
   statusText: "",
   title: "",
-  shortDescription: "",
-  longDescription: "",
+  description: "",
   warning: "",
   location: "",
 });
@@ -51,8 +50,7 @@ function applyFields(fields: Array<{ fieldKey: string; value: string; fallbackLo
       fallbackByField.value[field.fieldKey] = field.fallbackLocale;
     }
     if (field.fieldKey === "title") form.value.title = field.value;
-    if (field.fieldKey === "short_description") form.value.shortDescription = field.value;
-    if (field.fieldKey === "long_description") form.value.longDescription = field.value;
+    if (field.fieldKey === "description") form.value.description = field.value;
     if (field.fieldKey === "warning") form.value.warning = field.value;
     if (field.fieldKey === "location") form.value.location = field.value;
     if (field.fieldKey === "status_text") form.value.statusText = field.value;
@@ -106,8 +104,7 @@ async function save(): Promise<void> {
         locale: activeLocale(),
         fields: {
           title: form.value.title,
-          short_description: form.value.shortDescription,
-          long_description: form.value.longDescription,
+          description: form.value.description,
           warning: form.value.warning,
           location: form.value.location,
           status_text: form.value.statusText,
@@ -137,8 +134,7 @@ async function save(): Promise<void> {
       <label>{{ t("labels.startUtc") }}<input v-model="form.startUtc" type="datetime-local" required /></label>
       <label>{{ t("labels.endUtc") }}<input v-model="form.endUtc" type="datetime-local" /></label>
       <label>{{ t("labels.title") }}<input v-model="form.title" required /><small v-if="fallbackByField.title">{{ t("labels.prefilledFrom", { locale: fallbackByField.title }) }}</small></label>
-      <label>{{ t("labels.shortDescription") }}<textarea v-model="form.shortDescription" required /></label>
-      <label>{{ t("labels.longDescription") }}<textarea v-model="form.longDescription" required /></label>
+      <label>{{ t("labels.description") }}<textarea v-model="form.description" required /></label>
       <label>{{ t("labels.warning") }}<input v-model="form.warning" /></label>
       <label>{{ t("labels.location") }}<input v-model="form.location" /></label>
       <label class="status-field">

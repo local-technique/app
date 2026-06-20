@@ -22,7 +22,7 @@ const saving = ref(false);
 const loadFailed = ref(false);
 const saveFailed = ref(false);
 const fallbackByField = ref<Record<string, string>>({});
-const form = ref({ id: "", categoryId: "", startUtc: "", endUtc: "", statusType: "ongoing" as IncidentStoredStatus, statusText: "", title: "", shortDescription: "", longDescription: "", location: "" });
+const form = ref({ id: "", categoryId: "", startUtc: "", endUtc: "", statusType: "ongoing" as IncidentStoredStatus, statusText: "", title: "", description: "", location: "" });
 const timeline = ref<Array<{ id: string; atUtc: string; title: string; details: string }>>([]);
 const selectedCategory = computed(() => categories.value.find((category) => category.id === form.value.categoryId) ?? null);
 
@@ -34,8 +34,7 @@ function applyFields(fields: Array<{ fieldKey: string; value: string; fallbackLo
   for (const item of fields) {
     if (item.fallbackLocale) fallbackByField.value[item.fieldKey] = item.fallbackLocale;
     if (item.fieldKey === "title") form.value.title = item.value;
-    if (item.fieldKey === "short_description") form.value.shortDescription = item.value;
-    if (item.fieldKey === "long_description") form.value.longDescription = item.value;
+    if (item.fieldKey === "description") form.value.description = item.value;
     if (item.fieldKey === "location") form.value.location = item.value;
     if (item.fieldKey === "status_text") form.value.statusText = item.value;
   }
@@ -68,7 +67,7 @@ function removeTimeline(id: string): void { timeline.value = timeline.value.filt
 async function save(): Promise<void> {
   saving.value = true; saveFailed.value = false;
   try {
-    const createdKey = await apiIncidentsRepository.save({ categoryId: form.value.categoryId, startUtc: toUtcFromDateTimeLocalInput(form.value.startUtc) ?? "", endUtc: toUtcFromDateTimeLocalInput(form.value.endUtc), statusType: form.value.statusType, locale: activeLocale(), fields: { title: form.value.title, short_description: form.value.shortDescription, long_description: form.value.longDescription, location: form.value.location, status_text: form.value.statusText }, replaceTimeline: true, timeline: timeline.value.map((item, index) => ({ id: item.id, atUtc: toUtcFromDateTimeLocalInput(item.atUtc), sortOrder: index + 1, fields: { title: item.title, details: item.details } })) }, isEdit.value ? existingId.value : undefined);
+    const createdKey = await apiIncidentsRepository.save({ categoryId: form.value.categoryId, startUtc: toUtcFromDateTimeLocalInput(form.value.startUtc) ?? "", endUtc: toUtcFromDateTimeLocalInput(form.value.endUtc), statusType: form.value.statusType, locale: activeLocale(), fields: { title: form.value.title, description: form.value.description, location: form.value.location, status_text: form.value.statusText }, replaceTimeline: true, timeline: timeline.value.map((item, index) => ({ id: item.id, atUtc: toUtcFromDateTimeLocalInput(item.atUtc), sortOrder: index + 1, fields: { title: item.title, details: item.details } })) }, isEdit.value ? existingId.value : undefined);
     await router.push(`/incidents/${encodeURIComponent(isEdit.value ? existingId.value : String(createdKey))}`);
   } catch { saveFailed.value = true; } finally { saving.value = false; }
 }
@@ -85,8 +84,7 @@ async function save(): Promise<void> {
       <label>{{ t("labels.startUtc") }}<input v-model="form.startUtc" type="datetime-local" required /></label>
       <label>{{ t("labels.endUtc") }}<input v-model="form.endUtc" type="datetime-local" /></label>
       <label>{{ t("labels.title") }}<input v-model="form.title" required /></label>
-      <label>{{ t("labels.shortDescription") }}<textarea v-model="form.shortDescription" required /></label>
-      <label>{{ t("labels.longDescription") }}<textarea v-model="form.longDescription" required /></label>
+      <label>{{ t("labels.description") }}<textarea v-model="form.description" required /></label>
       <label>{{ t("labels.location") }}<input v-model="form.location" /></label>
       <label class="status-field">
         <span>{{ t("labels.incidentStatus") }}</span>

@@ -13,7 +13,7 @@ use crate::incidents::model::{
 use crate::incidents::repository;
 
 const INCIDENT_STATUSES: [&str; 2] = ["waiting", "ongoing"];
-const INCIDENT_TRANSLATION_FIELD_KEYS: [&str; 5] = ["title", "short_description", "long_description", "location", "status_text"];
+const INCIDENT_TRANSLATION_FIELD_KEYS: [&str; 4] = ["title", "description", "location", "status_text"];
 const INCIDENT_TIMELINE_TRANSLATION_FIELD_KEYS: [&str; 2] = ["title", "details"];
 
 pub async fn list(
@@ -80,7 +80,7 @@ pub async fn save_partial(
     if !INCIDENT_STATUSES.contains(&status_type.as_str()) {
         return Err(AppError::bad_request("unsupported incident status"));
     }
-    let fields = validate_field_map(&payload.fields, &INCIDENT_TRANSLATION_FIELD_KEYS, &["title", "short_description", "long_description"])?;
+    let fields = validate_field_map(&payload.fields, &INCIDENT_TRANSLATION_FIELD_KEYS, &["title", "description"])?;
     let mut timeline = Vec::with_capacity(payload.timeline.len());
     for item in &payload.timeline {
         timeline.push(crate::incidents::model::IncidentTimelineSaveItem {

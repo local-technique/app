@@ -16,7 +16,7 @@ type ApiMaintenanceListItem = {
   category_id: string;
   title: string;
   warning: string;
-  short_description: string;
+  description: string;
   location: string;
   start_utc: string;
   end_utc?: string;
@@ -31,8 +31,7 @@ type ApiMaintenanceDetail = {
   category_id: string;
   title: string;
   warning: string;
-  short_description: string;
-  long_description: string;
+  description: string;
   location: string;
   start_utc: string;
   end_utc?: string;
@@ -100,8 +99,7 @@ function toEventItem(locale: LocaleCode, value: ApiMaintenanceListItem | ApiMain
     categoryCode: value.category_id,
     category: value.category,
     title: localized(locale, value.title ?? ""),
-    shortDescription: localized(locale, value.short_description ?? ""),
-    longDescription: localized(locale, "long_description" in value ? (value.long_description ?? "") : ""),
+    description: localized(locale, value.description ?? ""),
     warning: localized(locale, value.warning ?? ""),
     location: localized(locale, value.location ?? ""),
     startUtc: value.start_utc,
@@ -246,8 +244,7 @@ export class ApiEventsRepository implements EventsRepository {
         enabledLocales: ["en", "fr"],
         fields: [
           { fieldKey: "title", value: item.title[preferredLanguage] ?? "" },
-          { fieldKey: "short_description", value: item.shortDescription[preferredLanguage] ?? "" },
-          { fieldKey: "long_description", value: item.longDescription[preferredLanguage] ?? "" },
+          { fieldKey: "description", value: item.description[preferredLanguage] ?? "" },
           { fieldKey: "warning", value: item.warning?.[preferredLanguage] ?? "" },
           { fieldKey: "location", value: item.location?.[preferredLanguage] ?? "" },
           { fieldKey: "status_text", value: item.statusText?.[preferredLanguage] ?? "" },

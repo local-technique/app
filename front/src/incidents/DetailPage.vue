@@ -9,6 +9,7 @@ import AttachmentList from "../common/components/AttachmentList.vue";
 import AttachmentPreview from "../common/components/AttachmentPreview.vue";
 import type { AttachmentItem } from "../common/attachments";
 import type { LocaleCode } from "../common/localeContent";
+import { renderProjectMarkdown } from "../projects/utils";
 import { apiIncidentsRepository } from "./repositories/apiIncidentsRepository";
 import { toIncidentViewModel } from "./utils";
 
@@ -55,6 +56,7 @@ watch(
 );
 
 const model = computed(() => (incident.value ? toIncidentViewModel(incident.value, activeLocale()) : null));
+const descriptionHtml = computed(() => (model.value ? renderProjectMarkdown(model.value.description) : ""));
 const backQuery = computed(() => {
   const q = route.query.q;
   return typeof q === "string" && q.length > 0 ? { q } : {};
@@ -113,8 +115,7 @@ async function deleteIncident(): Promise<void> {
       <p class="timeline-meta">{{ model.dateLabel }}</p>
       <p class="incident-status"><component :is="model.statusType === 'ongoing' ? Activity : Hourglass" :size="16" /> {{ model.statusText }}</p>
       <p class="timeline-meta" v-if="model.location">{{ model.location }}</p>
-      <p>{{ model.shortDescription }}</p>
-      <p>{{ model.longDescription }}</p>
+      <div class="rendered-description" v-html="descriptionHtml"></div>
     </section>
 
     <AttachmentList
@@ -206,6 +207,9 @@ async function deleteIncident(): Promise<void> {
 .secondary-button { border: 1px solid var(--control-border); border-radius: 0.55rem; padding: 0.45rem 0.7rem; background: var(--control-bg); color: var(--control-fg); cursor: pointer; text-decoration: none; }
 .category-meta { align-items: center; display: flex; gap: 0.35rem; }
 .incident-status { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--muted-fg); font-weight: 700; }
+.rendered-description :deep(p) { margin: 0.7rem 0 0; }
+.rendered-description :deep(ul) { margin: 0.7rem 0 0; padding-left: 1.3rem; }
+.rendered-description :deep(code) { border-radius: 0.35rem; padding: 0.1rem 0.25rem; background: rgba(127, 127, 127, 0.18); }
 
 .incident-timeline-list {
   --timeline-accent: rgba(72, 144, 255, 0.78);

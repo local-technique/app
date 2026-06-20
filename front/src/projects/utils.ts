@@ -139,12 +139,22 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function isBulletLine(line: string): boolean {
+  const trimmed = line.trim();
+  return trimmed.startsWith("- ") || trimmed.startsWith("* ");
+}
+
+function bulletContent(line: string): string {
+  return line.trim().slice(2);
+}
+
 function renderInlineMarkdown(value: string): string {
   return escapeHtml(value)
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/\[([^\]]+)]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" rel="noopener noreferrer" target="_blank">$1</a>')
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*([^*]+)\*/g, "<em>$1</em>");
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+    .replace(/_([^_]+)_/g, "<em>$1</em>");
 }
 
 function splitTableRow(line: string): string[] {
@@ -219,9 +229,27 @@ export function renderProjectMarkdown(markdown: string): string {
       if (table) {
         return table;
       }
-      if (lines.every((line) => line.trim().startsWith("- "))) {
-        const items = lines.map((line) => `<li>${renderInlineMarkdown(line.trim().slice(2))}</li>`).join("");
-        return `<ul>${items}</ul>`;
+      if (lines.some((line) => isBulletLine(line))) {
+        let result = "";
+        let i = 0;
+        while (i < lines.length) {
+          if (isBulletLine(lines[i])) {
+            const items: string[] = [];
+            while (i < lines.length && isBulletLine(lines[i])) {
+              items.push(`<li>${renderInlineMarkdown(bulletContent(lines[i]))}</li>`);
+              i++;
+            }
+            result += `<ul>${items.join("")}</ul>`;
+          } else {
+            const paraLines: string[] = [];
+            while (i < lines.length && !isBulletLine(lines[i])) {
+              paraLines.push(renderInlineMarkdown(lines[i].replace(/^#+\s*/, "")));
+              i++;
+            }
+            result += `<p>${paraLines.join("<br>")}</p>`;
+          }
+        }
+        return result;
       }
       const paragraph = lines.map((line) => renderInlineMarkdown(line.replace(/^#+\s*/, ""))).join("<br>");
       return `<p>${paragraph}</p>`;

@@ -54,10 +54,10 @@ SELECT
     SELECT mi.field_value
     FROM maintenance_i18n mi
     JOIN unnest($1::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = mi.locale
-    WHERE mi.maintenance_id = m.id AND mi.field_key = 'short_description'
+    WHERE mi.maintenance_id = m.id AND mi.field_key = 'description'
     ORDER BY lp.ord
     LIMIT 1
-  ), '') AS short_description,
+  ), '') AS description,
   coalesce((
     SELECT mi.field_value
     FROM maintenance_i18n mi
@@ -114,7 +114,7 @@ WHERE ($2::TEXT IS NULL OR $2 = '') OR (
     SELECT mi.field_value
     FROM maintenance_i18n mi
     JOIN unnest($1::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = mi.locale
-    WHERE mi.maintenance_id = m.id AND mi.field_key = 'short_description'
+    WHERE mi.maintenance_id = m.id AND mi.field_key = 'description'
     ORDER BY lp.ord
     LIMIT 1
   ), '') ILIKE ('%' || $2 || '%')
@@ -158,7 +158,7 @@ fn to_list_item(row: sqlx::postgres::PgRow) -> Result<MaintenanceListItem, AppEr
         },
         title: row.try_get("title")?,
         warning: row.try_get("warning")?,
-        short_description: row.try_get("short_description")?,
+        description: row.try_get("description")?,
         location: row.try_get("location")?,
         start_utc: start_utc.to_rfc3339(),
         end_utc: end_utc.map(|value| value.to_rfc3339()),
@@ -216,18 +216,10 @@ SELECT
     SELECT mi.field_value
     FROM maintenance_i18n mi
     JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = mi.locale
-    WHERE mi.maintenance_id = m.id AND mi.field_key = 'short_description'
+    WHERE mi.maintenance_id = m.id AND mi.field_key = 'description'
     ORDER BY lp.ord
     LIMIT 1
-  ), '') AS short_description,
-  coalesce((
-    SELECT mi.field_value
-    FROM maintenance_i18n mi
-    JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = mi.locale
-    WHERE mi.maintenance_id = m.id AND mi.field_key = 'long_description'
-    ORDER BY lp.ord
-    LIMIT 1
-  ), '') AS long_description,
+  ), '') AS description,
   coalesce((
     SELECT mi.field_value
     FROM maintenance_i18n mi
@@ -323,8 +315,7 @@ ORDER BY t.at_utc DESC NULLS FIRST, t.sort_order ASC
         },
         title: row.try_get("title")?,
         warning: row.try_get("warning")?,
-        short_description: row.try_get("short_description")?,
-        long_description: row.try_get("long_description")?,
+        description: row.try_get("description")?,
         location: row.try_get("location")?,
         start_utc: start_utc.to_rfc3339(),
         end_utc: end_utc.map(|value| value.to_rfc3339()),
@@ -390,7 +381,7 @@ pub async fn edit_data(
     }))
 }
 
-const MAINTENANCE_FIELDS: [&str; 6] = ["title", "warning", "short_description", "long_description", "location", "status_text"];
+const MAINTENANCE_FIELDS: [&str; 5] = ["title", "warning", "description", "location", "status_text"];
 
 async fn edit_fields(
     db: &sqlx::PgPool,

@@ -18,8 +18,7 @@ export type IncidentItem = {
   categoryCode: string;
   category?: Pick<CategoryItem, "id" | "key" | "icon" | "color" | "label">;
   title: IncidentLocalizedText;
-  shortDescription: IncidentLocalizedText;
-  longDescription: IncidentLocalizedText;
+  description: IncidentLocalizedText;
   location?: IncidentLocalizedText;
   startUtc: string;
   endUtc?: string;

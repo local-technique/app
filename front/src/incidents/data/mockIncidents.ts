@@ -26,13 +26,9 @@ export const MOCK_INCIDENTS: IncidentItem[] = [
       en: "Heating outage on block B",
       fr: "Panne chauffage bloc B",
     },
-    shortDescription: {
-      en: "Boiler circuit pressure dropped overnight",
-      fr: "Baisse de pression du circuit chaudiere pendant la nuit",
-    },
-    longDescription: {
-      en: "A pressure fault triggered an automatic stop of the shared heating loop. Team is restoring circulation and checking valves.",
-      fr: "Une anomalie de pression a provoque l'arret automatique de la boucle de chauffage collective. L'equipe retablit la circulation et controle les vannes.",
+    description: {
+      en: "Boiler circuit pressure dropped overnight. A pressure fault triggered an automatic stop of the shared heating loop. Team is restoring circulation and checking valves.",
+      fr: "Baisse de pression du circuit chaudiere pendant la nuit. Une anomalie de pression a provoque l'arret automatique de la boucle de chauffage collective. L'equipe retablit la circulation et controle les vannes.",
     },
     location: {
       en: "Boiler room - Building B",
@@ -97,13 +93,9 @@ export const MOCK_INCIDENTS: IncidentItem[] = [
       en: "Elevator shutdown resolved",
       fr: "Arret ascenseur resolu",
     },
-    shortDescription: {
-      en: "Cabin controller rebooted after fault",
-      fr: "Redemarrage du controleur cabine apres incident",
-    },
-    longDescription: {
-      en: "The elevator experienced a control board fault and was restarted after safety checks.",
-      fr: "L'ascenseur a subi un defaut de carte de controle et a ete relance apres controles de securite.",
+    description: {
+      en: "Cabin controller rebooted after fault. The elevator experienced a control board fault and was restarted after safety checks.",
+      fr: "Redemarrage du controleur cabine apres incident. L'ascenseur a subi un defaut de carte de controle et a ete relance apres controles de securite.",
     },
     location: {
       en: "Elevator shaft - Building A",
@@ -159,13 +151,9 @@ export const MOCK_INCIDENTS: IncidentItem[] = [
       en: "Generator alert cleared",
       fr: "Alerte generateur levee",
     },
-    shortDescription: {
-      en: "Backup generator alarm acknowledged",
-      fr: "Alarme groupe electrogene acquittee",
-    },
-    longDescription: {
-      en: "A transient voltage spike triggered a generator warning. Verification found no sustained issue.",
-      fr: "Une pointe de tension transitoire a declenche une alerte du groupe electrogene. La verification n'a trouve aucun probleme durable.",
+    description: {
+      en: "Backup generator alarm acknowledged. A transient voltage spike triggered a generator warning. Verification found no sustained issue.",
+      fr: "Alarme groupe electrogene acquittee. Une pointe de tension transitoire a declenche une alerte du groupe electrogene. La verification n'a trouve aucun probleme durable.",
     },
     location: {
       en: "Technical room - Building C",
@@ -206,13 +194,9 @@ export const MOCK_INCIDENTS: IncidentItem[] = [
       en: "Water leakage in basement closed",
       fr: "Fuite d'eau en sous-sol cloturee",
     },
-    shortDescription: {
-      en: "Joint replaced on shared pipe",
-      fr: "Joint remplace sur canalisation commune",
-    },
-    longDescription: {
-      en: "A leak was isolated, damaged joint replaced, and pressure tests returned to nominal levels.",
-      fr: "Une fuite a ete isolee, le joint endommage remplace, et les tests de pression sont revenus a la normale.",
+    description: {
+      en: "Joint replaced on shared pipe. A leak was isolated, damaged joint replaced, and pressure tests returned to nominal levels.",
+      fr: "Joint remplace sur canalisation commune. Une fuite a ete isolee, le joint endommage remplace, et les tests de pression sont revenus a la normale.",
     },
     location: {
       en: "Basement corridor",

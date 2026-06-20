@@ -26,8 +26,7 @@ export type IncidentViewModel = {
   statusType: IncidentStoredStatus;
   statusText: string;
   title: string;
-  shortDescription: string;
-  longDescription: string;
+  description: string;
   location: string;
   dateLabel: string;
   timeline: IncidentTimelineEntryViewModel[];
@@ -81,8 +80,7 @@ export function toIncidentViewModel(incident: IncidentItem, locale: LocaleCode):
     statusType: incident.statusType,
     statusText: resolve(incident.statusText, locale),
     title: resolve(incident.title, locale),
-    shortDescription: resolve(incident.shortDescription, locale),
-    longDescription: resolve(incident.longDescription, locale),
+    description: resolve(incident.description, locale),
     location: resolve(incident.location, locale),
     dateLabel: formatIncidentDateLabel(incident, locale),
     timeline,
@@ -101,8 +99,7 @@ export function matchesIncidentQuery(incident: IncidentItem, query: string, loca
 
   const haystack = [
     resolve(incident.title, locale),
-    resolve(incident.shortDescription, locale),
-    resolve(incident.longDescription, locale),
+    resolve(incident.description, locale),
     resolve(incident.location, locale),
     incident.categoryCode,
     timelineText,
