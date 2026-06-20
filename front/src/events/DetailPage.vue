@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { Activity, ArrowLeft, Hourglass } from "@lucide/vue";
+import { Activity, ArrowLeft, CheckCircle2, Hourglass } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { currentUserRoles, hasAnyRole } from "../auth/session";
@@ -114,7 +114,7 @@ async function deleteEvent(): Promise<void> {
 
     <section class="timeline-card detail-block">
       <p class="timeline-meta">{{ model.dateLabel }}</p>
-      <p class="event-status"><component :is="model.statusType === 'ongoing' ? Activity : Hourglass" :size="16" /> {{ model.statusText }}</p>
+      <p class="event-status"><component :is="model.statusType === 'ongoing' ? Activity : model.statusType === 'finished' ? CheckCircle2 : Hourglass" :size="16" /> {{ model.statusText }}</p>
       <p class="timeline-warning" v-if="model.warning">{{ t("labels.warningPrefix") }} {{ model.warning }}</p>
       <p class="timeline-meta" v-if="model.location">{{ model.location }}</p>
       <div class="rendered-description" v-html="descriptionHtml"></div>

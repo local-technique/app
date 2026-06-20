@@ -24,7 +24,7 @@ export type ProjectViewModel = {
   id: string;
   section: ProjectStatusSection;
   status: ProjectStatusSection;
-  displayStatus: ProjectDisplayStatus;
+  statusType: ProjectDisplayStatus;
   statusText: string;
   title: string;
   description: string;
@@ -40,15 +40,15 @@ function resolve(value: ProjectLocalizedText | undefined, locale: LocaleCode): s
   return resolveLocalized(value, locale);
 }
 
-function classifyProject(project: ProjectItem, now = new Date()): { section: ProjectStatusSection; displayStatus: ProjectDisplayStatus } {
+function classifyProject(project: ProjectItem, now = new Date()): { section: ProjectStatusSection; statusType: ProjectDisplayStatus } {
   const nowMs = now.getTime();
   if (project.endUtc && Date.parse(project.endUtc) < nowMs) {
-    return { section: "finished", displayStatus: "finished" };
+    return { section: "finished", statusType: "finished" };
   }
   if (project.statusType === "ongoing") {
-    return { section: "ongoing", displayStatus: "ongoing" };
+    return { section: "ongoing", statusType: "ongoing" };
   }
-  return { section: "toCome", displayStatus: "waiting" };
+  return { section: "toCome", statusType: "waiting" };
 }
 
 function formatProjectDateLabel(project: ProjectItem, locale: LocaleCode): string {
@@ -85,8 +85,8 @@ export function toProjectViewModel(project: ProjectItem, locale: LocaleCode): Pr
     id: project.id,
     section: classification.section,
     status: classification.section,
-    displayStatus: classification.displayStatus,
-    statusText: classification.displayStatus === "finished" ? (locale === "fr" ? "Terminé" : "Finished") : resolve(project.statusText, locale),
+    statusType: classification.statusType,
+    statusText: classification.statusType === "finished" ? (locale === "fr" ? "Terminé" : "Finished") : resolve(project.statusText, locale),
     title: resolve(project.title, locale),
     description: resolve(project.description, locale),
     dateLabel: formatProjectDateLabel(project, locale),
@@ -121,7 +121,7 @@ export function matchesProjectQuery(project: ProjectItem, query: string, locale:
     project.category?.key,
     project.category?.label,
     project.statusType,
-    model.displayStatus,
+    model.statusType,
     model.statusText,
     timelineText,
   ]

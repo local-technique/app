@@ -59,8 +59,8 @@ const statusLabel = computed(() => {
 });
 const statusIcon = computed(() => {
   if (!model.value) return Hourglass;
-  if (model.value.displayStatus === "finished") return CheckCircle2;
-  if (model.value.displayStatus === "ongoing") return Activity;
+  if (model.value.statusType === "finished") return CheckCircle2;
+  if (model.value.statusType === "ongoing") return Activity;
   return Hourglass;
 });
 const editPath = computed(() => (model.value ? `/projects/${encodeURIComponent(model.value.id)}/edit` : "/projects"));

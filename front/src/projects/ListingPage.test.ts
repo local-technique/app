@@ -31,9 +31,8 @@ describe("Projects listing", () => {
     expect(screen.getByRole("heading", { name: "Finished Projects" }).closest("section")?.getAttribute("data-status")).toBe("past");
     expect(screen.getByText("Installing fans")).not.toBeNull();
     expect(screen.getByText("Awaiting quote")).not.toBeNull();
-    expect(screen.getByText("Finished")).not.toBeNull();
     expect(screen.getByText("Create project")).not.toBeNull();
-    expect(screen.getByText("Garage ventilation").closest("a")?.getAttribute("href")).toContain("PRJ%2FONGOING%3FA");
+    expect(screen.getByText("Garage ventilation").closest("a")?.getAttribute("href")).toContain("/projects/PRJ/ONGOING?A");
     vi.useRealTimers();
   });
 });

@@ -17,7 +17,7 @@ export type EventTimelineEntryViewModel = {
 export type EventViewModel = {
   id: string;
   status: EventStatusSection;
-  statusType: EventStoredStatus;
+  statusType: EventStoredStatus | "finished";
   statusText: string;
   title: string;
   warning: string;
@@ -33,6 +33,13 @@ function resolve(value: EventLocalizedText | undefined, locale: LocaleCode): str
     return "";
   }
   return resolveLocalized(value, locale);
+}
+
+function computeStatusType(stored: EventStoredStatus, endUtc: string | undefined): EventStoredStatus | "finished" {
+  if (endUtc && Date.parse(endUtc) < Date.now()) {
+    return "finished";
+  }
+  return stored;
 }
 
 function formatEventDateLabel(event: EventItem, locale: LocaleCode): string {
@@ -62,7 +69,7 @@ export function toEventViewModel(event: EventItem, locale: LocaleCode): EventVie
   return {
     id: event.id,
     status: classifyEventStatus({ startUtc: event.startUtc, endUtc: event.endUtc }),
-    statusType: event.statusType,
+    statusType: computeStatusType(event.statusType, event.endUtc),
     statusText: resolve(event.statusText, locale),
     title: resolve(event.title, locale),
     warning: resolve(event.warning, locale),

@@ -47,7 +47,7 @@ describe("project utilities", () => {
     const waiting = toProjectViewModel(project({ startUtc: "2026-05-30T12:00:00Z", statusType: "waiting" }), "en");
 
     expect(waiting.status).toBe("toCome");
-    expect(waiting.displayStatus).toBe("waiting");
+    expect(waiting.statusType).toBe("waiting");
     vi.useRealTimers();
   });
 
