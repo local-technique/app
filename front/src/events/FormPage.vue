@@ -27,7 +27,6 @@ const form = ref({
   categoryId: "",
   startUtc: "",
   endUtc: "",
-  notifiedAtUtc: "",
   statusType: "ongoing" as EventStoredStatus,
   statusText: "",
   title: "",
@@ -81,7 +80,6 @@ async function load(): Promise<void> {
     form.value.categoryId = data.categoryId;
     form.value.startUtc = toDateTimeLocalInput(data.startUtc);
     form.value.endUtc = toDateTimeLocalInput(data.endUtc);
-    form.value.notifiedAtUtc = toDateTimeLocalInput(data.notifiedAtUtc);
     form.value.statusType = data.statusType;
     applyFields(data.fields);
     timeline.value = data.timeline.map((item) => ({ id: item.id, atUtc: toDateTimeLocalInput(item.atUtc), title: field(item.fields, "title"), details: field(item.fields, "details") }));
@@ -104,7 +102,6 @@ async function save(): Promise<void> {
         categoryId: form.value.categoryId,
         startUtc: toUtcFromDateTimeLocalInput(form.value.startUtc) ?? "",
         endUtc: toUtcFromDateTimeLocalInput(form.value.endUtc),
-        notifiedAtUtc: toUtcFromDateTimeLocalInput(form.value.notifiedAtUtc),
         statusType: form.value.statusType,
         locale: activeLocale(),
         fields: {
@@ -139,7 +136,6 @@ async function save(): Promise<void> {
       <label>{{ t("labels.category") }}<span class="category-select-row"><CategoryBadge v-if="selectedCategory" :category-key="selectedCategory.key" :icon="selectedCategory.icon" :color="selectedCategory.color" :label="selectedCategory.label" /><select v-model="form.categoryId" required><option v-for="category in categories" :key="category.id" :value="category.id">{{ category.key }} - {{ category.label }}</option></select></span></label>
       <label>{{ t("labels.startUtc") }}<input v-model="form.startUtc" type="datetime-local" required /></label>
       <label>{{ t("labels.endUtc") }}<input v-model="form.endUtc" type="datetime-local" /></label>
-      <label>{{ t("labels.notifiedAtUtc") }}<input v-model="form.notifiedAtUtc" type="datetime-local" /></label>
       <label>{{ t("labels.title") }}<input v-model="form.title" required /><small v-if="fallbackByField.title">{{ t("labels.prefilledFrom", { locale: fallbackByField.title }) }}</small></label>
       <label>{{ t("labels.shortDescription") }}<textarea v-model="form.shortDescription" required /></label>
       <label>{{ t("labels.longDescription") }}<textarea v-model="form.longDescription" required /></label>

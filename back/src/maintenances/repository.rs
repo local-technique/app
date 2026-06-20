@@ -33,7 +33,6 @@ SELECT
   ), c.key) AS category_label,
   m.start_utc,
   m.end_utc,
-  m.notified_at_utc,
   m.status_type,
   coalesce((
     SELECT mi.field_value
@@ -137,7 +136,6 @@ fn to_list_item(row: sqlx::postgres::PgRow) -> Result<MaintenanceListItem, AppEr
     let key: String = row.try_get("key")?;
     let start_utc: DateTime<Utc> = row.try_get("start_utc")?;
     let end_utc: Option<DateTime<Utc>> = row.try_get("end_utc")?;
-    let notified_at_utc: Option<DateTime<Utc>> = row.try_get("notified_at_utc")?;
     let latest_timeline_id: Option<Uuid> = row.try_get("latest_timeline_id")?;
     let latest_timeline_at_utc: Option<DateTime<Utc>> = row.try_get("latest_timeline_at_utc")?;
     let timeline = latest_timeline_id.map_or_else(Vec::new, |id| {
@@ -164,7 +162,6 @@ fn to_list_item(row: sqlx::postgres::PgRow) -> Result<MaintenanceListItem, AppEr
         location: row.try_get("location")?,
         start_utc: start_utc.to_rfc3339(),
         end_utc: end_utc.map(|value| value.to_rfc3339()),
-        notified_at_utc: notified_at_utc.map(|value| value.to_rfc3339()),
         status_type: row.try_get("status_type")?,
         status_text: row.try_get("status_text")?,
         timeline,
@@ -195,7 +192,6 @@ SELECT
   ), c.key) AS category_label,
   m.start_utc,
   m.end_utc,
-  m.notified_at_utc,
   m.status_type,
   m.last_modified_at,
   u.id AS last_modified_by_user_id,
@@ -312,7 +308,6 @@ ORDER BY t.at_utc DESC NULLS FIRST, t.sort_order ASC
     let key: String = row.try_get("key")?;
     let start_utc: DateTime<Utc> = row.try_get("start_utc")?;
     let end_utc: Option<DateTime<Utc>> = row.try_get("end_utc")?;
-    let notified_at_utc: Option<DateTime<Utc>> = row.try_get("notified_at_utc")?;
     let last_modified_at: Option<DateTime<Utc>> = row.try_get("last_modified_at")?;
     let last_modified_by_user_id: Option<Uuid> = row.try_get("last_modified_by_user_id")?;
     let last_modified_by_email: Option<String> = row.try_get("last_modified_by_email")?;
@@ -333,7 +328,6 @@ ORDER BY t.at_utc DESC NULLS FIRST, t.sort_order ASC
         location: row.try_get("location")?,
         start_utc: start_utc.to_rfc3339(),
         end_utc: end_utc.map(|value| value.to_rfc3339()),
-        notified_at_utc: notified_at_utc.map(|value| value.to_rfc3339()),
         status_type: row.try_get("status_type")?,
         status_text: row.try_get("status_text")?,
         timeline,
@@ -355,7 +349,7 @@ pub async fn edit_data(
     enabled_locales: Vec<String>,
 ) -> Result<Option<MaintenanceEditData>, AppError> {
     let row = sqlx::query(
-        "SELECT id, key, category_id::TEXT AS category_id, start_utc, end_utc, notified_at_utc, status_type FROM maintenances WHERE key = $1",
+        "SELECT id, key, category_id::TEXT AS category_id, start_utc, end_utc, status_type FROM maintenances WHERE key = $1",
     )
     .bind(maintenance_code)
     .fetch_optional(db)
@@ -366,7 +360,6 @@ pub async fn edit_data(
     let maintenance_id: Uuid = row.try_get("id")?;
     let start_utc: DateTime<Utc> = row.try_get("start_utc")?;
     let end_utc: Option<DateTime<Utc>> = row.try_get("end_utc")?;
-    let notified_at_utc: Option<DateTime<Utc>> = row.try_get("notified_at_utc")?;
     let timeline_rows = sqlx::query(
         "SELECT id, at_utc, sort_order FROM maintenance_timeline WHERE maintenance_id = $1 ORDER BY at_utc DESC NULLS FIRST, sort_order ASC",
     )
@@ -389,7 +382,6 @@ pub async fn edit_data(
         category_id: row.try_get("category_id")?,
         start_utc: start_utc.to_rfc3339(),
         end_utc: end_utc.map(|value| value.to_rfc3339()),
-        notified_at_utc: notified_at_utc.map(|value| value.to_rfc3339()),
         status_type: row.try_get("status_type")?,
         locale: locale.to_string(),
         enabled_locales,
@@ -468,13 +460,6 @@ pub async fn save_partial(
     if end_utc.is_some_and(|end| end < start_utc) {
         return Err(AppError::bad_request("maintenance end_utc cannot be earlier than start_utc"));
     }
-    let notified_at_utc = payload
-        .notified_at_utc
-        .as_deref()
-        .map(DateTime::parse_from_rfc3339)
-        .transpose()
-        .map_err(|_| AppError::bad_request("invalid maintenance notified_at_utc"))?
-        .map(|value| value.with_timezone(&Utc));
 
     let mut tx = db.begin().await?;
     let (maintenance_id, key): (Uuid, String) = if let Some(key) = &payload.key {
@@ -484,11 +469,10 @@ UPDATE maintenances
 SET category_id = $2::uuid,
     start_utc = $3,
     end_utc = $4,
-    notified_at_utc = $5,
-    status_type = $6,
+    status_type = $5,
     updated_at = now(),
     last_modified_at = now(),
-    last_modified_by_user_id = $7
+    last_modified_by_user_id = $6
 WHERE key = $1
 RETURNING id, key
 "#,
@@ -497,7 +481,6 @@ RETURNING id, key
         .bind(&payload.category_id)
         .bind(start_utc)
         .bind(end_utc)
-        .bind(notified_at_utc)
         .bind(&payload.status_type)
         .bind(user_id)
         .fetch_optional(&mut *tx)
@@ -507,15 +490,14 @@ RETURNING id, key
     } else {
         let row = sqlx::query(
             r#"
-INSERT INTO maintenances (id, key, category_id, start_utc, end_utc, notified_at_utc, status_type, updated_at, last_modified_at, last_modified_by_user_id)
-VALUES (gen_random_uuid(), 'EVT-' || nextval('maintenance_key_seq'), $1::uuid, $2, $3, $4, $5, now(), now(), $6)
+INSERT INTO maintenances (id, key, category_id, start_utc, end_utc, status_type, updated_at, last_modified_at, last_modified_by_user_id)
+VALUES (gen_random_uuid(), 'EVT-' || nextval('maintenance_key_seq'), $1::uuid, $2, $3, $4, now(), now(), $5)
 RETURNING id, key
 "#,
         )
         .bind(&payload.category_id)
         .bind(start_utc)
         .bind(end_utc)
-        .bind(notified_at_utc)
         .bind(&payload.status_type)
         .bind(user_id)
         .fetch_one(&mut *tx)

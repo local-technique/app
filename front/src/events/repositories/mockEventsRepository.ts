@@ -22,7 +22,6 @@ export class MockEventsRepository implements EventsRepository {
       categoryId: item.categoryCode,
       startUtc: item.startUtc,
       endUtc: item.endUtc,
-      notifiedAtUtc: item.notifiedAtUtc,
       statusType: item.statusType,
       locale: preferredLanguage,
       enabledLocales: ["en", "fr"],

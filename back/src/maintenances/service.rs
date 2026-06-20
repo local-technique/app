@@ -111,7 +111,6 @@ pub async fn save_partial(
         category_id: normalize_text_value(&payload.category_id),
         start_utc: payload.start_utc.clone(),
         end_utc: payload.end_utc.clone(),
-        notified_at_utc: payload.notified_at_utc.clone(),
         status_type,
         locale,
         fields,

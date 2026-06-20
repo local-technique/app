@@ -52,7 +52,6 @@ export const MOCK_EVENTS: EventItem[] = [
       en: "Boiler checks in progress",
       fr: "Controles chaudiere en cours",
     },
-    notifiedAtUtc: "2020-04-29T10:00:00Z",
     handlers: ["Thermo Services"],
     attachments: [
       {
@@ -91,7 +90,6 @@ export const MOCK_EVENTS: EventItem[] = [
       en: "Awaiting start",
       fr: "En attente de debut",
     },
-    notifiedAtUtc: "2099-05-28T09:00:00Z",
     handlers: ["LiftCare"],
     attachments: [
       {
@@ -137,7 +135,6 @@ export const MOCK_EVENTS: EventItem[] = [
       en: "Scheduled",
       fr: "Planifie",
     },
-    notifiedAtUtc: "2099-06-10T11:30:00Z",
     handlers: ["Gestion Plus"],
     attachments: [],
   },

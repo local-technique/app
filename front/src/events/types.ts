@@ -24,7 +24,6 @@ export type EventItem = {
   location?: EventLocalizedText;
   startUtc: string;
   endUtc?: string;
-  notifiedAtUtc?: string;
   statusType: EventStoredStatus;
   statusText: EventLocalizedText;
   timeline: EventTimelineEntry[];
@@ -54,7 +53,6 @@ export type EventEditData = {
   categoryId: string;
   startUtc: string;
   endUtc?: string;
-  notifiedAtUtc?: string;
   statusType: EventStoredStatus;
   locale: string;
   enabledLocales: string[];
@@ -67,7 +65,6 @@ export type EventSavePayload = {
   categoryId: string;
   startUtc: string;
   endUtc?: string | null;
-  notifiedAtUtc?: string | null;
   statusType: EventStoredStatus;
   locale: string;
   fields: Record<string, string>;

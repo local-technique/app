@@ -20,7 +20,6 @@ type ApiMaintenanceListItem = {
   location: string;
   start_utc: string;
   end_utc?: string;
-  notified_at_utc?: string;
   status_type: string;
   status_text: string;
   category?: { id: string; key: string; icon: string; color: string; label: string };
@@ -37,7 +36,6 @@ type ApiMaintenanceDetail = {
   location: string;
   start_utc: string;
   end_utc?: string;
-  notified_at_utc?: string;
   status_type: string;
   status_text: string;
   category?: { id: string; key: string; icon: string; color: string; label: string };
@@ -66,7 +64,6 @@ type ApiMaintenanceEditData = {
   category_id: string;
   start_utc: string;
   end_utc?: string;
-  notified_at_utc?: string;
   status_type: string;
   locale: string;
   enabled_locales: string[];
@@ -109,7 +106,6 @@ function toEventItem(locale: LocaleCode, value: ApiMaintenanceListItem | ApiMain
     location: localized(locale, value.location ?? ""),
     startUtc: value.start_utc,
     endUtc: value.end_utc,
-    notifiedAtUtc: value.notified_at_utc,
     statusType: value.status_type as EventStoredStatus,
     statusText: localized(locale, value.status_text ?? ""),
     timeline: "timeline" in value ? (value.timeline ?? []).map((item) => toTimelineEntry(locale, item)) : [],
@@ -144,7 +140,6 @@ function toEditData(value: ApiMaintenanceEditData): EventEditData {
     categoryId: value.category_id,
     startUtc: value.start_utc,
     endUtc: value.end_utc,
-    notifiedAtUtc: value.notified_at_utc,
     statusType: value.status_type as EventStoredStatus,
     locale: value.locale,
     enabledLocales: value.enabled_locales,
@@ -200,7 +195,6 @@ function toApiPayload(payload: EventSavePayload, existingId?: string): Record<st
     category_id: payload.categoryId,
     start_utc: payload.startUtc,
     end_utc: payload.endUtc ?? null,
-    notified_at_utc: payload.notifiedAtUtc ?? null,
     status_type: payload.statusType,
     locale: payload.locale,
     fields: payload.fields,
@@ -247,7 +241,6 @@ export class ApiEventsRepository implements EventsRepository {
         categoryId: item.categoryCode,
         startUtc: item.startUtc,
         endUtc: item.endUtc,
-        notifiedAtUtc: item.notifiedAtUtc,
         statusType: item.statusType,
         locale: preferredLanguage,
         enabledLocales: ["en", "fr"],
