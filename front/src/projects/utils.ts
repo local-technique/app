@@ -1,4 +1,4 @@
-import { formatLocalDateTime, parseUtc } from "../common/date";
+import { formatLocalDate, formatLocalDateTime, parseUtc } from "../common/date";
 import type { LocaleCode } from "../common/localeContent";
 import { resolveLocalized } from "../common/localeContent";
 import { fuzzyMatch } from "../common/search";
@@ -29,6 +29,8 @@ export type ProjectViewModel = {
   title: string;
   description: string;
   dateLabel: string;
+  startDateFormatted?: string;
+  endDateFormatted?: string;
   timeline: ProjectTimelineEntryViewModel[];
   raw: ProjectItem;
 };
@@ -90,6 +92,8 @@ export function toProjectViewModel(project: ProjectItem, locale: LocaleCode): Pr
     title: resolve(project.title, locale),
     description: resolve(project.description, locale),
     dateLabel: formatProjectDateLabel(project, locale),
+    startDateFormatted: project.startUtc ? formatLocalDate(parseUtc(project.startUtc), locale) : undefined,
+    endDateFormatted: project.endUtc ? formatLocalDate(parseUtc(project.endUtc), locale) : undefined,
     timeline,
     raw: project,
   };

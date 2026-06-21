@@ -1,4 +1,4 @@
-import { formatLocalDateTime, parseUtc } from "../common/date";
+import { formatLocalDate, formatLocalDateTime, formatLocalDateTimeLong, parseUtc } from "../common/date";
 import type { LocaleCode } from "../common/localeContent";
 import { resolveLocalized } from "../common/localeContent";
 import { fuzzyMatch } from "../common/search";
@@ -29,6 +29,8 @@ export type IncidentViewModel = {
   description: string;
   location: string;
   dateLabel: string;
+  startDateFormatted: string;
+  endDateFormatted?: string;
   timeline: IncidentTimelineEntryViewModel[];
   raw: IncidentItem;
 };
@@ -90,6 +92,8 @@ export function toIncidentViewModel(incident: IncidentItem, locale: LocaleCode):
     description: resolve(incident.description, locale),
     location: resolve(incident.location, locale),
     dateLabel: formatIncidentDateLabel(incident, locale),
+    startDateFormatted: formatLocalDateTimeLong(parseUtc(incident.startUtc), locale),
+    endDateFormatted: incident.endUtc ? formatLocalDateTimeLong(parseUtc(incident.endUtc), locale) : undefined,
     timeline,
     raw: incident,
   };

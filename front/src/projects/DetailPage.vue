@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { Activity, ArrowLeft, CheckCircle2, Hourglass } from "@lucide/vue";
+import { Activity, ArrowLeft, ArrowRight, CalendarClock, CheckCircle2, Hourglass, UserPen } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { currentUserRoles, hasAnyRole } from "../auth/session";
-import CategoryBadge from "../categories/CategoryBadge.vue";
+import CategoryIcon from "../categories/CategoryIcon.vue";
 import AttachmentList from "../common/components/AttachmentList.vue";
 import TimelineList from "../common/components/TimelineList.vue";
 import type { LocaleCode } from "../common/localeContent";
@@ -79,20 +79,36 @@ async function deleteProject(): Promise<void> {
 <template>
   <main v-if="model" class="page-wrap">
     <p class="back-link back-link-top"><RouterLink class="back-link-ui" :to="{ path: '/projects', query: backQuery }"><ArrowLeft :size="15" :stroke-width="2" /><span>{{ t("labels.backToProjects") }}</span></RouterLink></p>
-    <h1 class="page-title">{{ model.title }}</h1>
-    <p class="detail-actions"><RouterLink v-if="canEdit" class="secondary-button" :to="editPath">{{ t("labels.edit") }}</RouterLink><button v-if="canDelete" class="secondary-button" type="button" @click="deleteProject">{{ t("labels.delete") }}</button></p>
-    <p class="timeline-meta">{{ t("labels.projectId") }}: {{ model.id }}</p>
-    <p v-if="model.raw.category" class="timeline-meta category-meta">
-      <CategoryBadge :category-key="model.raw.category.key" :icon="model.raw.category.icon" :color="model.raw.category.color" :label="model.raw.category.label" />
-      <span>- {{ model.raw.category.label }}</span>
+    <h1 class="page-title page-title-inline">
+      <span v-if="model.raw.category" class="title-icon-wrap"><CategoryIcon :name="model.raw.category.icon" :size="24" :style="{ color: model.raw.category.color }" /></span>
+      <span class="title-key">{{ model.id }}</span>
+      <span class="title-text">{{ model.title }}</span>
+    </h1>
+    <div class="detail-actions-row">
+      <p class="detail-actions"><RouterLink v-if="canEdit" class="secondary-button" :to="editPath">{{ t("labels.edit") }}</RouterLink><button v-if="canDelete" class="secondary-button" type="button" @click="deleteProject">{{ t("labels.delete") }}</button></p>
+      <span class="detail-spacer"></span>
+      <p class="project-status" :class="{ 'status-blocked': model.statusType === 'waiting' }"><component :is="statusIcon" :size="16" /> {{ statusLabel || t('labels.' + model.statusType) }}</p>
+    </div>
+    <p class="timeline-meta date-line">
+      <CalendarClock :size="16" />
+      <template v-if="model.startDateFormatted && model.endDateFormatted">
+        {{ model.startDateFormatted }} <ArrowRight :size="14" class="arrow-icon" /> {{ model.endDateFormatted }}
+      </template>
+      <template v-else-if="model.startDateFormatted">
+        {{ t("labels.dateStart") }} {{ model.startDateFormatted }}
+      </template>
+      <template v-else-if="model.endDateFormatted">
+        {{ t("labels.dateUntil", { date: model.endDateFormatted }) }}
+      </template>
+      <template v-else>
+        {{ t("labels.datesToBeConfirmed") }}
+      </template>
     </p>
-    <p v-if="auditLabel" class="timeline-meta">{{ auditLabel }}</p>
 
     <section class="timeline-card detail-block">
-      <p class="timeline-meta">{{ model.dateLabel }}</p>
-      <p class="project-status"><component :is="statusIcon" :size="16" /> {{ statusLabel }}</p>
       <div class="project-description" v-html="descriptionHtml"></div>
     </section>
+    <p v-if="auditLabel" class="timeline-meta audit-line"><UserPen :size="16" /> {{ auditLabel }}</p>
 
     <AttachmentList :items="model.raw.attachments" />
 
@@ -119,10 +135,8 @@ async function deleteProject(): Promise<void> {
 .back-link-top { margin-top: 0; margin-bottom: 0.45rem; }
 .back-link-ui { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--muted-fg); text-decoration: none; font-size: 0.92rem; font-weight: 600; }
 .back-link-ui:hover { color: var(--page-fg); }
-.detail-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
-.secondary-button { border: 1px solid var(--control-border); border-radius: 0.55rem; padding: 0.45rem 0.7rem; background: var(--control-bg); color: var(--control-fg); cursor: pointer; text-decoration: none; }
-.category-meta { align-items: center; display: flex; gap: 0.35rem; }
-.project-status { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--muted-fg); font-weight: 700; }
+.project-status { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 1.2rem; white-space: nowrap; }
+.project-status.status-blocked { color: #e67e22; }
 .project-description :deep(p) { margin: 0.7rem 0 0; }
 .project-description :deep(ul) { margin: 0.7rem 0 0; padding-left: 1.3rem; }
 .project-description :deep(code) { border-radius: 0.35rem; padding: 0.1rem 0.25rem; background: rgba(127, 127, 127, 0.18); }

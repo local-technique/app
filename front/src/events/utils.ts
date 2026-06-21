@@ -1,4 +1,4 @@
-import { classifyEventStatus, formatLocalDateTime, parseUtc } from "../common/date";
+import { classifyEventStatus, formatLocalDate, formatLocalDateTime, formatLocalDateTimeLong, parseUtc } from "../common/date";
 import type { LocaleCode } from "../common/localeContent";
 import { resolveLocalized } from "../common/localeContent";
 import { fuzzyMatch } from "../common/search";
@@ -24,6 +24,8 @@ export type EventViewModel = {
   description: string;
   location: string;
   dateLabel: string;
+  startDateFormatted: string;
+  endDateFormatted?: string;
   timeline: EventTimelineEntryViewModel[];
   raw: EventItem;
 };
@@ -76,6 +78,8 @@ export function toEventViewModel(event: EventItem, locale: LocaleCode): EventVie
     description: resolve(event.description, locale),
     location: resolve(event.location, locale),
     dateLabel: formatEventDateLabel(event, locale),
+    startDateFormatted: formatLocalDateTimeLong(parseUtc(event.startUtc), locale),
+    endDateFormatted: event.endUtc ? formatLocalDateTimeLong(parseUtc(event.endUtc), locale) : undefined,
     timeline,
     raw: event,
   };
