@@ -39,11 +39,12 @@ const showStatusLine = computed(() => {
 
 const isBlocked = computed(() => props.statusType === "waiting");
 
+const statusLabelKey = computed(() => props.statusType === "waiting" ? "blocked" : props.statusType);
+
 const statusDisplayText = computed(() => {
-  if (props.statusText) return props.statusText;
+  if (props.statusText) return t("labels." + statusLabelKey.value) + " - " + props.statusText;
   if (props.statusType === "finished") return t("labels.finished");
-  if (props.statusType === "waiting") return t("labels.waiting");
-  return t("labels.blocked");
+  return t("labels." + statusLabelKey.value);
 });
 
 const hasCategory = computed(() => props.categoryKey.length > 0);

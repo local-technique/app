@@ -23,13 +23,13 @@ describe("Projects detail", () => {
 
     const { container } = render(ProjectsDetailPage, { global: { plugins: [router, createAppI18n("en")] } });
 
-    await screen.findByText("Awaiting quote");
+    await screen.findByText("Blocked - Awaiting quote");
     expect(container.querySelector(".title-key")?.textContent).toBe("PRJ/BIKE?1");
     expect(container.querySelector(".title-text")?.textContent).toBe("Bike shelter");
     expect(container.querySelector(".title-icon-wrap")).not.toBeNull();
     expect(container.querySelector(".title-icon-wrap svg")?.getAttribute("style")).toContain("rgb(3, 102, 214)");
     expect(container.querySelector(".project-description h1")?.textContent).toBe("Bike shelter");
-    expect(screen.getByText("Awaiting quote")).not.toBeNull();
+    expect(screen.getByText("Blocked - Awaiting quote")).not.toBeNull();
     expect(screen.getByText("No attachments available.")).not.toBeNull();
     expect(screen.getByText("Edit")).not.toBeNull();
     expect(screen.getByText("Edit").closest("a")?.getAttribute("href")).toContain("PRJ%2FBIKE%3F1");

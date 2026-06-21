@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { Activity, ArrowLeft, ArrowRight, CalendarClock, CheckCircle2, CircleCheck, Hourglass, MapPin, UserPen } from "@lucide/vue";
+import { Activity, ArrowLeft, ArrowRight, CalendarClock, CheckCircle2, CircleCheck, Hourglass, MapPin, SquarePen, Trash2, UserPen } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { currentUserRoles, hasAnyRole } from "../auth/session";
@@ -20,6 +20,7 @@ const incidentId = ref(typeof route.params.id === "string" ? route.params.id : "
 const incident = ref<Awaited<ReturnType<typeof apiIncidentsRepository.byId>>>(null);
 const loadFailed = ref(false);
 const selectedAttachmentId = ref("");
+const showDeleteModal = ref(false);
 
 function activeLocale(): LocaleCode {
   return locale.value === "en" ? "en" : "fr";
@@ -83,14 +84,20 @@ function handleAttachmentSelect(item: AttachmentItem): void {
   selectedAttachmentId.value = item.id;
 }
 
-async function deleteIncident(): Promise<void> {
-  if (!window.confirm(t("labels.deleteIncidentConfirm"))) return;
+function deleteIncident(): void {
+  showDeleteModal.value = true;
+}
+async function confirmDelete(): Promise<void> {
+  showDeleteModal.value = false;
   try {
     await apiIncidentsRepository.delete(incidentId.value);
     window.location.hash = "#/incidents";
   } catch {
     loadFailed.value = true;
   }
+}
+function cancelDelete(): void {
+  showDeleteModal.value = false;
 }
 </script>
 
@@ -108,9 +115,8 @@ async function deleteIncident(): Promise<void> {
       <span class="title-text">{{ model.title }}</span>
     </h1>
     <div class="detail-actions-row">
-      <p class="detail-actions"><RouterLink v-if="canEdit" class="secondary-button" :to="`/incidents/${model.id}/edit`">{{ t("labels.edit") }}</RouterLink><button v-if="canDelete" class="secondary-button" type="button" @click="deleteIncident">{{ t("labels.delete") }}</button></p>
-      <span class="detail-spacer"></span>
-      <p class="incident-status" :class="{ 'status-blocked': model.statusType === 'waiting' }"><component :is="model.statusType === 'ongoing' ? Activity : model.statusType === 'finished' ? CheckCircle2 : Hourglass" :size="16" /> {{ model.statusText || t('labels.' + model.statusType) }}</p>
+      <p class="incident-status" :class="{ 'status-blocked': model.statusType === 'waiting' }"><component :is="model.statusType === 'ongoing' ? Activity : model.statusType === 'finished' ? CheckCircle2 : Hourglass" :size="16" /> {{ model.statusText ? t('labels.' + (model.statusType === 'waiting' ? 'blocked' : model.statusType)) + ' - ' + model.statusText : t('labels.' + (model.statusType === 'waiting' ? 'blocked' : model.statusType)) }}</p>
+      <p class="detail-actions"><RouterLink v-if="canEdit" class="secondary-button" :to="`/incidents/${model.id}/edit`"><SquarePen :size="16" /> {{ t("labels.edit") }}</RouterLink><button v-if="canDelete" class="delete-button" type="button" @click="deleteIncident"><Trash2 :size="16" /> {{ t("labels.delete") }}</button></p>
     </div>
     <p class="timeline-meta date-line">
       <CalendarClock :size="16" />
@@ -186,6 +192,19 @@ async function deleteIncident(): Promise<void> {
       </RouterLink>
     </p>
   </main>
+
+  <Teleport to="body">
+    <div v-if="showDeleteModal" class="modal-overlay" @click="cancelDelete">
+      <div class="modal-card" @click.stop>
+        <h3 class="modal-title">{{ t("labels.delete") }}</h3>
+        <p>{{ t("labels.deleteIncidentConfirm") }}</p>
+        <div class="modal-actions">
+          <button class="secondary-button" @click="cancelDelete">{{ t("labels.cancel") }}</button>
+          <button class="delete-button" @click="confirmDelete"><Trash2 :size="16" /> {{ t("labels.delete") }}</button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -216,11 +235,17 @@ async function deleteIncident(): Promise<void> {
   color: var(--page-fg);
 }
 
-.incident-status { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 1.2rem; white-space: nowrap; }
+.incident-status { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.95rem; font-weight: 700; white-space: nowrap; margin: 0; }
 .incident-status.status-blocked { color: #e67e22; }
 .rendered-description :deep(p) { margin: 0.7rem 0 0; }
 .rendered-description :deep(ul) { margin: 0.7rem 0 0; padding-left: 1.3rem; }
 .rendered-description :deep(code) { border-radius: 0.35rem; padding: 0.1rem 0.25rem; background: rgba(127, 127, 127, 0.18); }
+.detail-actions { display: flex; gap: 0.5rem; margin: 0 0 0 auto; }
+.delete-button { display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid rgba(220, 38, 38, 0.5); border-radius: 0.55rem; padding: 0.35rem 0.6rem; background: rgba(220, 38, 38, 0.85); color: #fff; cursor: pointer; font-size: inherit; font-weight: 600; text-decoration: none; }
+.modal-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; }
+.modal-card { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 1.5rem; max-width: 400px; width: 90%; display: grid; gap: 0.75rem; }
+.modal-title { margin: 0; }
+.modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
 
 .incident-timeline-list {
   --timeline-accent: rgba(72, 144, 255, 0.78);

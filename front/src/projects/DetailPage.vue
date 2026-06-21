@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { Activity, ArrowLeft, ArrowRight, CalendarClock, CheckCircle2, Hourglass, UserPen } from "@lucide/vue";
+import { Activity, ArrowLeft, ArrowRight, CalendarClock, CheckCircle2, Hourglass, SquarePen, Trash2, UserPen } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { currentUserRoles, hasAnyRole } from "../auth/session";
@@ -16,6 +16,7 @@ const route = useRoute();
 const projectId = ref(typeof route.params.id === "string" ? route.params.id : "");
 const project = ref<Awaited<ReturnType<typeof apiProjectsRepository.byId>>>(null);
 const loadFailed = ref(false);
+const showDeleteModal = ref(false);
 
 function activeLocale(): LocaleCode {
   return locale.value === "en" ? "en" : "fr";
@@ -65,14 +66,20 @@ const statusIcon = computed(() => {
 });
 const editPath = computed(() => (model.value ? `/projects/${encodeURIComponent(model.value.id)}/edit` : "/projects"));
 
-async function deleteProject(): Promise<void> {
-  if (!window.confirm(t("labels.deleteProjectConfirm"))) return;
+function deleteProject(): void {
+  showDeleteModal.value = true;
+}
+async function confirmDelete(): Promise<void> {
+  showDeleteModal.value = false;
   try {
     await apiProjectsRepository.delete(projectId.value);
     window.location.hash = "#/projects";
   } catch {
     loadFailed.value = true;
   }
+}
+function cancelDelete(): void {
+  showDeleteModal.value = false;
 }
 </script>
 
@@ -85,9 +92,8 @@ async function deleteProject(): Promise<void> {
       <span class="title-text">{{ model.title }}</span>
     </h1>
     <div class="detail-actions-row">
-      <p class="detail-actions"><RouterLink v-if="canEdit" class="secondary-button" :to="editPath">{{ t("labels.edit") }}</RouterLink><button v-if="canDelete" class="secondary-button" type="button" @click="deleteProject">{{ t("labels.delete") }}</button></p>
-      <span class="detail-spacer"></span>
-      <p class="project-status" :class="{ 'status-blocked': model.statusType === 'waiting' }"><component :is="statusIcon" :size="16" /> {{ statusLabel || t('labels.' + model.statusType) }}</p>
+      <p class="project-status" :class="{ 'status-blocked': model.statusType === 'waiting' }"><component :is="statusIcon" :size="16" /> {{ statusLabel ? t('labels.' + (model.statusType === 'waiting' ? 'blocked' : model.statusType)) + ' - ' + statusLabel : t('labels.' + (model.statusType === 'waiting' ? 'blocked' : model.statusType)) }}</p>
+      <p class="detail-actions"><RouterLink v-if="canEdit" class="secondary-button" :to="editPath"><SquarePen :size="16" /> {{ t("labels.edit") }}</RouterLink><button v-if="canDelete" class="delete-button" type="button" @click="deleteProject"><Trash2 :size="16" /> {{ t("labels.delete") }}</button></p>
     </div>
     <p class="timeline-meta date-line">
       <CalendarClock :size="16" />
@@ -127,6 +133,19 @@ async function deleteProject(): Promise<void> {
     <h1 class="page-title">{{ t("labels.projectNotFound") }}</h1>
     <p class="back-link"><RouterLink class="back-link-ui" :to="{ path: '/projects', query: backQuery }">{{ t("labels.backToProjects") }}</RouterLink></p>
   </main>
+
+  <Teleport to="body">
+    <div v-if="showDeleteModal" class="modal-overlay" @click="cancelDelete">
+      <div class="modal-card" @click.stop>
+        <h3 class="modal-title">{{ t("labels.delete") }}</h3>
+        <p>{{ t("labels.deleteProjectConfirm") }}</p>
+        <div class="modal-actions">
+          <button class="secondary-button" @click="cancelDelete">{{ t("labels.cancel") }}</button>
+          <button class="delete-button" @click="confirmDelete"><Trash2 :size="16" /> {{ t("labels.delete") }}</button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -135,9 +154,15 @@ async function deleteProject(): Promise<void> {
 .back-link-top { margin-top: 0; margin-bottom: 0.45rem; }
 .back-link-ui { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--muted-fg); text-decoration: none; font-size: 0.92rem; font-weight: 600; }
 .back-link-ui:hover { color: var(--page-fg); }
-.project-status { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 1.2rem; white-space: nowrap; }
+.project-status { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.95rem; font-weight: 700; white-space: nowrap; margin: 0; }
 .project-status.status-blocked { color: #e67e22; }
 .project-description :deep(p) { margin: 0.7rem 0 0; }
 .project-description :deep(ul) { margin: 0.7rem 0 0; padding-left: 1.3rem; }
 .project-description :deep(code) { border-radius: 0.35rem; padding: 0.1rem 0.25rem; background: rgba(127, 127, 127, 0.18); }
+.detail-actions { display: flex; gap: 0.5rem; margin: 0 0 0 auto; }
+.delete-button { display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid rgba(220, 38, 38, 0.5); border-radius: 0.55rem; padding: 0.35rem 0.6rem; background: rgba(220, 38, 38, 0.85); color: #fff; cursor: pointer; font-size: inherit; font-weight: 600; text-decoration: none; }
+.modal-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; }
+.modal-card { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 1.5rem; max-width: 400px; width: 90%; display: grid; gap: 0.75rem; }
+.modal-title { margin: 0; }
+.modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
 </style>

@@ -29,8 +29,8 @@ describe("Projects listing", () => {
     expect(getComputedStyle(container.querySelector(".category-badge-rail") as Element).getPropertyValue("--category-color").trim()).toBe("#6f42c1");
     expect(screen.getByRole("heading", { name: "Projects To Come" })).not.toBeNull();
     expect(screen.getByRole("heading", { name: "Finished Projects" }).closest("section")?.getAttribute("data-status")).toBe("past");
-    expect(screen.getByText("Installing fans")).not.toBeNull();
-    expect(screen.getByText("Awaiting quote")).not.toBeNull();
+    expect(screen.getByText("Ongoing - Installing fans")).not.toBeNull();
+    expect(screen.getByText("Blocked - Awaiting quote")).not.toBeNull();
     expect(screen.getByText("Create project")).not.toBeNull();
     expect(screen.getByText("Garage ventilation").closest("a")?.getAttribute("href")).toContain("/projects/PRJ/ONGOING?A");
     vi.useRealTimers();
