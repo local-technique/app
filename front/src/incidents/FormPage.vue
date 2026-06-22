@@ -11,7 +11,8 @@ import DateInput from "../common/components/DateInput.vue";
 import { toDateLocalInput, toUtcFromDateLocalInput, todayDateInput } from "../common/dateInput";
 import { parseUtc } from "../common/date";
 import type { LocaleCode } from "../common/i18n";
-import TimelineList from "../common/components/TimelineList.vue";
+import { currentUserRoles, hasAnyRole } from "../auth/session";
+import EditableTimelineList from "../common/components/EditableTimelineList.vue";
 import type { TimelineEntry } from "../common/components/TimelineList.vue";
 import { apiIncidentsRepository } from "./repositories/apiIncidentsRepository";
 import type { IncidentStoredStatus } from "./types";
@@ -28,7 +29,9 @@ const loadFailed = ref(false);
 const saveFailed = ref(false);
 const form = ref({ id: "", categoryId: "", startUtc: "", endUtc: "", statusType: "ongoing" as IncidentStoredStatus, statusText: "", title: "", description: "", location: "" });
 const statusPlaceholder = computed(() => form.value.statusType === "waiting" ? t("labels.statusPlaceholderBlocking") : t("labels.statusPlaceholderOngoing"));
+const userCanEdit = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD", "CO_OWNERSHIP_BOARD_OPS"]));
 const timeline = ref<TimelineEntry[]>([]);
+const rawEditTimeline = ref<Array<{ id: string; atUtc: string | null; sortOrder: number; fields: Array<{ fieldKey: string; value: string }> }>>([]);
 const showMarkdownHelp = ref(false);
 const markdownHelpUrl = computed(() => selectedLocale.value === "fr" ? "https://www.markdownlang.com/fr/cheatsheet/" : "https://www.markdownlang.com/cheatsheet/");
 function onDocumentClick(e: MouseEvent): void {
@@ -61,6 +64,7 @@ function formatTimeline(editTimeline: Array<{ id: string; atUtc: string | null; 
     const atDate = item.atUtc ? parseUtc(item.atUtc) : null;
     return {
       id: item.id,
+      atUtc: item.atUtc,
       atLabel: atDate ? new Intl.DateTimeFormat(selectedLocale.value, { dateStyle: "medium", timeStyle: "short" }).format(atDate) : "Pending",
       atDateLabel: atDate ? new Intl.DateTimeFormat(selectedLocale.value, { dateStyle: "medium" }).format(atDate) : "",
       atTimeLabel: atDate ? new Intl.DateTimeFormat(selectedLocale.value, { timeStyle: "short" }).format(atDate) : "",
@@ -69,6 +73,35 @@ function formatTimeline(editTimeline: Array<{ id: string; atUtc: string | null; 
       details: field(item.fields, "details"),
     };
   });
+}
+
+function handleTimelineAdd(payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): void {
+  const entry = {
+    id: crypto.randomUUID(),
+    atUtc: payload.atUtc,
+    sortOrder: payload.sortOrder,
+    fields: Object.entries(payload.fields).map(([fieldKey, value]) => ({ fieldKey, value })),
+  };
+  rawEditTimeline.value.push(entry);
+  timeline.value = formatTimeline(rawEditTimeline.value);
+}
+
+function handleTimelineUpdate(entryId: string, payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): void {
+  const idx = rawEditTimeline.value.findIndex(e => e.id === entryId);
+  if (idx >= 0) {
+    rawEditTimeline.value[idx] = {
+      ...rawEditTimeline.value[idx],
+      atUtc: payload.atUtc,
+      sortOrder: payload.sortOrder,
+      fields: Object.entries(payload.fields).map(([fieldKey, value]) => ({ fieldKey, value })),
+    };
+    timeline.value = formatTimeline(rawEditTimeline.value);
+  }
+}
+
+function handleTimelineDelete(entryId: string): void {
+  rawEditTimeline.value = rawEditTimeline.value.filter(e => e.id !== entryId);
+  timeline.value = formatTimeline(rawEditTimeline.value);
 }
 
 async function load(): Promise<void> {
@@ -88,6 +121,7 @@ async function load(): Promise<void> {
     form.value.endUtc = toDateLocalInput(data.endUtc);
     form.value.statusType = data.statusType;
     applyFields(data.fields);
+    rawEditTimeline.value = data.timeline.map(item => ({ ...item }));
     timeline.value = formatTimeline(data.timeline);
   } catch { loadFailed.value = true; }
 }
@@ -104,8 +138,13 @@ async function save(): Promise<void> {
       statusType: form.value.statusType,
       locale: selectedLocale.value,
       fields: { title: form.value.title, description: form.value.description, location: form.value.location, status_text: form.value.statusText },
-      replaceTimeline: false,
-      timeline: [],
+      replaceTimeline: true,
+      timeline: rawEditTimeline.value.map(item => ({
+        id: item.id,
+        atUtc: item.atUtc,
+        sortOrder: item.sortOrder,
+        fields: Object.fromEntries(item.fields.map(f => [f.fieldKey, f.value])),
+      })),
     }, isEdit.value ? existingId.value : undefined);
     await router.push(`/incidents/${encodeURIComponent(isEdit.value ? existingId.value : String(createdKey))}`);
   } catch { saveFailed.value = true; } finally { saving.value = false; }
@@ -145,9 +184,15 @@ async function save(): Promise<void> {
 
       <span class="location-field"><MapPin :size="16" /><input v-model="form.location" :placeholder="t('labels.locationPlaceholder')" /></span>
 
-      <section v-if="timeline.length" class="timeline-section">
+      <section class="timeline-section">
         <h2>{{ t("labels.incidentTimeline") }}</h2>
-        <TimelineList :entries="timeline" />
+        <EditableTimelineList
+          :entries="timeline"
+          :can-edit="userCanEdit"
+          @add="handleTimelineAdd"
+          @update="handleTimelineUpdate"
+          @delete="handleTimelineDelete"
+        />
       </section>
 
       <p v-if="saveFailed" class="empty-state">{{ t("labels.saveFailed") }}</p>

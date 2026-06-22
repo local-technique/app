@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use sqlx::Row;
 use uuid::Uuid;
@@ -683,6 +685,144 @@ pub async fn replace_translations(
 pub async fn delete_by_code(db: &sqlx::PgPool, incident_code: &str) -> Result<bool, AppError> {
     let result = sqlx::query("DELETE FROM incidents WHERE key = $1")
         .bind(incident_code)
+        .execute(db)
+        .await?;
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn create_timeline_entry(
+    db: &sqlx::PgPool,
+    incident_code: &str,
+    at_utc: Option<DateTime<Utc>>,
+    sort_order: i32,
+    locale: &str,
+    fields: &HashMap<String, String>,
+) -> Result<IncidentTimelineItem, AppError> {
+    let incident_id: Uuid = sqlx::query_scalar("SELECT id FROM incidents WHERE key = $1")
+        .bind(incident_code)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::not_found("incident not found"))?;
+
+    let mut tx = db.begin().await?;
+    let timeline_id = Uuid::new_v4();
+    sqlx::query(
+        "INSERT INTO incident_timeline (id, incident_id, at_utc, sort_order) VALUES ($1, $2, $3, $4)",
+    )
+    .bind(timeline_id)
+    .bind(incident_id)
+    .bind(at_utc)
+    .bind(sort_order)
+    .execute(&mut *tx)
+    .await?;
+
+    for (field_key, field_value) in fields {
+        save_timeline_field(&mut tx, timeline_id, locale, field_key, field_value).await?;
+    }
+    tx.commit().await?;
+
+    let locale_chain = crate::common::i18n::locale_chain(Some(locale));
+    let title = sqlx::query_scalar::<_, String>(
+        "SELECT coalesce((SELECT ti.field_value FROM incident_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'title' ORDER BY lp.ord LIMIT 1), '')",
+    )
+    .bind(timeline_id)
+    .bind(&locale_chain)
+    .fetch_one(db)
+    .await?;
+
+    let details = sqlx::query_scalar::<_, String>(
+        "SELECT coalesce((SELECT ti.field_value FROM incident_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'details' ORDER BY lp.ord LIMIT 1), '')",
+    )
+    .bind(timeline_id)
+    .bind(&locale_chain)
+    .fetch_one(db)
+    .await?;
+
+    Ok(IncidentTimelineItem {
+        id: timeline_id.to_string(),
+        at_utc: at_utc.map(|v| v.to_rfc3339()),
+        title,
+        details,
+    })
+}
+
+pub async fn update_timeline_entry(
+    db: &sqlx::PgPool,
+    incident_code: &str,
+    entry_id: &str,
+    at_utc: Option<DateTime<Utc>>,
+    sort_order: i32,
+    locale: &str,
+    fields: &HashMap<String, String>,
+) -> Result<Option<IncidentTimelineItem>, AppError> {
+    let incident_id: Uuid = sqlx::query_scalar("SELECT id FROM incidents WHERE key = $1")
+        .bind(incident_code)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::not_found("incident not found"))?;
+
+    let timeline_id = Uuid::parse_str(entry_id).map_err(|_| AppError::bad_request("invalid timeline id"))?;
+
+    let mut tx = db.begin().await?;
+    let updated = sqlx::query(
+        "UPDATE incident_timeline SET at_utc = $1, sort_order = $4 WHERE id = $2 AND incident_id = $3",
+    )
+    .bind(at_utc)
+    .bind(timeline_id)
+    .bind(incident_id)
+    .bind(sort_order)
+    .execute(&mut *tx)
+    .await?
+    .rows_affected();
+    if updated == 0 {
+        return Ok(None);
+    }
+
+    for (field_key, field_value) in fields {
+        save_timeline_field(&mut tx, timeline_id, locale, field_key, field_value).await?;
+    }
+    tx.commit().await?;
+
+    let locale_chain = crate::common::i18n::locale_chain(Some(locale));
+    let title = sqlx::query_scalar::<_, String>(
+        "SELECT coalesce((SELECT ti.field_value FROM incident_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'title' ORDER BY lp.ord LIMIT 1), '')",
+    )
+    .bind(timeline_id)
+    .bind(&locale_chain)
+    .fetch_one(db)
+    .await?;
+
+    let details = sqlx::query_scalar::<_, String>(
+        "SELECT coalesce((SELECT ti.field_value FROM incident_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'details' ORDER BY lp.ord LIMIT 1), '')",
+    )
+    .bind(timeline_id)
+    .bind(&locale_chain)
+    .fetch_one(db)
+    .await?;
+
+    Ok(Some(IncidentTimelineItem {
+        id: timeline_id.to_string(),
+        at_utc: at_utc.map(|v| v.to_rfc3339()),
+        title,
+        details,
+    }))
+}
+
+pub async fn delete_timeline_entry(
+    db: &sqlx::PgPool,
+    incident_code: &str,
+    entry_id: &str,
+) -> Result<bool, AppError> {
+    let incident_id: Uuid = sqlx::query_scalar("SELECT id FROM incidents WHERE key = $1")
+        .bind(incident_code)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::not_found("incident not found"))?;
+
+    let timeline_id = Uuid::parse_str(entry_id).map_err(|_| AppError::bad_request("invalid timeline id"))?;
+    let result = sqlx::query("DELETE FROM incident_timeline WHERE id = $1 AND incident_id = $2")
+        .bind(timeline_id)
+        .bind(incident_id)
         .execute(db)
         .await?;
     Ok(result.rows_affected() > 0)

@@ -3,6 +3,7 @@ import { CircleCheck } from "@lucide/vue";
 
 export type TimelineEntry = {
   id: string;
+  atUtc: string | null;
   atLabel: string;
   atDateLabel: string;
   atTimeLabel: string;

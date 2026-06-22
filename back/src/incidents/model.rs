@@ -133,3 +133,17 @@ pub struct IncidentSaveRequest {
 pub struct CreatedKeyResponse {
     pub key: String,
 }
+
+#[derive(serde::Deserialize, ToSchema)]
+pub struct IncidentTimelineCreateRequest {
+    pub at_utc: Option<String>,
+    pub sort_order: i32,
+    pub fields: HashMap<String, String>,
+}
+
+#[derive(serde::Deserialize, ToSchema)]
+pub struct IncidentTimelineUpdateRequest {
+    pub at_utc: Option<String>,
+    pub sort_order: i32,
+    pub fields: HashMap<String, String>,
+}

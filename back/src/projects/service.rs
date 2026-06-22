@@ -9,8 +9,8 @@ use crate::common::validation::{
     normalize_text_value, validate_field_map,
 };
 use crate::projects::model::{
-    ProjectDetail, ProjectEditData, ProjectListItem, ProjectSaveRequest,
-    ProjectTranslationMatrixRow, ProjectTranslationValue,
+    ProjectDetail, ProjectEditData, ProjectListItem, ProjectSaveRequest, ProjectTimelineCreateRequest,
+    ProjectTimelineItem, ProjectTimelineUpdateRequest, ProjectTranslationMatrixRow, ProjectTranslationValue,
 };
 use crate::projects::repository;
 
@@ -82,6 +82,64 @@ pub async fn save_partial(
 
 pub async fn delete(db: &sqlx::PgPool, project_id: &str) -> Result<bool, AppError> {
     repository::delete_by_code(db, project_id).await
+}
+
+pub async fn create_timeline_entry(
+    db: &sqlx::PgPool,
+    project_code: &str,
+    payload: &ProjectTimelineCreateRequest,
+    locale: &str,
+) -> Result<ProjectTimelineItem, AppError> {
+    let enabled_locales = load_enabled_locales(db).await?;
+    let locale = normalize_locale(locale)?;
+    ensure_locale_enabled(&locale, &enabled_locales)?;
+    let fields = validate_field_map(&payload.fields, &PROJECT_TIMELINE_TRANSLATION_FIELD_KEYS, &["title"])?;
+    let at_utc = payload
+        .at_utc
+        .as_deref()
+        .filter(|v| !v.trim().is_empty())
+        .map(DateTime::parse_from_rfc3339)
+        .transpose()
+        .map_err(|_| AppError::bad_request("invalid at_utc"))?
+        .map(|v| v.with_timezone(&Utc));
+    repository::create_timeline_entry(db, project_code, at_utc, payload.sort_order, &locale, &fields).await
+}
+
+pub async fn update_timeline_entry(
+    db: &sqlx::PgPool,
+    project_code: &str,
+    entry_id: &str,
+    payload: &ProjectTimelineUpdateRequest,
+    locale: &str,
+) -> Result<ProjectTimelineItem, AppError> {
+    let enabled_locales = load_enabled_locales(db).await?;
+    let locale = normalize_locale(locale)?;
+    ensure_locale_enabled(&locale, &enabled_locales)?;
+    let fields = validate_field_map(&payload.fields, &PROJECT_TIMELINE_TRANSLATION_FIELD_KEYS, &["title"])?;
+    let at_utc = payload
+        .at_utc
+        .as_deref()
+        .filter(|v| !v.trim().is_empty())
+        .map(DateTime::parse_from_rfc3339)
+        .transpose()
+        .map_err(|_| AppError::bad_request("invalid at_utc"))?
+        .map(|v| v.with_timezone(&Utc));
+    repository::update_timeline_entry(db, project_code, entry_id, at_utc, payload.sort_order, &locale, &fields)
+        .await?
+        .ok_or_else(|| AppError::not_found("timeline entry not found"))
+}
+
+pub async fn delete_timeline_entry(
+    db: &sqlx::PgPool,
+    project_code: &str,
+    entry_id: &str,
+) -> Result<(), AppError> {
+    let deleted = repository::delete_timeline_entry(db, project_code, entry_id).await?;
+    if deleted {
+        Ok(())
+    } else {
+        Err(AppError::not_found("timeline entry not found"))
+    }
 }
 
 fn validate_save_payload(

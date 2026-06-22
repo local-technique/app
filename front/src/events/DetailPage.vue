@@ -7,7 +7,7 @@ import { currentUserRoles, hasAnyRole } from "../auth/session";
 import CategoryIcon from "../categories/CategoryIcon.vue";
 import AttachmentList from "../common/components/AttachmentList.vue";
 import AttachmentPreview from "../common/components/AttachmentPreview.vue";
-import TimelineList from "../common/components/TimelineList.vue";
+import EditableTimelineList from "../common/components/EditableTimelineList.vue";
 import type { AttachmentItem } from "../common/attachments";
 import type { LocaleCode } from "../common/localeContent";
 import { renderProjectMarkdown } from "../projects/utils";
@@ -85,6 +85,18 @@ function handleAttachmentSelect(item: AttachmentItem): void {
   selectedAttachmentId.value = item.id;
 }
 
+async function handleTimelineAdd(payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<void> {
+  await apiEventsRepository.createTimelineEntry(eventId.value, activeLocale(), payload);
+  await loadEvent();
+}
+async function handleTimelineUpdate(entryId: string, payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<void> {
+  await apiEventsRepository.updateTimelineEntry(eventId.value, entryId, activeLocale(), payload);
+  await loadEvent();
+}
+async function handleTimelineDelete(entryId: string): Promise<void> {
+  await apiEventsRepository.deleteTimelineEntry(eventId.value, entryId);
+  await loadEvent();
+}
 function deleteEvent(): void {
   showDeleteModal.value = true;
 }
@@ -117,7 +129,7 @@ function cancelDelete(): void {
     </h1>
     <div class="detail-actions-row">
       <p class="event-status" :class="{ 'status-blocked': model.statusType === 'waiting' }"><component :is="model.statusType === 'ongoing' ? Activity : model.statusType === 'finished' ? CheckCircle2 : Hourglass" :size="16" /> {{ model.statusText ? t('labels.' + (model.statusType === 'waiting' ? 'blocked' : model.statusType)) + ' - ' + model.statusText : t('labels.' + (model.statusType === 'waiting' ? 'blocked' : model.statusType)) }}</p>
-      <p class="detail-actions"><RouterLink v-if="canEdit" class="secondary-button" :to="`/events/${model.id}/edit`"><SquarePen :size="16" /> {{ t("labels.edit") }}</RouterLink><button v-if="canDelete" class="delete-button" type="button" @click="deleteEvent"><Trash2 :size="16" /> {{ t("labels.delete") }}</button></p>
+      <p class="detail-actions"><RouterLink v-if="canEdit" class="secondary-button" :to="`/events/${model.id}/edit`"><SquarePen :size="16" /> <span class="btn-label">{{ t("labels.edit") }}</span></RouterLink><button v-if="canDelete" class="delete-button" type="button" @click="deleteEvent"><Trash2 :size="16" /> <span class="btn-label">{{ t("labels.delete") }}</span></button></p>
     </div>
     <p class="timeline-meta date-line">
       <CalendarClock :size="16" />
@@ -146,9 +158,15 @@ function cancelDelete(): void {
     />
     <AttachmentPreview v-if="selectedAttachment" :attachment="selectedAttachment" />
 
-    <section v-if="model.timeline.length" class="timeline-section">
+    <section class="timeline-section">
       <h2>{{ t("labels.maintenanceTimeline") }}</h2>
-      <TimelineList :entries="model.timeline" />
+      <EditableTimelineList
+        :entries="model.timeline"
+        :can-edit="canEdit"
+        @add="handleTimelineAdd"
+        @update="handleTimelineUpdate"
+        @delete="handleTimelineDelete"
+      />
     </section>
 
     <p class="back-link">
@@ -219,17 +237,20 @@ function cancelDelete(): void {
   color: var(--page-fg);
 }
 
-.event-status { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.95rem; font-weight: 700; white-space: nowrap; margin: 0; }
+.event-status { font-size: 0.95rem; font-weight: 700; margin: 0; min-width: 0; }
+.event-status :deep(svg) { vertical-align: -3px; width: 18px; height: 18px; stroke-width: 2.5; margin-right: 0.35rem; }
 .event-status.status-blocked { color: #e67e22; }
 .detail-warning { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; font-size: 1.2rem; }
 .warning-icon { display: inline-flex; align-items: center; justify-content: center; width: 16px; flex-shrink: 0; }
 .rendered-description :deep(p) { margin: 0.7rem 0 0; }
 .rendered-description :deep(ul) { margin: 0.7rem 0 0; padding-left: 1.3rem; }
 .rendered-description :deep(code) { border-radius: 0.35rem; padding: 0.1rem 0.25rem; background: rgba(127, 127, 127, 0.18); }
-.detail-actions { display: flex; gap: 0.5rem; margin: 0 0 0 auto; }
+.detail-actions-row { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; }
+.detail-actions { display: flex; gap: 0.5rem; }
 .delete-button { display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid rgba(220, 38, 38, 0.5); border-radius: 0.55rem; padding: 0.35rem 0.6rem; background: rgba(220, 38, 38, 0.85); color: #fff; cursor: pointer; font-size: inherit; font-weight: 600; text-decoration: none; }
 .modal-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; }
 .modal-card { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 1.5rem; max-width: 400px; width: 90%; display: grid; gap: 0.75rem; }
 .modal-title { margin: 0; }
 .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+@media (max-width: 560px) { .btn-label { display: none; } }
 </style>

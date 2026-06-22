@@ -135,3 +135,17 @@ pub struct MaintenanceSaveRequest {
 pub struct CreatedKeyResponse {
     pub key: String,
 }
+
+#[derive(serde::Deserialize, ToSchema)]
+pub struct MaintenanceTimelineCreateRequest {
+    pub at_utc: Option<String>,
+    pub sort_order: i32,
+    pub fields: HashMap<String, String>,
+}
+
+#[derive(serde::Deserialize, ToSchema)]
+pub struct MaintenanceTimelineUpdateRequest {
+    pub at_utc: Option<String>,
+    pub sort_order: i32,
+    pub fields: HashMap<String, String>,
+}

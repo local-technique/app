@@ -282,6 +282,35 @@ export class ApiIncidentsRepository implements IncidentsRepository {
     if (useMockData()) return;
     await sendJson(`${apiBaseUrl()}/incidents/${encodeURIComponent(id)}`, "DELETE");
   }
+
+  async createTimelineEntry(id: string, preferredLanguage: LocaleCode, payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<ApiIncidentTimelineItem> {
+    if (useMockData()) return { id: crypto.randomUUID(), at_utc: payload.atUtc, title: payload.fields.title ?? "", details: payload.fields.details ?? "" };
+    const params = new URLSearchParams({ locale: preferredLanguage });
+    const result = await sendJson<ApiIncidentTimelineItem>(`${apiBaseUrl()}/incidents/${encodeURIComponent(id)}/timeline?${params.toString()}`, "POST", {
+      at_utc: payload.atUtc,
+      sort_order: payload.sortOrder,
+      fields: payload.fields,
+    });
+    if (!result) throw new Error("failed to create timeline entry");
+    return result;
+  }
+
+  async updateTimelineEntry(id: string, entryId: string, preferredLanguage: LocaleCode, payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<ApiIncidentTimelineItem> {
+    if (useMockData()) return { id: entryId, at_utc: payload.atUtc, title: payload.fields.title ?? "", details: payload.fields.details ?? "" };
+    const params = new URLSearchParams({ locale: preferredLanguage });
+    const result = await sendJson<ApiIncidentTimelineItem>(`${apiBaseUrl()}/incidents/${encodeURIComponent(id)}/timeline/${encodeURIComponent(entryId)}?${params.toString()}`, "PUT", {
+      at_utc: payload.atUtc,
+      sort_order: payload.sortOrder,
+      fields: payload.fields,
+    });
+    if (!result) throw new Error("failed to update timeline entry");
+    return result;
+  }
+
+  async deleteTimelineEntry(id: string, entryId: string): Promise<void> {
+    if (useMockData()) return;
+    await sendJson(`${apiBaseUrl()}/incidents/${encodeURIComponent(id)}/timeline/${encodeURIComponent(entryId)}`, "DELETE");
+  }
 }
 
 export const apiIncidentsRepository = new ApiIncidentsRepository();

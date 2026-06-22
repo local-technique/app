@@ -131,3 +131,17 @@ pub struct ProjectSaveRequest {
 pub struct CreatedKeyResponse {
     pub key: String,
 }
+
+#[derive(serde::Deserialize, ToSchema)]
+pub struct ProjectTimelineCreateRequest {
+    pub at_utc: Option<String>,
+    pub sort_order: i32,
+    pub fields: HashMap<String, String>,
+}
+
+#[derive(serde::Deserialize, ToSchema)]
+pub struct ProjectTimelineUpdateRequest {
+    pub at_utc: Option<String>,
+    pub sort_order: i32,
+    pub fields: HashMap<String, String>,
+}

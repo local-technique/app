@@ -6,6 +6,7 @@ import type { EventItem, EventLocalizedText, EventStatusSection, EventStoredStat
 
 export type EventTimelineEntryViewModel = {
   id: string;
+  atUtc: string | null;
   atLabel: string;
   atDateLabel: string;
   atTimeLabel: string;
@@ -57,6 +58,7 @@ function toTimelineEntryViewModel(entry: EventTimelineEntry, locale: LocaleCode)
   const atDate = entry.atUtc ? parseUtc(entry.atUtc) : null;
   return {
     id: entry.id,
+    atUtc: entry.atUtc,
     atLabel: atDate ? formatLocalDateTime(atDate, locale) : "Pending",
     atDateLabel: atDate ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(atDate) : "",
     atTimeLabel: atDate ? new Intl.DateTimeFormat(locale, { timeStyle: "short" }).format(atDate) : "",

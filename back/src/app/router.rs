@@ -34,6 +34,15 @@ pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
         .route("/incidents/{id}/translations", get(incidents::http::translations))
         .route("/incidents/{id}/edit", get(incidents::http::edit))
         .route(
+            "/incidents/{id}/timeline",
+            post(incidents::http::create_timeline),
+        )
+        .route(
+            "/incidents/{id}/timeline/{entry_id}",
+            axum::routing::put(incidents::http::update_timeline)
+                .delete(incidents::http::delete_timeline),
+        )
+        .route(
             "/incidents/{id}/translations/replace",
             post(incidents::http::replace_translations),
         )
@@ -50,6 +59,15 @@ pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
         )
         .route("/maintenances/{id}/edit", get(maintenances::http::edit))
         .route(
+            "/maintenances/{id}/timeline",
+            post(maintenances::http::create_timeline),
+        )
+        .route(
+            "/maintenances/{id}/timeline/{entry_id}",
+            axum::routing::put(maintenances::http::update_timeline)
+                .delete(maintenances::http::delete_timeline),
+        )
+        .route(
             "/maintenances/{id}/translations/replace",
             post(maintenances::http::replace_translations),
         )
@@ -62,6 +80,15 @@ pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
         )
         .route("/projects/{id}/translations", get(projects::http::translations))
         .route("/projects/{id}/edit", get(projects::http::edit))
+        .route(
+            "/projects/{id}/timeline",
+            post(projects::http::create_timeline),
+        )
+        .route(
+            "/projects/{id}/timeline/{entry_id}",
+            axum::routing::put(projects::http::update_timeline)
+                .delete(projects::http::delete_timeline),
+        )
         .route(
             "/projects/{id}/translations/replace",
             post(projects::http::replace_translations),

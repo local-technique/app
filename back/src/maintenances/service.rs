@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use chrono::{DateTime, Utc};
+
 use crate::common::error::AppError;
 use crate::common::i18n::locale_chain;
 use crate::common::validation::{
@@ -7,8 +9,9 @@ use crate::common::validation::{
     normalize_text_value, validate_field_map,
 };
 use crate::maintenances::model::{
-    MaintenanceDetail, MaintenanceEditData, MaintenanceListItem, MaintenanceSaveRequest,
-    MaintenanceTimelineSaveItem, MaintenanceTranslationMatrixRow, MaintenanceTranslationValue,
+    MaintenanceDetail, MaintenanceEditData, MaintenanceListItem, MaintenanceSaveRequest, MaintenanceTimelineCreateRequest,
+    MaintenanceTimelineItem, MaintenanceTimelineSaveItem, MaintenanceTimelineUpdateRequest, MaintenanceTranslationMatrixRow,
+    MaintenanceTranslationValue,
 };
 use crate::maintenances::repository;
 
@@ -125,6 +128,64 @@ pub async fn save_partial(
 
 pub async fn delete(db: &sqlx::PgPool, maintenance_id: &str) -> Result<bool, AppError> {
     repository::delete_by_code(db, maintenance_id).await
+}
+
+pub async fn create_timeline_entry(
+    db: &sqlx::PgPool,
+    maintenance_code: &str,
+    payload: &MaintenanceTimelineCreateRequest,
+    locale: &str,
+) -> Result<MaintenanceTimelineItem, AppError> {
+    let enabled_locales = load_enabled_locales(db).await?;
+    let locale = normalize_locale(locale)?;
+    ensure_locale_enabled(&locale, &enabled_locales)?;
+    let fields = validate_field_map(&payload.fields, &MAINTENANCE_TIMELINE_TRANSLATION_FIELD_KEYS, &["title"])?;
+    let at_utc = payload
+        .at_utc
+        .as_deref()
+        .filter(|v| !v.trim().is_empty())
+        .map(DateTime::parse_from_rfc3339)
+        .transpose()
+        .map_err(|_| AppError::bad_request("invalid at_utc"))?
+        .map(|v| v.with_timezone(&Utc));
+    repository::create_timeline_entry(db, maintenance_code, at_utc, payload.sort_order, &locale, &fields).await
+}
+
+pub async fn update_timeline_entry(
+    db: &sqlx::PgPool,
+    maintenance_code: &str,
+    entry_id: &str,
+    payload: &MaintenanceTimelineUpdateRequest,
+    locale: &str,
+) -> Result<MaintenanceTimelineItem, AppError> {
+    let enabled_locales = load_enabled_locales(db).await?;
+    let locale = normalize_locale(locale)?;
+    ensure_locale_enabled(&locale, &enabled_locales)?;
+    let fields = validate_field_map(&payload.fields, &MAINTENANCE_TIMELINE_TRANSLATION_FIELD_KEYS, &["title"])?;
+    let at_utc = payload
+        .at_utc
+        .as_deref()
+        .filter(|v| !v.trim().is_empty())
+        .map(DateTime::parse_from_rfc3339)
+        .transpose()
+        .map_err(|_| AppError::bad_request("invalid at_utc"))?
+        .map(|v| v.with_timezone(&Utc));
+    repository::update_timeline_entry(db, maintenance_code, entry_id, at_utc, payload.sort_order, &locale, &fields)
+        .await?
+        .ok_or_else(|| AppError::not_found("timeline entry not found"))
+}
+
+pub async fn delete_timeline_entry(
+    db: &sqlx::PgPool,
+    maintenance_code: &str,
+    entry_id: &str,
+) -> Result<(), AppError> {
+    let deleted = repository::delete_timeline_entry(db, maintenance_code, entry_id).await?;
+    if deleted {
+        Ok(())
+    } else {
+        Err(AppError::not_found("timeline entry not found"))
+    }
 }
 
 fn validate_translation_value(

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use sqlx::Row;
 use uuid::Uuid;
@@ -686,6 +688,177 @@ pub async fn replace_translations(
 pub async fn delete_by_code(db: &sqlx::PgPool, maintenance_code: &str) -> Result<bool, AppError> {
     let result = sqlx::query("DELETE FROM maintenances WHERE key = $1")
         .bind(maintenance_code)
+        .execute(db)
+        .await?;
+    Ok(result.rows_affected() > 0)
+}
+
+async fn save_timeline_field(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    timeline_id: Uuid,
+    locale: &str,
+    field_key: &str,
+    field_value: &str,
+) -> Result<(), AppError> {
+    let trimmed = field_value.trim();
+    if trimmed.is_empty() {
+        sqlx::query("DELETE FROM maintenance_timeline_i18n WHERE timeline_id = $1 AND locale = $2 AND field_key = $3")
+            .bind(timeline_id)
+            .bind(locale)
+            .bind(field_key)
+            .execute(&mut **tx)
+            .await?;
+    } else {
+        sqlx::query(
+            r#"
+INSERT INTO maintenance_timeline_i18n (timeline_id, locale, field_key, field_value)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (timeline_id, locale, field_key) DO UPDATE SET field_value = EXCLUDED.field_value
+"#,
+        )
+        .bind(timeline_id)
+        .bind(locale)
+        .bind(field_key)
+        .bind(trimmed)
+        .execute(&mut **tx)
+        .await?;
+    }
+    Ok(())
+}
+
+pub async fn create_timeline_entry(
+    db: &sqlx::PgPool,
+    maintenance_code: &str,
+    at_utc: Option<DateTime<Utc>>,
+    sort_order: i32,
+    locale: &str,
+    fields: &HashMap<String, String>,
+) -> Result<MaintenanceTimelineItem, AppError> {
+    let maintenance_id: Uuid = sqlx::query_scalar("SELECT id FROM maintenances WHERE key = $1")
+        .bind(maintenance_code)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::not_found("maintenance not found"))?;
+
+    let mut tx = db.begin().await?;
+    let timeline_id = Uuid::new_v4();
+    sqlx::query(
+        "INSERT INTO maintenance_timeline (id, maintenance_id, at_utc, sort_order) VALUES ($1, $2, $3, $4)",
+    )
+    .bind(timeline_id)
+    .bind(maintenance_id)
+    .bind(at_utc)
+    .bind(sort_order)
+    .execute(&mut *tx)
+    .await?;
+
+    for (field_key, field_value) in fields {
+        save_timeline_field(&mut tx, timeline_id, locale, field_key, field_value).await?;
+    }
+    tx.commit().await?;
+
+    let locale_chain = crate::common::i18n::locale_chain(Some(locale));
+    let title = sqlx::query_scalar::<_, String>(
+        "SELECT coalesce((SELECT ti.field_value FROM maintenance_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'title' ORDER BY lp.ord LIMIT 1), '')",
+    )
+    .bind(timeline_id)
+    .bind(&locale_chain)
+    .fetch_one(db)
+    .await?;
+
+    let details = sqlx::query_scalar::<_, String>(
+        "SELECT coalesce((SELECT ti.field_value FROM maintenance_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'details' ORDER BY lp.ord LIMIT 1), '')",
+    )
+    .bind(timeline_id)
+    .bind(&locale_chain)
+    .fetch_one(db)
+    .await?;
+
+    Ok(MaintenanceTimelineItem {
+        id: timeline_id.to_string(),
+        at_utc: at_utc.map(|v| v.to_rfc3339()),
+        title,
+        details,
+    })
+}
+
+pub async fn update_timeline_entry(
+    db: &sqlx::PgPool,
+    maintenance_code: &str,
+    entry_id: &str,
+    at_utc: Option<DateTime<Utc>>,
+    sort_order: i32,
+    locale: &str,
+    fields: &HashMap<String, String>,
+) -> Result<Option<MaintenanceTimelineItem>, AppError> {
+    let maintenance_id: Uuid = sqlx::query_scalar("SELECT id FROM maintenances WHERE key = $1")
+        .bind(maintenance_code)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::not_found("maintenance not found"))?;
+
+    let timeline_id = Uuid::parse_str(entry_id).map_err(|_| AppError::bad_request("invalid timeline id"))?;
+
+    let mut tx = db.begin().await?;
+    let updated = sqlx::query(
+        "UPDATE maintenance_timeline SET at_utc = $1, sort_order = $4 WHERE id = $2 AND maintenance_id = $3",
+    )
+    .bind(at_utc)
+    .bind(timeline_id)
+    .bind(maintenance_id)
+    .bind(sort_order)
+    .execute(&mut *tx)
+    .await?
+    .rows_affected();
+    if updated == 0 {
+        return Ok(None);
+    }
+
+    for (field_key, field_value) in fields {
+        save_timeline_field(&mut tx, timeline_id, locale, field_key, field_value).await?;
+    }
+    tx.commit().await?;
+
+    let locale_chain = crate::common::i18n::locale_chain(Some(locale));
+    let title = sqlx::query_scalar::<_, String>(
+        "SELECT coalesce((SELECT ti.field_value FROM maintenance_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'title' ORDER BY lp.ord LIMIT 1), '')",
+    )
+    .bind(timeline_id)
+    .bind(&locale_chain)
+    .fetch_one(db)
+    .await?;
+
+    let details = sqlx::query_scalar::<_, String>(
+        "SELECT coalesce((SELECT ti.field_value FROM maintenance_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'details' ORDER BY lp.ord LIMIT 1), '')",
+    )
+    .bind(timeline_id)
+    .bind(&locale_chain)
+    .fetch_one(db)
+    .await?;
+
+    Ok(Some(MaintenanceTimelineItem {
+        id: timeline_id.to_string(),
+        at_utc: at_utc.map(|v| v.to_rfc3339()),
+        title,
+        details,
+    }))
+}
+
+pub async fn delete_timeline_entry(
+    db: &sqlx::PgPool,
+    maintenance_code: &str,
+    entry_id: &str,
+) -> Result<bool, AppError> {
+    let maintenance_id: Uuid = sqlx::query_scalar("SELECT id FROM maintenances WHERE key = $1")
+        .bind(maintenance_code)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::not_found("maintenance not found"))?;
+
+    let timeline_id = Uuid::parse_str(entry_id).map_err(|_| AppError::bad_request("invalid timeline id"))?;
+    let result = sqlx::query("DELETE FROM maintenance_timeline WHERE id = $1 AND maintenance_id = $2")
+        .bind(timeline_id)
+        .bind(maintenance_id)
         .execute(db)
         .await?;
     Ok(result.rows_affected() > 0)

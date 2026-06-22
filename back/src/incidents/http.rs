@@ -7,7 +7,8 @@ use crate::common::auth::Principal;
 use crate::common::error::AppError;
 use crate::common::role::Role;
 use crate::incidents::model::{
-    CreatedKeyResponse, IncidentListQuery, IncidentSaveRequest, IncidentTranslationsUpdateRequest,
+    CreatedKeyResponse, IncidentListQuery, IncidentSaveRequest, IncidentTimelineCreateRequest,
+    IncidentTimelineItem, IncidentTimelineUpdateRequest, IncidentTranslationsUpdateRequest,
 };
 use crate::incidents::service;
 
@@ -215,4 +216,40 @@ pub async fn delete(
     } else {
         Err(AppError::not_found("incident not found"))
     }
+}
+
+pub async fn create_timeline(
+    principal: Principal,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Query(query): Query<IncidentListQuery>,
+    Json(payload): Json<IncidentTimelineCreateRequest>,
+) -> Result<(StatusCode, Json<IncidentTimelineItem>), AppError> {
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
+    let locale = query.locale.unwrap_or_else(|| "en".to_string());
+    let entry = service::create_timeline_entry(&state.db, &id, &payload, &locale).await?;
+    Ok((StatusCode::CREATED, Json(entry)))
+}
+
+pub async fn update_timeline(
+    principal: Principal,
+    State(state): State<AppState>,
+    Path((id, entry_id)): Path<(String, String)>,
+    Query(query): Query<IncidentListQuery>,
+    Json(payload): Json<IncidentTimelineUpdateRequest>,
+) -> Result<Json<IncidentTimelineItem>, AppError> {
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
+    let locale = query.locale.unwrap_or_else(|| "en".to_string());
+    let entry = service::update_timeline_entry(&state.db, &id, &entry_id, &payload, &locale).await?;
+    Ok(Json(entry))
+}
+
+pub async fn delete_timeline(
+    principal: Principal,
+    State(state): State<AppState>,
+    Path((id, entry_id)): Path<(String, String)>,
+) -> Result<StatusCode, AppError> {
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
+    service::delete_timeline_entry(&state.db, &id, &entry_id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
