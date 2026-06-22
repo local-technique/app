@@ -27,6 +27,21 @@ export function parseUtc(utcIso: string): Date {
   return new Date(utcIso);
 }
 
+export function formatLocalDate(value: Date | string, locale: string): string {
+  const date = value instanceof Date ? value : new Date(value);
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "long",
+  }).format(date);
+}
+
+export function formatLocalDateTimeLong(value: Date | string, locale: string): string {
+  const date = value instanceof Date ? value : new Date(value);
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "long",
+    timeStyle: "short",
+  }).format(date);
+}
+
 export function formatLocalDateTime(value: Date | string, locale: string): string {
   const date = value instanceof Date ? value : new Date(value);
   return new Intl.DateTimeFormat(locale, {

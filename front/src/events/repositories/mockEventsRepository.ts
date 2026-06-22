@@ -22,16 +22,17 @@ export class MockEventsRepository implements EventsRepository {
       categoryId: item.categoryCode,
       startUtc: item.startUtc,
       endUtc: item.endUtc,
-      notifiedAtUtc: item.notifiedAtUtc,
+      statusType: item.statusType,
       locale: preferredLanguage,
       enabledLocales: ["en", "fr"],
       fields: [
         { fieldKey: "title", value: item.title[preferredLanguage] ?? "" },
-        { fieldKey: "short_description", value: item.shortDescription[preferredLanguage] ?? "" },
-        { fieldKey: "long_description", value: item.longDescription[preferredLanguage] ?? "" },
+        { fieldKey: "description", value: item.description[preferredLanguage] ?? "" },
         { fieldKey: "warning", value: item.warning?.[preferredLanguage] ?? "" },
         { fieldKey: "location", value: item.location?.[preferredLanguage] ?? "" },
+        { fieldKey: "status_text", value: item.statusText?.[preferredLanguage] ?? "" },
       ],
+      timeline: [],
     };
   }
 

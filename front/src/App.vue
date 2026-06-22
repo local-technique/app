@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import AuthGuard from "./auth/AuthGuard.vue";
@@ -19,9 +19,13 @@ const router = useRouter();
 const selectedLocale = ref<LocaleCode>(getStoredLocale());
 const selectedTheme = ref<ThemeMode>(getStoredTheme());
 const mobileMenuOpen = ref(false);
+
+provide("selectedLocale", selectedLocale);
+provide("selectedTheme", selectedTheme);
 const routerReady = ref(router.currentRoute.value.matched.length > 0);
-const showCoOwnerLinks = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNER", "CO_OWNERSHIP_BOARD"]));
+const showCoOwnerLinks = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNER", "CO_OWNERSHIP_BOARD", "CO_OWNERSHIP_BOARD_OPS"]));
 const showAdminLink = computed(() => currentUserRoles.loaded && hasRole("ADMIN"));
+const showAdminCategoryLink = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD_OPS"]));
 
 let mediaQuery: MediaQueryList | null = null;
 let mediaQueryListener: (() => void) | null = null;
@@ -79,12 +83,9 @@ onBeforeUnmount(() => {
       <aside class="desktop-sidebar" v-if="route.path !== '/login'">
         <div class="desktop-brand">CoPro</div>
         <SidebarNav
-          :locale="selectedLocale"
-          :theme="selectedTheme"
           :show-co-owner-links="showCoOwnerLinks"
           :show-admin-link="showAdminLink"
-          @update:locale="selectedLocale = $event"
-          @update:theme="selectedTheme = $event"
+          :show-admin-category-link="showAdminCategoryLink"
         />
       </aside>
 
@@ -98,20 +99,18 @@ onBeforeUnmount(() => {
     <MobileMenu
       v-if="route.path !== '/login'"
       :open="mobileMenuOpen"
-      :locale="selectedLocale"
-      :theme="selectedTheme"
       :show-co-owner-links="showCoOwnerLinks"
       :show-admin-link="showAdminLink"
+      :show-admin-category-link="showAdminCategoryLink"
       @close="mobileMenuOpen = false"
       @navigate="mobileMenuOpen = false"
-      @update:locale="selectedLocale = $event"
-      @update:theme="selectedTheme = $event"
     />
 
     <MobileBottomNav
       v-if="route.path !== '/login'"
       :show-co-owner-links="showCoOwnerLinks"
       :show-admin-link="showAdminLink"
+      :show-admin-category-link="showAdminCategoryLink"
       @open-more="mobileMenuOpen = true"
     />
   </div>
@@ -264,12 +263,37 @@ onBeforeUnmount(() => {
   color: var(--muted-fg);
 }
 
+:deep(.entity-key) {
+  font-weight: 400;
+  margin-right: 0.4rem;
+}
+
+:deep(.card-status) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted-fg);
+  font-weight: 700;
+}
+
 :deep(.timeline-warning) {
   margin: 0;
   font-size: 0.89rem;
   font-weight: 700;
   color: #f35a67;
 }
+
+:deep(.page-title-inline) { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+:deep(.title-icon-wrap) { display: inline-flex; align-items: center; line-height: 0; }
+:deep(.title-key) { display: inline-flex; align-items: center; color: var(--muted-fg); font-family: ui-monospace, monospace; font-size: 0.75em; font-weight: 600; white-space: nowrap; }
+:deep(.title-text) { display: inline-flex; align-items: center; flex: 1; min-width: 0; translate: 0 -0.06em; }
+:deep(.detail-actions) { display: flex; gap: 0.6rem; flex-wrap: nowrap; flex-shrink: 0; }
+:deep(.detail-actions-row) { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; }
+:deep(.date-line) { display: flex; align-items: center; gap: 0.4rem; color: var(--page-fg); font-size: 1.2rem; margin-top: 0.2rem; }
+:deep(.arrow-icon) { translate: 0 -0.06em; }
+:deep(.secondary-button) { border: 1px solid var(--control-border); border-radius: 0.55rem; padding: 0.45rem 0.7rem; background: var(--control-bg); color: var(--control-fg); cursor: pointer; text-decoration: none; }
+:deep(.audit-line) { margin-top: 0.5rem; display: flex; align-items: center; gap: 0.4rem; }
+:deep(.detail-location) { margin-top: 0.5rem; display: flex; align-items: center; gap: 0.4rem; }
 
 :deep(.empty-state) {
   margin-top: 1.2rem;

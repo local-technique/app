@@ -13,6 +13,7 @@ function project(overrides: Partial<ProjectItem> = {}): ProjectItem {
     endUtc: undefined,
     statusType: "waiting",
     statusText: { en: "Awaiting quote" },
+    timeline: [],
     attachments: [],
     ...overrides,
   };
@@ -46,7 +47,7 @@ describe("project utilities", () => {
     const waiting = toProjectViewModel(project({ startUtc: "2026-05-30T12:00:00Z", statusType: "waiting" }), "en");
 
     expect(waiting.status).toBe("toCome");
-    expect(waiting.displayStatus).toBe("waiting");
+    expect(waiting.statusType).toBe("waiting");
     vi.useRealTimers();
   });
 
@@ -64,6 +65,22 @@ describe("project utilities", () => {
     expect(html).toContain('<a href="https://example.com"');
     expect(html).toContain("<code>safe</code>");
     expect(html).not.toContain("<script>");
+  });
+
+  it("renders bullet lists even when mixed with non-bullet text in same block", () => {
+    let html = renderProjectMarkdown("Steps:\n- first\n- second\n\nNext:\n- alpha");
+    expect(html).toContain("<ul>");
+    expect(html).toContain("<li>first</li>");
+    expect(html).toContain("<li>second</li>");
+    expect(html).toContain("<li>alpha</li>");
+
+    html = renderProjectMarkdown("* tutu\n* toto");
+    expect(html).toContain("<ul>");
+    expect(html).toContain("<li>tutu</li>");
+    expect(html).toContain("<li>toto</li>");
+
+    html = renderProjectMarkdown("_chaufferie_");
+    expect(html).toContain("<em>chaufferie</em>");
   });
 
   it("renders headings and pipe tables", () => {

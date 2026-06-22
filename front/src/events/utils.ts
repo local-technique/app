@@ -1,18 +1,33 @@
-import { classifyEventStatus, formatLocalDateTime, parseUtc } from "../common/date";
+import { classifyEventStatus, formatLocalDate, formatLocalDateTime, formatLocalDateTimeLong, parseUtc } from "../common/date";
 import type { LocaleCode } from "../common/localeContent";
 import { resolveLocalized } from "../common/localeContent";
 import { fuzzyMatch } from "../common/search";
-import type { EventItem, EventLocalizedText, EventStatusSection } from "./types";
+import type { EventItem, EventLocalizedText, EventStatusSection, EventStoredStatus, EventTimelineEntry } from "./types";
+
+export type EventTimelineEntryViewModel = {
+  id: string;
+  atUtc: string | null;
+  atLabel: string;
+  atDateLabel: string;
+  atTimeLabel: string;
+  isPending: boolean;
+  title: string;
+  details: string;
+};
 
 export type EventViewModel = {
   id: string;
   status: EventStatusSection;
+  statusType: EventStoredStatus | "finished";
+  statusText: string;
   title: string;
   warning: string;
-  shortDescription: string;
-  longDescription: string;
+  description: string;
   location: string;
   dateLabel: string;
+  startDateFormatted: string;
+  endDateFormatted?: string;
+  timeline: EventTimelineEntryViewModel[];
   raw: EventItem;
 };
 
@@ -21,6 +36,13 @@ function resolve(value: EventLocalizedText | undefined, locale: LocaleCode): str
     return "";
   }
   return resolveLocalized(value, locale);
+}
+
+function computeStatusType(stored: EventStoredStatus, endUtc: string | undefined): EventStoredStatus | "finished" {
+  if (endUtc && Date.parse(endUtc) < Date.now()) {
+    return "finished";
+  }
+  return stored;
 }
 
 function formatEventDateLabel(event: EventItem, locale: LocaleCode): string {
@@ -32,16 +54,35 @@ function formatEventDateLabel(event: EventItem, locale: LocaleCode): string {
   return `${start} - ${end}`;
 }
 
+function toTimelineEntryViewModel(entry: EventTimelineEntry, locale: LocaleCode): EventTimelineEntryViewModel {
+  const atDate = entry.atUtc ? parseUtc(entry.atUtc) : null;
+  return {
+    id: entry.id,
+    atUtc: entry.atUtc,
+    atLabel: atDate ? formatLocalDateTime(atDate, locale) : "Pending",
+    atDateLabel: atDate ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(atDate) : "",
+    atTimeLabel: atDate ? new Intl.DateTimeFormat(locale, { timeStyle: "short" }).format(atDate) : "",
+    isPending: !entry.atUtc,
+    title: resolve(entry.title, locale),
+    details: resolve(entry.details, locale),
+  };
+}
+
 export function toEventViewModel(event: EventItem, locale: LocaleCode): EventViewModel {
+  const timeline = event.timeline.map((entry) => toTimelineEntryViewModel(entry, locale));
   return {
     id: event.id,
     status: classifyEventStatus({ startUtc: event.startUtc, endUtc: event.endUtc }),
+    statusType: computeStatusType(event.statusType, event.endUtc),
+    statusText: resolve(event.statusText, locale),
     title: resolve(event.title, locale),
     warning: resolve(event.warning, locale),
-    shortDescription: resolve(event.shortDescription, locale),
-    longDescription: resolve(event.longDescription, locale),
+    description: resolve(event.description, locale),
     location: resolve(event.location, locale),
     dateLabel: formatEventDateLabel(event, locale),
+    startDateFormatted: formatLocalDateTimeLong(parseUtc(event.startUtc), locale),
+    endDateFormatted: event.endUtc ? formatLocalDateTimeLong(parseUtc(event.endUtc), locale) : undefined,
+    timeline,
     raw: event,
   };
 }
@@ -51,12 +92,16 @@ export function matchesEventQuery(event: EventItem, query: string, locale: Local
     return true;
   }
 
+  const timelineText = event.timeline
+    .map((entry) => `${resolve(entry.title, locale)} ${resolve(entry.details, locale)}`)
+    .join(" ");
+
   const haystack = [
     resolve(event.title, locale),
-    resolve(event.shortDescription, locale),
-    resolve(event.longDescription, locale),
+    resolve(event.description, locale),
     resolve(event.location, locale),
     event.categoryCode,
+    timelineText,
   ]
     .join(" ")
     .trim();

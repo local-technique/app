@@ -26,7 +26,7 @@ pub async fn list(
     State(state): State<AppState>,
     Query(query): Query<CategoryListQuery>,
 ) -> Result<Json<Vec<crate::categories::model::CategoryItem>>, AppError> {
-    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard])?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
     Ok(Json(service::list(&state.db, query.locale.as_deref()).await?))
 }
 
@@ -47,7 +47,7 @@ pub async fn admin_list(
     State(state): State<AppState>,
     Query(query): Query<CategoryListQuery>,
 ) -> Result<Json<Vec<crate::categories::model::CategoryItem>>, AppError> {
-    principal.ensure_role(Role::Admin)?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoardOps])?;
     Ok(Json(service::list(&state.db, query.locale.as_deref()).await?))
 }
 
@@ -68,7 +68,7 @@ pub async fn create(
     State(state): State<AppState>,
     Json(payload): Json<CategoryCreateRequest>,
 ) -> Result<(StatusCode, Json<crate::categories::model::CategoryItem>), AppError> {
-    principal.ensure_role(Role::Admin)?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoardOps])?;
     let value = service::create(&state.db, &payload).await?;
     Ok((StatusCode::CREATED, Json(value)))
 }
@@ -94,7 +94,7 @@ pub async fn update(
     Path(id): Path<String>,
     Json(payload): Json<CategoryUpdateRequest>,
 ) -> Result<Json<crate::categories::model::CategoryItem>, AppError> {
-    principal.ensure_role(Role::Admin)?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoardOps])?;
     Ok(Json(service::update(&state.db, &id, &payload).await?))
 }
 
@@ -117,7 +117,7 @@ pub async fn delete(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    principal.ensure_role(Role::Admin)?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoardOps])?;
     service::delete(&state.db, &id).await?;
     Ok(StatusCode::NO_CONTENT)
 }

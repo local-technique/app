@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Utc};
 use sqlx::Row;
 use uuid::Uuid;
@@ -33,6 +35,7 @@ SELECT
   ), c.key) AS category_label,
   i.start_utc,
   i.end_utc,
+  i.status_type,
   coalesce((
     SELECT ii.field_value
     FROM incident_i18n ii
@@ -45,10 +48,10 @@ SELECT
     SELECT ii.field_value
     FROM incident_i18n ii
     JOIN unnest($1::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ii.locale
-    WHERE ii.incident_id = i.id AND ii.field_key = 'short_description'
+    WHERE ii.incident_id = i.id AND ii.field_key = 'description'
     ORDER BY lp.ord
     LIMIT 1
-  ), '') AS short_description,
+  ), '') AS description,
   coalesce((
     SELECT ii.field_value
     FROM incident_i18n ii
@@ -57,6 +60,14 @@ SELECT
     ORDER BY lp.ord
     LIMIT 1
   ), '') AS location,
+  coalesce((
+    SELECT ii.field_value
+    FROM incident_i18n ii
+    JOIN unnest($1::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ii.locale
+    WHERE ii.incident_id = i.id AND ii.field_key = 'status_text'
+    ORDER BY lp.ord
+    LIMIT 1
+  ), '') AS status_text,
   lt.id AS latest_timeline_id,
   lt.at_utc AS latest_timeline_at_utc,
   coalesce((
@@ -97,7 +108,7 @@ WHERE ($2::TEXT IS NULL OR $2 = '') OR (
     SELECT ii.field_value
     FROM incident_i18n ii
     JOIN unnest($1::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ii.locale
-    WHERE ii.incident_id = i.id AND ii.field_key = 'short_description'
+    WHERE ii.incident_id = i.id AND ii.field_key = 'description'
     ORDER BY lp.ord
     LIMIT 1
   ), '') ILIKE ('%' || $2 || '%')
@@ -140,10 +151,12 @@ fn to_list_item(row: sqlx::postgres::PgRow) -> Result<IncidentListItem, AppError
             label: row.try_get("category_label")?,
         },
         title: row.try_get("title")?,
-        short_description: row.try_get("short_description")?,
+        description: row.try_get("description")?,
         location: row.try_get("location")?,
         start_utc: start_utc.to_rfc3339(),
         end_utc: end_utc.map(|value| value.to_rfc3339()),
+        status_type: row.try_get("status_type")?,
+        status_text: row.try_get("status_text")?,
         timeline,
     })
 }
@@ -172,6 +185,7 @@ SELECT
   ), c.key) AS category_label,
   i.start_utc,
   i.end_utc,
+  i.status_type,
   i.last_modified_at,
   u.id AS last_modified_by_user_id,
   u.email AS last_modified_by_email,
@@ -187,18 +201,10 @@ SELECT
     SELECT ii.field_value
     FROM incident_i18n ii
     JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ii.locale
-    WHERE ii.incident_id = i.id AND ii.field_key = 'short_description'
+    WHERE ii.incident_id = i.id AND ii.field_key = 'description'
     ORDER BY lp.ord
     LIMIT 1
-  ), '') AS short_description,
-  coalesce((
-    SELECT ii.field_value
-    FROM incident_i18n ii
-    JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ii.locale
-    WHERE ii.incident_id = i.id AND ii.field_key = 'long_description'
-    ORDER BY lp.ord
-    LIMIT 1
-  ), '') AS long_description,
+  ), '') AS description,
   coalesce((
     SELECT ii.field_value
     FROM incident_i18n ii
@@ -206,7 +212,15 @@ SELECT
     WHERE ii.incident_id = i.id AND ii.field_key = 'location'
     ORDER BY lp.ord
     LIMIT 1
-  ), '') AS location
+  ), '') AS location,
+  coalesce((
+    SELECT ii.field_value
+    FROM incident_i18n ii
+    JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ii.locale
+    WHERE ii.incident_id = i.id AND ii.field_key = 'status_text'
+    ORDER BY lp.ord
+    LIMIT 1
+  ), '') AS status_text
 FROM incidents i
 JOIN event_categories c ON c.id = i.category_id
 LEFT JOIN users u ON u.id = i.last_modified_by_user_id
@@ -285,11 +299,12 @@ ORDER BY t.at_utc DESC NULLS FIRST, t.sort_order ASC
             label: row.try_get("category_label")?,
         },
         title: row.try_get("title")?,
-        short_description: row.try_get("short_description")?,
-        long_description: row.try_get("long_description")?,
+        description: row.try_get("description")?,
         location: row.try_get("location")?,
         start_utc: start_utc.to_rfc3339(),
         end_utc: end_utc.map(|value| value.to_rfc3339()),
+        status_type: row.try_get("status_type")?,
+        status_text: row.try_get("status_text")?,
         timeline,
         last_modified_at: last_modified_at.map(|value| value.to_rfc3339()),
         last_modified_by: last_modified_by_user_id.zip(last_modified_by_email).map(|(id, email)| AuditUser {
@@ -306,7 +321,7 @@ pub async fn edit_data(
     locale_chain: &[String],
     enabled_locales: Vec<String>,
 ) -> Result<Option<IncidentEditData>, AppError> {
-    let row = sqlx::query("SELECT id, key, category_id::TEXT AS category_id, start_utc, end_utc FROM incidents WHERE key = $1")
+    let row = sqlx::query("SELECT id, key, category_id::TEXT AS category_id, start_utc, end_utc, status_type FROM incidents WHERE key = $1")
         .bind(incident_code)
         .fetch_optional(db)
         .await?;
@@ -330,7 +345,7 @@ pub async fn edit_data(
             id: timeline_id.to_string(),
             at_utc: at_utc.map(|value| value.to_rfc3339()),
             sort_order: timeline_row.try_get("sort_order")?,
-            fields: edit_timeline_fields(db, timeline_id, locale, locale_chain, &INCIDENT_TIMELINE_FIELDS).await?,
+            fields: crate::common::timeline::edit_timeline_fields(db, "incident_timeline_i18n", timeline_id, locale, locale_chain, &INCIDENT_TIMELINE_FIELDS).await?,
         });
     }
     Ok(Some(IncidentEditData {
@@ -338,6 +353,7 @@ pub async fn edit_data(
         category_id: row.try_get("category_id")?,
         start_utc: start_utc.to_rfc3339(),
         end_utc: end_utc.map(|value| value.to_rfc3339()),
+        status_type: row.try_get("status_type")?,
         locale: locale.to_string(),
         enabled_locales,
         fields: edit_fields(db, incident_id, locale, locale_chain, &INCIDENT_FIELDS).await?,
@@ -345,7 +361,7 @@ pub async fn edit_data(
     }))
 }
 
-const INCIDENT_FIELDS: [&str; 4] = ["title", "short_description", "long_description", "location"];
+const INCIDENT_FIELDS: [&str; 4] = ["title", "description", "location", "status_text"];
 const INCIDENT_TIMELINE_FIELDS: [&str; 2] = ["title", "details"];
 
 async fn edit_fields(
@@ -398,56 +414,6 @@ LIMIT 1
     Ok(result)
 }
 
-async fn edit_timeline_fields(
-    db: &sqlx::PgPool,
-    timeline_id: Uuid,
-    locale: &str,
-    locale_chain: &[String],
-    field_keys: &[&str],
-) -> Result<Vec<EditFieldValue>, AppError> {
-    let mut result = Vec::with_capacity(field_keys.len());
-    for field_key in field_keys {
-        let exact: Option<String> = sqlx::query_scalar(
-            "SELECT field_value FROM incident_timeline_i18n WHERE timeline_id = $1 AND locale = $2 AND field_key = $3",
-        )
-        .bind(timeline_id)
-        .bind(locale)
-        .bind(field_key)
-        .fetch_optional(db)
-        .await?;
-        let fallback = if exact.is_none() {
-            sqlx::query(
-                r#"
-SELECT ti.locale, ti.field_value
-FROM incident_timeline_i18n ti
-JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale
-WHERE ti.timeline_id = $1 AND ti.field_key = $3
-ORDER BY lp.ord
-LIMIT 1
-"#,
-            )
-            .bind(timeline_id)
-            .bind(locale_chain)
-            .bind(field_key)
-            .fetch_optional(db)
-            .await?
-            .map(|row| Ok::<_, AppError>((row.try_get::<String, _>("locale")?, row.try_get::<String, _>("field_value")?)))
-            .transpose()?
-        } else {
-            None
-        };
-        let (fallback_locale, fallback_value) = fallback.map_or((None, None), |(locale, value)| (Some(locale), Some(value)));
-        result.push(EditFieldValue {
-            field_key: (*field_key).to_string(),
-            value: exact.clone().or_else(|| fallback_value.clone()).unwrap_or_default(),
-            exact_value: exact,
-            fallback_locale,
-            fallback_value,
-        });
-    }
-    Ok(result)
-}
-
 pub async fn save_partial(db: &sqlx::PgPool, payload: &IncidentSaveRequest, user_id: Uuid) -> Result<String, AppError> {
     let start_utc = DateTime::parse_from_rfc3339(&payload.start_utc)
         .map_err(|_| AppError::bad_request("invalid incident start_utc"))?
@@ -471,9 +437,10 @@ UPDATE incidents
 SET category_id = $2::uuid,
     start_utc = $3,
     end_utc = $4,
+    status_type = $5,
     updated_at = now(),
     last_modified_at = now(),
-    last_modified_by_user_id = $5
+    last_modified_by_user_id = $6
 WHERE key = $1
 RETURNING id, key
 "#,
@@ -482,6 +449,7 @@ RETURNING id, key
         .bind(&payload.category_id)
         .bind(start_utc)
         .bind(end_utc)
+        .bind(&payload.status_type)
         .bind(user_id)
         .fetch_optional(&mut *tx)
         .await?
@@ -490,14 +458,15 @@ RETURNING id, key
     } else {
         let row = sqlx::query(
             r#"
-INSERT INTO incidents (id, key, category_id, start_utc, end_utc, updated_at, last_modified_at, last_modified_by_user_id)
-VALUES (gen_random_uuid(), 'INC-' || nextval('incident_key_seq'), $1::uuid, $2, $3, now(), now(), $4)
+INSERT INTO incidents (id, key, category_id, start_utc, end_utc, status_type, updated_at, last_modified_at, last_modified_by_user_id)
+VALUES (gen_random_uuid(), 'INC-' || nextval('incident_key_seq'), $1::uuid, $2, $3, $4, now(), now(), $5)
 RETURNING id, key
 "#,
         )
         .bind(&payload.category_id)
         .bind(start_utc)
         .bind(end_utc)
+        .bind(&payload.status_type)
         .bind(user_id)
         .fetch_one(&mut *tx)
         .await?;
@@ -716,6 +685,144 @@ pub async fn replace_translations(
 pub async fn delete_by_code(db: &sqlx::PgPool, incident_code: &str) -> Result<bool, AppError> {
     let result = sqlx::query("DELETE FROM incidents WHERE key = $1")
         .bind(incident_code)
+        .execute(db)
+        .await?;
+    Ok(result.rows_affected() > 0)
+}
+
+pub async fn create_timeline_entry(
+    db: &sqlx::PgPool,
+    incident_code: &str,
+    at_utc: Option<DateTime<Utc>>,
+    sort_order: i32,
+    locale: &str,
+    fields: &HashMap<String, String>,
+) -> Result<IncidentTimelineItem, AppError> {
+    let incident_id: Uuid = sqlx::query_scalar("SELECT id FROM incidents WHERE key = $1")
+        .bind(incident_code)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::not_found("incident not found"))?;
+
+    let mut tx = db.begin().await?;
+    let timeline_id = Uuid::new_v4();
+    sqlx::query(
+        "INSERT INTO incident_timeline (id, incident_id, at_utc, sort_order) VALUES ($1, $2, $3, $4)",
+    )
+    .bind(timeline_id)
+    .bind(incident_id)
+    .bind(at_utc)
+    .bind(sort_order)
+    .execute(&mut *tx)
+    .await?;
+
+    for (field_key, field_value) in fields {
+        save_timeline_field(&mut tx, timeline_id, locale, field_key, field_value).await?;
+    }
+    tx.commit().await?;
+
+    let locale_chain = crate::common::i18n::locale_chain(Some(locale));
+    let title = sqlx::query_scalar::<_, String>(
+        "SELECT coalesce((SELECT ti.field_value FROM incident_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'title' ORDER BY lp.ord LIMIT 1), '')",
+    )
+    .bind(timeline_id)
+    .bind(&locale_chain)
+    .fetch_one(db)
+    .await?;
+
+    let details = sqlx::query_scalar::<_, String>(
+        "SELECT coalesce((SELECT ti.field_value FROM incident_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'details' ORDER BY lp.ord LIMIT 1), '')",
+    )
+    .bind(timeline_id)
+    .bind(&locale_chain)
+    .fetch_one(db)
+    .await?;
+
+    Ok(IncidentTimelineItem {
+        id: timeline_id.to_string(),
+        at_utc: at_utc.map(|v| v.to_rfc3339()),
+        title,
+        details,
+    })
+}
+
+pub async fn update_timeline_entry(
+    db: &sqlx::PgPool,
+    incident_code: &str,
+    entry_id: &str,
+    at_utc: Option<DateTime<Utc>>,
+    sort_order: i32,
+    locale: &str,
+    fields: &HashMap<String, String>,
+) -> Result<Option<IncidentTimelineItem>, AppError> {
+    let incident_id: Uuid = sqlx::query_scalar("SELECT id FROM incidents WHERE key = $1")
+        .bind(incident_code)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::not_found("incident not found"))?;
+
+    let timeline_id = Uuid::parse_str(entry_id).map_err(|_| AppError::bad_request("invalid timeline id"))?;
+
+    let mut tx = db.begin().await?;
+    let updated = sqlx::query(
+        "UPDATE incident_timeline SET at_utc = $1, sort_order = $4 WHERE id = $2 AND incident_id = $3",
+    )
+    .bind(at_utc)
+    .bind(timeline_id)
+    .bind(incident_id)
+    .bind(sort_order)
+    .execute(&mut *tx)
+    .await?
+    .rows_affected();
+    if updated == 0 {
+        return Ok(None);
+    }
+
+    for (field_key, field_value) in fields {
+        save_timeline_field(&mut tx, timeline_id, locale, field_key, field_value).await?;
+    }
+    tx.commit().await?;
+
+    let locale_chain = crate::common::i18n::locale_chain(Some(locale));
+    let title = sqlx::query_scalar::<_, String>(
+        "SELECT coalesce((SELECT ti.field_value FROM incident_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'title' ORDER BY lp.ord LIMIT 1), '')",
+    )
+    .bind(timeline_id)
+    .bind(&locale_chain)
+    .fetch_one(db)
+    .await?;
+
+    let details = sqlx::query_scalar::<_, String>(
+        "SELECT coalesce((SELECT ti.field_value FROM incident_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'details' ORDER BY lp.ord LIMIT 1), '')",
+    )
+    .bind(timeline_id)
+    .bind(&locale_chain)
+    .fetch_one(db)
+    .await?;
+
+    Ok(Some(IncidentTimelineItem {
+        id: timeline_id.to_string(),
+        at_utc: at_utc.map(|v| v.to_rfc3339()),
+        title,
+        details,
+    }))
+}
+
+pub async fn delete_timeline_entry(
+    db: &sqlx::PgPool,
+    incident_code: &str,
+    entry_id: &str,
+) -> Result<bool, AppError> {
+    let incident_id: Uuid = sqlx::query_scalar("SELECT id FROM incidents WHERE key = $1")
+        .bind(incident_code)
+        .fetch_optional(db)
+        .await?
+        .ok_or_else(|| AppError::not_found("incident not found"))?;
+
+    let timeline_id = Uuid::parse_str(entry_id).map_err(|_| AppError::bad_request("invalid timeline id"))?;
+    let result = sqlx::query("DELETE FROM incident_timeline WHERE id = $1 AND incident_id = $2")
+        .bind(timeline_id)
+        .bind(incident_id)
         .execute(db)
         .await?;
     Ok(result.rows_affected() > 0)

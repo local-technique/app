@@ -1,4 +1,4 @@
-import { formatLocalDateTime, parseUtc } from "../common/date";
+import { formatLocalDate, formatLocalDateTime, formatLocalDateTimeLong, parseUtc } from "../common/date";
 import type { LocaleCode } from "../common/localeContent";
 import { resolveLocalized } from "../common/localeContent";
 import { fuzzyMatch } from "../common/search";
@@ -6,11 +6,13 @@ import type {
   IncidentItem,
   IncidentLocalizedText,
   IncidentStatusSection,
+  IncidentStoredStatus,
   IncidentTimelineEntry,
 } from "./types";
 
 export type IncidentTimelineEntryViewModel = {
   id: string;
+  atUtc: string | null;
   atLabel: string;
   atDateLabel: string;
   atTimeLabel: string;
@@ -22,11 +24,14 @@ export type IncidentTimelineEntryViewModel = {
 export type IncidentViewModel = {
   id: string;
   status: IncidentStatusSection;
+  statusType: IncidentStoredStatus | "finished";
+  statusText: string;
   title: string;
-  shortDescription: string;
-  longDescription: string;
+  description: string;
   location: string;
   dateLabel: string;
+  startDateFormatted: string;
+  endDateFormatted?: string;
   timeline: IncidentTimelineEntryViewModel[];
   raw: IncidentItem;
 };
@@ -36,6 +41,13 @@ function resolve(value: IncidentLocalizedText | undefined, locale: LocaleCode): 
     return "";
   }
   return resolveLocalized(value, locale);
+}
+
+function computeStatusType(stored: IncidentStoredStatus, endUtc: string | undefined): IncidentStoredStatus | "finished" {
+  if (endUtc && Date.parse(endUtc) < Date.now()) {
+    return "finished";
+  }
+  return stored;
 }
 
 function toIncidentStatus(input: IncidentItem): IncidentStatusSection {
@@ -60,6 +72,7 @@ function toTimelineEntryViewModel(entry: IncidentTimelineEntry, locale: LocaleCo
   const atDate = entry.atUtc ? parseUtc(entry.atUtc) : null;
   return {
     id: entry.id,
+    atUtc: entry.atUtc,
     atLabel: atDate ? formatLocalDateTime(atDate, locale) : "Pending",
     atDateLabel: atDate ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(atDate) : "",
     atTimeLabel: atDate ? new Intl.DateTimeFormat(locale, { timeStyle: "short" }).format(atDate) : "",
@@ -75,11 +88,14 @@ export function toIncidentViewModel(incident: IncidentItem, locale: LocaleCode):
   return {
     id: incident.id,
     status: toIncidentStatus(incident),
+    statusType: computeStatusType(incident.statusType, incident.endUtc),
+    statusText: resolve(incident.statusText, locale),
     title: resolve(incident.title, locale),
-    shortDescription: resolve(incident.shortDescription, locale),
-    longDescription: resolve(incident.longDescription, locale),
+    description: resolve(incident.description, locale),
     location: resolve(incident.location, locale),
     dateLabel: formatIncidentDateLabel(incident, locale),
+    startDateFormatted: formatLocalDateTimeLong(parseUtc(incident.startUtc), locale),
+    endDateFormatted: incident.endUtc ? formatLocalDateTimeLong(parseUtc(incident.endUtc), locale) : undefined,
     timeline,
     raw: incident,
   };
@@ -96,8 +112,7 @@ export function matchesIncidentQuery(incident: IncidentItem, query: string, loca
 
   const haystack = [
     resolve(incident.title, locale),
-    resolve(incident.shortDescription, locale),
-    resolve(incident.longDescription, locale),
+    resolve(incident.description, locale),
     resolve(incident.location, locale),
     incident.categoryCode,
     timelineText,

@@ -1,4 +1,4 @@
-import { formatLocalDateTime, parseUtc } from "../common/date";
+import { formatLocalDate, formatLocalDateTime, parseUtc } from "../common/date";
 import type { LocaleCode } from "../common/localeContent";
 import { resolveLocalized } from "../common/localeContent";
 import { fuzzyMatch } from "../common/search";
@@ -7,17 +7,32 @@ import type {
   ProjectItem,
   ProjectLocalizedText,
   ProjectStatusSection,
+  ProjectTimelineEntry,
 } from "./types";
+
+export type ProjectTimelineEntryViewModel = {
+  id: string;
+  atUtc: string | null;
+  atLabel: string;
+  atDateLabel: string;
+  atTimeLabel: string;
+  isPending: boolean;
+  title: string;
+  details: string;
+};
 
 export type ProjectViewModel = {
   id: string;
   section: ProjectStatusSection;
   status: ProjectStatusSection;
-  displayStatus: ProjectDisplayStatus;
+  statusType: ProjectDisplayStatus;
   statusText: string;
   title: string;
   description: string;
   dateLabel: string;
+  startDateFormatted?: string;
+  endDateFormatted?: string;
+  timeline: ProjectTimelineEntryViewModel[];
   raw: ProjectItem;
 };
 
@@ -28,15 +43,15 @@ function resolve(value: ProjectLocalizedText | undefined, locale: LocaleCode): s
   return resolveLocalized(value, locale);
 }
 
-function classifyProject(project: ProjectItem, now = new Date()): { section: ProjectStatusSection; displayStatus: ProjectDisplayStatus } {
+function classifyProject(project: ProjectItem, now = new Date()): { section: ProjectStatusSection; statusType: ProjectDisplayStatus } {
   const nowMs = now.getTime();
   if (project.endUtc && Date.parse(project.endUtc) < nowMs) {
-    return { section: "finished", displayStatus: "finished" };
+    return { section: "finished", statusType: "finished" };
   }
   if (project.statusType === "ongoing") {
-    return { section: "ongoing", displayStatus: "ongoing" };
+    return { section: "ongoing", statusType: "ongoing" };
   }
-  return { section: "toCome", displayStatus: "waiting" };
+  return { section: "toCome", statusType: "waiting" };
 }
 
 function formatProjectDateLabel(project: ProjectItem, locale: LocaleCode): string {
@@ -53,17 +68,35 @@ function formatProjectDateLabel(project: ProjectItem, locale: LocaleCode): strin
   return locale === "fr" ? `jusqu'au ${end}` : `until ${end}`;
 }
 
+function toTimelineEntryViewModel(entry: ProjectTimelineEntry, locale: LocaleCode): ProjectTimelineEntryViewModel {
+  const atDate = entry.atUtc ? parseUtc(entry.atUtc) : null;
+  return {
+    id: entry.id,
+    atUtc: entry.atUtc,
+    atLabel: atDate ? formatLocalDateTime(atDate, locale) : "Pending",
+    atDateLabel: atDate ? new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(atDate) : "",
+    atTimeLabel: atDate ? new Intl.DateTimeFormat(locale, { timeStyle: "short" }).format(atDate) : "",
+    isPending: !entry.atUtc,
+    title: resolve(entry.title, locale),
+    details: resolve(entry.details, locale),
+  };
+}
+
 export function toProjectViewModel(project: ProjectItem, locale: LocaleCode): ProjectViewModel {
   const classification = classifyProject(project);
+  const timeline = project.timeline.map((entry) => toTimelineEntryViewModel(entry, locale));
   return {
     id: project.id,
     section: classification.section,
     status: classification.section,
-    displayStatus: classification.displayStatus,
-    statusText: classification.displayStatus === "finished" ? (locale === "fr" ? "Terminé" : "Finished") : resolve(project.statusText, locale),
+    statusType: classification.statusType,
+    statusText: classification.statusType === "finished" ? (locale === "fr" ? "Terminé" : "Finished") : resolve(project.statusText, locale),
     title: resolve(project.title, locale),
     description: resolve(project.description, locale),
     dateLabel: formatProjectDateLabel(project, locale),
+    startDateFormatted: project.startUtc ? formatLocalDate(parseUtc(project.startUtc), locale) : undefined,
+    endDateFormatted: project.endUtc ? formatLocalDate(parseUtc(project.endUtc), locale) : undefined,
+    timeline,
     raw: project,
   };
 }
@@ -83,6 +116,9 @@ export function matchesProjectQuery(project: ProjectItem, query: string, locale:
     return true;
   }
   const model = toProjectViewModel(project, locale);
+  const timelineText = project.timeline
+    .map((entry) => `${resolve(entry.title, locale)} ${resolve(entry.details, locale)}`)
+    .join(" ");
   const haystack = [
     project.id,
     resolve(project.title, locale),
@@ -91,8 +127,9 @@ export function matchesProjectQuery(project: ProjectItem, query: string, locale:
     project.category?.key,
     project.category?.label,
     project.statusType,
-    model.displayStatus,
+    model.statusType,
     model.statusText,
+    timelineText,
   ]
     .join(" ")
     .trim();
@@ -108,12 +145,22 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function isBulletLine(line: string): boolean {
+  const trimmed = line.trim();
+  return trimmed.startsWith("- ") || trimmed.startsWith("* ");
+}
+
+function bulletContent(line: string): string {
+  return line.trim().slice(2);
+}
+
 function renderInlineMarkdown(value: string): string {
   return escapeHtml(value)
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/\[([^\]]+)]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" rel="noopener noreferrer" target="_blank">$1</a>')
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*([^*]+)\*/g, "<em>$1</em>");
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+    .replace(/_([^_]+)_/g, "<em>$1</em>");
 }
 
 function splitTableRow(line: string): string[] {
@@ -188,9 +235,27 @@ export function renderProjectMarkdown(markdown: string): string {
       if (table) {
         return table;
       }
-      if (lines.every((line) => line.trim().startsWith("- "))) {
-        const items = lines.map((line) => `<li>${renderInlineMarkdown(line.trim().slice(2))}</li>`).join("");
-        return `<ul>${items}</ul>`;
+      if (lines.some((line) => isBulletLine(line))) {
+        let result = "";
+        let i = 0;
+        while (i < lines.length) {
+          if (isBulletLine(lines[i])) {
+            const items: string[] = [];
+            while (i < lines.length && isBulletLine(lines[i])) {
+              items.push(`<li>${renderInlineMarkdown(bulletContent(lines[i]))}</li>`);
+              i++;
+            }
+            result += `<ul>${items.join("")}</ul>`;
+          } else {
+            const paraLines: string[] = [];
+            while (i < lines.length && !isBulletLine(lines[i])) {
+              paraLines.push(renderInlineMarkdown(lines[i].replace(/^#+\s*/, "")));
+              i++;
+            }
+            result += `<p>${paraLines.join("<br>")}</p>`;
+          }
+        }
+        return result;
       }
       const paragraph = lines.map((line) => renderInlineMarkdown(line.replace(/^#+\s*/, ""))).join("<br>");
       return `<p>${paragraph}</p>`;

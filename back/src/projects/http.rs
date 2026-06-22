@@ -6,7 +6,10 @@ use crate::app::state::AppState;
 use crate::common::auth::Principal;
 use crate::common::error::AppError;
 use crate::common::role::Role;
-use crate::projects::model::{CreatedKeyResponse, ProjectListQuery, ProjectSaveRequest, ProjectTranslationsUpdateRequest};
+use crate::projects::model::{
+    CreatedKeyResponse, ProjectListQuery, ProjectSaveRequest, ProjectTimelineCreateRequest,
+    ProjectTimelineItem, ProjectTimelineUpdateRequest, ProjectTranslationsUpdateRequest,
+};
 use crate::projects::service;
 
 #[utoipa::path(
@@ -26,7 +29,7 @@ pub async fn list(
     State(state): State<AppState>,
     Query(query): Query<ProjectListQuery>,
 ) -> Result<Json<Vec<crate::projects::model::ProjectListItem>>, AppError> {
-    principal.ensure_any_role(&[Role::Admin, Role::CoOwner, Role::CoOwnershipBoard])?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwner, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
     let values = service::list(&state.db, query.locale.as_deref(), query.q.as_deref()).await?;
     Ok(Json(values))
 }
@@ -52,7 +55,7 @@ pub async fn detail(
     Path(id): Path<String>,
     Query(query): Query<ProjectListQuery>,
 ) -> Result<Json<crate::projects::model::ProjectDetail>, AppError> {
-    principal.ensure_any_role(&[Role::Admin, Role::CoOwner, Role::CoOwnershipBoard])?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwner, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
     let Some(value) = service::by_id(&state.db, &id, query.locale.as_deref()).await? else {
         return Err(AppError::not_found("project not found"));
     };
@@ -80,7 +83,7 @@ pub async fn edit(
     Path(id): Path<String>,
     Query(query): Query<ProjectListQuery>,
 ) -> Result<Json<crate::projects::model::ProjectEditData>, AppError> {
-    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard])?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
     let Some(value) = service::edit_data(&state.db, &id, query.locale.as_deref()).await? else {
         return Err(AppError::not_found("project not found"));
     };
@@ -154,7 +157,7 @@ pub async fn create(
     State(state): State<AppState>,
     Json(payload): Json<ProjectSaveRequest>,
 ) -> Result<(StatusCode, Json<CreatedKeyResponse>), AppError> {
-    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard])?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
     let key = service::save_partial(&state.db, &payload, principal.user_id).await?;
     Ok((StatusCode::CREATED, Json(CreatedKeyResponse { key })))
 }
@@ -180,7 +183,7 @@ pub async fn update(
     Path(id): Path<String>,
     Json(mut payload): Json<ProjectSaveRequest>,
 ) -> Result<StatusCode, AppError> {
-    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard])?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
     payload.key = Some(id);
     service::save_partial(&state.db, &payload, principal.user_id).await?;
     Ok(StatusCode::NO_CONTENT)
@@ -206,11 +209,47 @@ pub async fn delete(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    principal.ensure_role(Role::Admin)?;
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoardOps])?;
     let deleted = service::delete(&state.db, &id).await?;
     if deleted {
         Ok(StatusCode::NO_CONTENT)
     } else {
         Err(AppError::not_found("project not found"))
     }
+}
+
+pub async fn create_timeline(
+    principal: Principal,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Query(query): Query<ProjectListQuery>,
+    Json(payload): Json<ProjectTimelineCreateRequest>,
+) -> Result<(StatusCode, Json<ProjectTimelineItem>), AppError> {
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
+    let locale = query.locale.unwrap_or_else(|| "en".to_string());
+    let entry = service::create_timeline_entry(&state.db, &id, &payload, &locale).await?;
+    Ok((StatusCode::CREATED, Json(entry)))
+}
+
+pub async fn update_timeline(
+    principal: Principal,
+    State(state): State<AppState>,
+    Path((id, entry_id)): Path<(String, String)>,
+    Query(query): Query<ProjectListQuery>,
+    Json(payload): Json<ProjectTimelineUpdateRequest>,
+) -> Result<Json<ProjectTimelineItem>, AppError> {
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
+    let locale = query.locale.unwrap_or_else(|| "en".to_string());
+    let entry = service::update_timeline_entry(&state.db, &id, &entry_id, &payload, &locale).await?;
+    Ok(Json(entry))
+}
+
+pub async fn delete_timeline(
+    principal: Principal,
+    State(state): State<AppState>,
+    Path((id, entry_id)): Path<(String, String)>,
+) -> Result<StatusCode, AppError> {
+    principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
+    service::delete_timeline_entry(&state.db, &id, &entry_id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }

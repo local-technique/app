@@ -6,15 +6,16 @@ use crate::common::error::AppError;
 use crate::common::i18n::locale_chain;
 use crate::common::validation::{
     ensure_field_key_allowed, ensure_locale_enabled, load_enabled_locales, normalize_field_key, normalize_locale,
-    normalize_text_value,
+    normalize_text_value, validate_field_map,
 };
 use crate::projects::model::{
-    ProjectDetail, ProjectEditData, ProjectListItem, ProjectSaveRequest, ProjectTranslationMatrixRow,
-    ProjectTranslationValue,
+    ProjectDetail, ProjectEditData, ProjectListItem, ProjectSaveRequest, ProjectTimelineCreateRequest,
+    ProjectTimelineItem, ProjectTimelineUpdateRequest, ProjectTranslationMatrixRow, ProjectTranslationValue,
 };
 use crate::projects::repository;
 
 const PROJECT_TRANSLATION_FIELD_KEYS: [&str; 3] = ["title", "description", "status_text"];
+const PROJECT_TIMELINE_TRANSLATION_FIELD_KEYS: [&str; 2] = ["title", "details"];
 const PROJECT_STATUSES: [&str; 2] = ["waiting", "ongoing"];
 
 pub async fn list(
@@ -83,6 +84,64 @@ pub async fn delete(db: &sqlx::PgPool, project_id: &str) -> Result<bool, AppErro
     repository::delete_by_code(db, project_id).await
 }
 
+pub async fn create_timeline_entry(
+    db: &sqlx::PgPool,
+    project_code: &str,
+    payload: &ProjectTimelineCreateRequest,
+    locale: &str,
+) -> Result<ProjectTimelineItem, AppError> {
+    let enabled_locales = load_enabled_locales(db).await?;
+    let locale = normalize_locale(locale)?;
+    ensure_locale_enabled(&locale, &enabled_locales)?;
+    let fields = validate_field_map(&payload.fields, &PROJECT_TIMELINE_TRANSLATION_FIELD_KEYS, &["title"])?;
+    let at_utc = payload
+        .at_utc
+        .as_deref()
+        .filter(|v| !v.trim().is_empty())
+        .map(DateTime::parse_from_rfc3339)
+        .transpose()
+        .map_err(|_| AppError::bad_request("invalid at_utc"))?
+        .map(|v| v.with_timezone(&Utc));
+    repository::create_timeline_entry(db, project_code, at_utc, payload.sort_order, &locale, &fields).await
+}
+
+pub async fn update_timeline_entry(
+    db: &sqlx::PgPool,
+    project_code: &str,
+    entry_id: &str,
+    payload: &ProjectTimelineUpdateRequest,
+    locale: &str,
+) -> Result<ProjectTimelineItem, AppError> {
+    let enabled_locales = load_enabled_locales(db).await?;
+    let locale = normalize_locale(locale)?;
+    ensure_locale_enabled(&locale, &enabled_locales)?;
+    let fields = validate_field_map(&payload.fields, &PROJECT_TIMELINE_TRANSLATION_FIELD_KEYS, &["title"])?;
+    let at_utc = payload
+        .at_utc
+        .as_deref()
+        .filter(|v| !v.trim().is_empty())
+        .map(DateTime::parse_from_rfc3339)
+        .transpose()
+        .map_err(|_| AppError::bad_request("invalid at_utc"))?
+        .map(|v| v.with_timezone(&Utc));
+    repository::update_timeline_entry(db, project_code, entry_id, at_utc, payload.sort_order, &locale, &fields)
+        .await?
+        .ok_or_else(|| AppError::not_found("timeline entry not found"))
+}
+
+pub async fn delete_timeline_entry(
+    db: &sqlx::PgPool,
+    project_code: &str,
+    entry_id: &str,
+) -> Result<(), AppError> {
+    let deleted = repository::delete_timeline_entry(db, project_code, entry_id).await?;
+    if deleted {
+        Ok(())
+    } else {
+        Err(AppError::not_found("timeline entry not found"))
+    }
+}
+
 fn validate_save_payload(
     payload: &ProjectSaveRequest,
     enabled_locales: &HashSet<String>,
@@ -119,6 +178,16 @@ fn validate_save_payload(
         }
     }
 
+    let mut timeline = Vec::with_capacity(payload.timeline.len());
+    for item in &payload.timeline {
+        timeline.push(crate::projects::model::ProjectTimelineSaveItem {
+            id: normalize_text_value(&item.id),
+            at_utc: item.at_utc.clone(),
+            sort_order: item.sort_order,
+            fields: validate_field_map(&item.fields, &PROJECT_TIMELINE_TRANSLATION_FIELD_KEYS, &["title"])?,
+        });
+    }
+
     let validated = ProjectSaveRequest {
         key: payload.key.as_deref().map(normalize_text_value).filter(|value| !value.is_empty()),
         category_id: normalize_text_value(&payload.category_id),
@@ -127,6 +196,8 @@ fn validate_save_payload(
         status_type,
         locale,
         fields,
+        replace_timeline: payload.replace_timeline,
+        timeline,
     };
     if validated.category_id.is_empty() {
         return Err(AppError::bad_request("category_id is required"));
@@ -196,6 +267,8 @@ mod tests {
                 ("description".to_string(), "Replace controller".to_string()),
                 ("status_text".to_string(), "Installing controller".to_string()),
             ]),
+            replace_timeline: false,
+            timeline: vec![],
         }
     }
 

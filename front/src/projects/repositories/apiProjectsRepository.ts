@@ -1,8 +1,15 @@
 import type { LocaleCode } from "../../common/localeContent";
 import { getAccessToken } from "../../auth/session";
-import type { EditFieldValue, ProjectEditData, ProjectItem, ProjectLocalizedText, ProjectSavePayload } from "../types";
+import type { EditFieldValue, ProjectEditData, ProjectItem, ProjectLocalizedText, ProjectSavePayload, ProjectTimelineEditItem, ProjectTimelineEntry } from "../types";
 import { mockProjectsRepository } from "./mockProjectsRepository";
 import type { ProjectsRepository } from "./projectsRepository";
+
+type ApiProjectTimelineItem = {
+  id: string;
+  at_utc: string | null;
+  title: string;
+  details: string;
+};
 
 type ApiProjectListItem = {
   key: string;
@@ -14,9 +21,11 @@ type ApiProjectListItem = {
   status_type: "waiting" | "ongoing";
   status_text: string;
   category?: { id: string; key: string; icon: string; color: string; label: string };
+  timeline?: ApiProjectTimelineItem[];
 };
 
 type ApiProjectDetail = ApiProjectListItem & {
+  timeline: ApiProjectTimelineItem[];
   last_modified_at?: string | null;
   last_modified_by?: { id: string; email: string } | null;
 };
@@ -29,6 +38,13 @@ type ApiEditFieldValue = {
   fallback_value?: string | null;
 };
 
+type ApiProjectTimelineEditItem = {
+  id: string;
+  at_utc: string | null;
+  sort_order: number;
+  fields: ApiEditFieldValue[];
+};
+
 type ApiProjectEditData = {
   key: string;
   category_id: string;
@@ -38,6 +54,7 @@ type ApiProjectEditData = {
   locale: string;
   enabled_locales: string[];
   fields: ApiEditFieldValue[];
+  timeline: ApiProjectTimelineEditItem[];
 };
 
 type ApiCreatedKeyResponse = { key: string };
@@ -54,6 +71,15 @@ function localized(locale: LocaleCode, value: string): ProjectLocalizedText {
   return locale === "en" ? { en: value } : { fr: value };
 }
 
+function toTimelineEntry(locale: LocaleCode, item: ApiProjectTimelineItem): ProjectTimelineEntry {
+  return {
+    id: item.id,
+    atUtc: item.at_utc,
+    title: localized(locale, item.title ?? ""),
+    details: localized(locale, item.details ?? ""),
+  };
+}
+
 function toProjectItem(locale: LocaleCode, value: ApiProjectListItem | ApiProjectDetail): ProjectItem {
   return {
     id: value.key,
@@ -65,6 +91,7 @@ function toProjectItem(locale: LocaleCode, value: ApiProjectListItem | ApiProjec
     endUtc: value.end_utc ?? undefined,
     statusType: value.status_type,
     statusText: localized(locale, value.status_text ?? ""),
+    timeline: "timeline" in value ? (value.timeline ?? []).map((item) => toTimelineEntry(locale, item)) : [],
     attachments: [],
     lastModifiedAt: "last_modified_at" in value ? (value.last_modified_at ?? undefined) : undefined,
     lastModifiedBy: "last_modified_by" in value ? (value.last_modified_by ?? null) : undefined,
@@ -81,6 +108,15 @@ function toEditField(value: ApiEditFieldValue): EditFieldValue {
   };
 }
 
+function toTimelineEditItem(value: ApiProjectTimelineEditItem): ProjectTimelineEditItem {
+  return {
+    id: value.id,
+    atUtc: value.at_utc,
+    sortOrder: value.sort_order,
+    fields: value.fields.map(toEditField),
+  };
+}
+
 function toEditData(value: ApiProjectEditData): ProjectEditData {
   return {
     id: value.key,
@@ -91,6 +127,7 @@ function toEditData(value: ApiProjectEditData): ProjectEditData {
     locale: value.locale,
     enabledLocales: value.enabled_locales,
     fields: value.fields.map(toEditField),
+    timeline: value.timeline.map(toTimelineEditItem),
   };
 }
 
@@ -142,6 +179,13 @@ function toApiPayload(payload: ProjectSavePayload, existingId?: string): Record<
     status_type: payload.statusType,
     locale: payload.locale,
     fields: payload.fields,
+    replace_timeline: payload.replaceTimeline ?? false,
+    timeline: payload.timeline.map((item) => ({
+      id: item.id,
+      at_utc: item.atUtc,
+      sort_order: item.sortOrder,
+      fields: item.fields,
+    })),
   };
 }
 
@@ -171,7 +215,31 @@ export class ApiProjectsRepository implements ProjectsRepository {
 
   async editData(id: string, preferredLanguage: LocaleCode): Promise<ProjectEditData | null> {
     if (useMockData()) {
-      return mockProjectsRepository.editData(id, preferredLanguage);
+      const item = await mockProjectsRepository.byId(id, preferredLanguage);
+      if (!item) return null;
+      return {
+        id: item.id,
+        categoryId: item.categoryCode,
+        startUtc: item.startUtc,
+        endUtc: item.endUtc,
+        statusType: item.statusType,
+        locale: preferredLanguage,
+        enabledLocales: ["en", "fr"],
+        fields: [
+          { fieldKey: "title", value: item.title[preferredLanguage] ?? "" },
+          { fieldKey: "description", value: item.description[preferredLanguage] ?? "" },
+          { fieldKey: "status_text", value: item.statusText[preferredLanguage] ?? "" },
+        ],
+        timeline: item.timeline.map((entry, index) => ({
+          id: entry.id,
+          atUtc: entry.atUtc,
+          sortOrder: index + 1,
+          fields: [
+            { fieldKey: "title", value: entry.title[preferredLanguage] ?? "" },
+            { fieldKey: "details", value: entry.details?.[preferredLanguage] ?? "" },
+          ],
+        })),
+      };
     }
 
     const params = new URLSearchParams({ locale: preferredLanguage });
@@ -189,6 +257,35 @@ export class ApiProjectsRepository implements ProjectsRepository {
   async delete(id: string): Promise<void> {
     if (useMockData()) return;
     await sendJson(`${apiBaseUrl()}/projects/${encodeURIComponent(id)}`, "DELETE");
+  }
+
+  async createTimelineEntry(id: string, preferredLanguage: LocaleCode, payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<ApiProjectTimelineItem> {
+    if (useMockData()) return { id: crypto.randomUUID(), at_utc: payload.atUtc, title: payload.fields.title ?? "", details: payload.fields.details ?? "" };
+    const params = new URLSearchParams({ locale: preferredLanguage });
+    const result = await sendJson<ApiProjectTimelineItem>(`${apiBaseUrl()}/projects/${encodeURIComponent(id)}/timeline?${params.toString()}`, "POST", {
+      at_utc: payload.atUtc,
+      sort_order: payload.sortOrder,
+      fields: payload.fields,
+    });
+    if (!result) throw new Error("failed to create timeline entry");
+    return result;
+  }
+
+  async updateTimelineEntry(id: string, entryId: string, preferredLanguage: LocaleCode, payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<ApiProjectTimelineItem> {
+    if (useMockData()) return { id: entryId, at_utc: payload.atUtc, title: payload.fields.title ?? "", details: payload.fields.details ?? "" };
+    const params = new URLSearchParams({ locale: preferredLanguage });
+    const result = await sendJson<ApiProjectTimelineItem>(`${apiBaseUrl()}/projects/${encodeURIComponent(id)}/timeline/${encodeURIComponent(entryId)}?${params.toString()}`, "PUT", {
+      at_utc: payload.atUtc,
+      sort_order: payload.sortOrder,
+      fields: payload.fields,
+    });
+    if (!result) throw new Error("failed to update timeline entry");
+    return result;
+  }
+
+  async deleteTimelineEntry(id: string, entryId: string): Promise<void> {
+    if (useMockData()) return;
+    await sendJson(`${apiBaseUrl()}/projects/${encodeURIComponent(id)}/timeline/${encodeURIComponent(entryId)}`, "DELETE");
   }
 }
 

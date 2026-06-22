@@ -1,20 +1,29 @@
 import type { LocaleCode } from "../../common/localeContent";
 import { getAccessToken } from "../../auth/session";
-import type { EditFieldValue, EventEditData, EventItem, EventLocalizedText, EventSavePayload } from "../types";
+import type { EditFieldValue, EventEditData, EventItem, EventLocalizedText, EventSavePayload, EventStoredStatus, EventTimelineEditItem, EventTimelineEntry } from "../types";
 import type { EventsRepository } from "./eventsRepository";
 import { mockEventsRepository } from "./mockEventsRepository";
+
+type ApiMaintenanceTimelineItem = {
+  id: string;
+  at_utc: string | null;
+  title: string;
+  details: string;
+};
 
 type ApiMaintenanceListItem = {
   key: string;
   category_id: string;
   title: string;
   warning: string;
-  short_description: string;
+  description: string;
   location: string;
   start_utc: string;
   end_utc?: string;
-  notified_at_utc?: string;
+  status_type: string;
+  status_text: string;
   category?: { id: string; key: string; icon: string; color: string; label: string };
+  timeline?: ApiMaintenanceTimelineItem[];
 };
 
 type ApiMaintenanceDetail = {
@@ -22,13 +31,14 @@ type ApiMaintenanceDetail = {
   category_id: string;
   title: string;
   warning: string;
-  short_description: string;
-  long_description: string;
+  description: string;
   location: string;
   start_utc: string;
   end_utc?: string;
-  notified_at_utc?: string;
+  status_type: string;
+  status_text: string;
   category?: { id: string; key: string; icon: string; color: string; label: string };
+  timeline: ApiMaintenanceTimelineItem[];
   last_modified_at?: string | null;
   last_modified_by?: { id: string; email: string } | null;
 };
@@ -41,15 +51,23 @@ type ApiEditFieldValue = {
   fallback_value?: string | null;
 };
 
+type ApiMaintenanceTimelineEditItem = {
+  id: string;
+  at_utc: string | null;
+  sort_order: number;
+  fields: ApiEditFieldValue[];
+};
+
 type ApiMaintenanceEditData = {
   key: string;
   category_id: string;
   start_utc: string;
   end_utc?: string;
-  notified_at_utc?: string;
+  status_type: string;
   locale: string;
   enabled_locales: string[];
   fields: ApiEditFieldValue[];
+  timeline: ApiMaintenanceTimelineEditItem[];
 };
 
 type ApiCreatedKeyResponse = { key: string };
@@ -66,19 +84,29 @@ function localized(locale: LocaleCode, value: string): EventLocalizedText {
   return locale === "en" ? { en: value } : { fr: value };
 }
 
+function toTimelineEntry(locale: LocaleCode, item: ApiMaintenanceTimelineItem): EventTimelineEntry {
+  return {
+    id: item.id,
+    atUtc: item.at_utc,
+    title: localized(locale, item.title ?? ""),
+    details: localized(locale, item.details ?? ""),
+  };
+}
+
 function toEventItem(locale: LocaleCode, value: ApiMaintenanceListItem | ApiMaintenanceDetail): EventItem {
   return {
     id: value.key,
     categoryCode: value.category_id,
     category: value.category,
     title: localized(locale, value.title ?? ""),
-    shortDescription: localized(locale, value.short_description ?? ""),
-    longDescription: localized(locale, "long_description" in value ? (value.long_description ?? "") : ""),
+    description: localized(locale, value.description ?? ""),
     warning: localized(locale, value.warning ?? ""),
     location: localized(locale, value.location ?? ""),
     startUtc: value.start_utc,
     endUtc: value.end_utc,
-    notifiedAtUtc: value.notified_at_utc,
+    statusType: value.status_type as EventStoredStatus,
+    statusText: localized(locale, value.status_text ?? ""),
+    timeline: "timeline" in value ? (value.timeline ?? []).map((item) => toTimelineEntry(locale, item)) : [],
     attachments: [],
     lastModifiedAt: "last_modified_at" in value ? (value.last_modified_at ?? undefined) : undefined,
     lastModifiedBy: "last_modified_by" in value ? (value.last_modified_by ?? null) : undefined,
@@ -95,16 +123,26 @@ function toEditField(value: ApiEditFieldValue): EditFieldValue {
   };
 }
 
+function toTimelineEditItem(value: ApiMaintenanceTimelineEditItem): EventTimelineEditItem {
+  return {
+    id: value.id,
+    atUtc: value.at_utc,
+    sortOrder: value.sort_order,
+    fields: value.fields.map(toEditField),
+  };
+}
+
 function toEditData(value: ApiMaintenanceEditData): EventEditData {
   return {
     id: value.key,
     categoryId: value.category_id,
     startUtc: value.start_utc,
     endUtc: value.end_utc,
-    notifiedAtUtc: value.notified_at_utc,
+    statusType: value.status_type as EventStoredStatus,
     locale: value.locale,
     enabledLocales: value.enabled_locales,
     fields: value.fields.map(toEditField),
+    timeline: value.timeline.map(toTimelineEditItem),
   };
 }
 
@@ -155,9 +193,16 @@ function toApiPayload(payload: EventSavePayload, existingId?: string): Record<st
     category_id: payload.categoryId,
     start_utc: payload.startUtc,
     end_utc: payload.endUtc ?? null,
-    notified_at_utc: payload.notifiedAtUtc ?? null,
+    status_type: payload.statusType,
     locale: payload.locale,
     fields: payload.fields,
+    replace_timeline: payload.replaceTimeline ?? false,
+    timeline: payload.timeline.map((item) => ({
+      id: item.id,
+      at_utc: item.atUtc,
+      sort_order: item.sortOrder,
+      fields: item.fields,
+    })),
   };
 }
 
@@ -194,16 +239,25 @@ export class ApiEventsRepository implements EventsRepository {
         categoryId: item.categoryCode,
         startUtc: item.startUtc,
         endUtc: item.endUtc,
-        notifiedAtUtc: item.notifiedAtUtc,
+        statusType: item.statusType,
         locale: preferredLanguage,
         enabledLocales: ["en", "fr"],
         fields: [
           { fieldKey: "title", value: item.title[preferredLanguage] ?? "" },
-          { fieldKey: "short_description", value: item.shortDescription[preferredLanguage] ?? "" },
-          { fieldKey: "long_description", value: item.longDescription[preferredLanguage] ?? "" },
+          { fieldKey: "description", value: item.description[preferredLanguage] ?? "" },
           { fieldKey: "warning", value: item.warning?.[preferredLanguage] ?? "" },
           { fieldKey: "location", value: item.location?.[preferredLanguage] ?? "" },
+          { fieldKey: "status_text", value: item.statusText?.[preferredLanguage] ?? "" },
         ],
+        timeline: item.timeline.map((entry, index) => ({
+          id: entry.id,
+          atUtc: entry.atUtc,
+          sortOrder: index + 1,
+          fields: [
+            { fieldKey: "title", value: entry.title[preferredLanguage] ?? "" },
+            { fieldKey: "details", value: entry.details?.[preferredLanguage] ?? "" },
+          ],
+        })),
       };
     }
     const params = new URLSearchParams({ locale: preferredLanguage });
@@ -221,6 +275,35 @@ export class ApiEventsRepository implements EventsRepository {
   async delete(id: string): Promise<void> {
     if (useMockData()) return;
     await sendJson(`${apiBaseUrl()}/maintenances/${encodeURIComponent(id)}`, "DELETE");
+  }
+
+  async createTimelineEntry(id: string, preferredLanguage: LocaleCode, payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<ApiMaintenanceTimelineItem> {
+    if (useMockData()) return { id: crypto.randomUUID(), at_utc: payload.atUtc, title: payload.fields.title ?? "", details: payload.fields.details ?? "" };
+    const params = new URLSearchParams({ locale: preferredLanguage });
+    const result = await sendJson<ApiMaintenanceTimelineItem>(`${apiBaseUrl()}/maintenances/${encodeURIComponent(id)}/timeline?${params.toString()}`, "POST", {
+      at_utc: payload.atUtc,
+      sort_order: payload.sortOrder,
+      fields: payload.fields,
+    });
+    if (!result) throw new Error("failed to create timeline entry");
+    return result;
+  }
+
+  async updateTimelineEntry(id: string, entryId: string, preferredLanguage: LocaleCode, payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<ApiMaintenanceTimelineItem> {
+    if (useMockData()) return { id: entryId, at_utc: payload.atUtc, title: payload.fields.title ?? "", details: payload.fields.details ?? "" };
+    const params = new URLSearchParams({ locale: preferredLanguage });
+    const result = await sendJson<ApiMaintenanceTimelineItem>(`${apiBaseUrl()}/maintenances/${encodeURIComponent(id)}/timeline/${encodeURIComponent(entryId)}?${params.toString()}`, "PUT", {
+      at_utc: payload.atUtc,
+      sort_order: payload.sortOrder,
+      fields: payload.fields,
+    });
+    if (!result) throw new Error("failed to update timeline entry");
+    return result;
+  }
+
+  async deleteTimelineEntry(id: string, entryId: string): Promise<void> {
+    if (useMockData()) return;
+    await sendJson(`${apiBaseUrl()}/maintenances/${encodeURIComponent(id)}/timeline/${encodeURIComponent(entryId)}`, "DELETE");
   }
 }
 

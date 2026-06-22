@@ -15,10 +15,10 @@ describe("Incident detail", () => {
 
     const { container } = render(IncidentDetailPage, { global: { plugins: [router, createAppI18n("en")] } });
 
-    expect(await screen.findByRole("heading", { name: "Heating outage on block B" })).not.toBeNull();
-    expect(container.querySelector(".category-badge-inline")?.textContent).toContain("HEA");
-    expect(getComputedStyle(container.querySelector(".category-badge-inline") as Element).getPropertyValue("--category-color").trim()).toBe("#d73a49");
-    expect(screen.getByText("ID: INC-001")).not.toBeNull();
+    await screen.findByText("Heating outage on block B");
+    expect(container.querySelector(".title-icon-wrap")).not.toBeNull();
+    expect(container.querySelector(".title-icon-wrap svg")?.getAttribute("style")).toContain("rgb(215, 58, 73)");
+    expect(container.querySelector(".title-key")?.textContent).toBe("INC-001");
     expect(screen.getByRole("heading", { name: "Incident timeline" })).not.toBeNull();
     expect(screen.getByText("Issue detected by monitoring system")).not.toBeNull();
   });

@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { ArrowLeft } from "@lucide/vue";
+import { Activity, ArrowLeft, ArrowRight, CalendarClock, CheckCircle2, Hourglass, MapPin, SquarePen, Trash2, UserPen } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
-import { currentUserRoles, hasAnyRole, hasRole } from "../auth/session";
-import CategoryBadge from "../categories/CategoryBadge.vue";
+import { currentUserRoles, hasAnyRole } from "../auth/session";
+import CategoryIcon from "../categories/CategoryIcon.vue";
 import AttachmentList from "../common/components/AttachmentList.vue";
 import AttachmentPreview from "../common/components/AttachmentPreview.vue";
+import EditableTimelineList from "../common/components/EditableTimelineList.vue";
 import type { AttachmentItem } from "../common/attachments";
 import type { LocaleCode } from "../common/localeContent";
+import { renderProjectMarkdown } from "../projects/utils";
 import { apiEventsRepository } from "./repositories/apiEventsRepository";
 import { toEventViewModel } from "./utils";
 
@@ -19,6 +21,7 @@ const eventId = ref(typeof route.params.id === "string" ? route.params.id : "");
 const event = ref<Awaited<ReturnType<typeof apiEventsRepository.byId>>>(null);
 const loadFailed = ref(false);
 const selectedAttachmentId = ref("");
+const showDeleteModal = ref(false);
 
 function activeLocale(): LocaleCode {
   return locale.value === "en" ? "en" : "fr";
@@ -55,6 +58,7 @@ watch(
 );
 
 const model = computed(() => (event.value ? toEventViewModel(event.value, activeLocale()) : null));
+const descriptionHtml = computed(() => (model.value ? renderProjectMarkdown(model.value.description) : ""));
 const backQuery = computed(() => {
   const q = route.query.q;
   return typeof q === "string" && q.length > 0 ? { q } : {};
@@ -67,8 +71,8 @@ const selectedAttachment = computed<AttachmentItem | null>(() => {
 
   return attachments.find((item) => item.id === selectedAttachmentId.value) ?? attachments[0] ?? null;
 });
-const canEdit = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD"]));
-const canDelete = computed(() => currentUserRoles.loaded && hasRole("ADMIN"));
+const canEdit = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD", "CO_OWNERSHIP_BOARD_OPS"]));
+const canDelete = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD_OPS"]));
 const auditLabel = computed(() => {
   if (!event.value?.lastModifiedAt) return "";
   return t("labels.lastModified", {
@@ -81,14 +85,32 @@ function handleAttachmentSelect(item: AttachmentItem): void {
   selectedAttachmentId.value = item.id;
 }
 
-async function deleteEvent(): Promise<void> {
-  if (!window.confirm(t("labels.deleteEventConfirm"))) return;
+async function handleTimelineAdd(payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<void> {
+  await apiEventsRepository.createTimelineEntry(eventId.value, activeLocale(), payload);
+  await loadEvent();
+}
+async function handleTimelineUpdate(entryId: string, payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<void> {
+  await apiEventsRepository.updateTimelineEntry(eventId.value, entryId, activeLocale(), payload);
+  await loadEvent();
+}
+async function handleTimelineDelete(entryId: string): Promise<void> {
+  await apiEventsRepository.deleteTimelineEntry(eventId.value, entryId);
+  await loadEvent();
+}
+function deleteEvent(): void {
+  showDeleteModal.value = true;
+}
+async function confirmDelete(): Promise<void> {
+  showDeleteModal.value = false;
   try {
     await apiEventsRepository.delete(eventId.value);
     window.location.hash = "#/events";
   } catch {
     loadFailed.value = true;
   }
+}
+function cancelDelete(): void {
+  showDeleteModal.value = false;
 }
 </script>
 
@@ -100,22 +122,34 @@ async function deleteEvent(): Promise<void> {
         <span>{{ t("labels.backToEvents") }}</span>
       </RouterLink>
     </p>
-    <h1 class="page-title">{{ model.title }}</h1>
-    <p class="detail-actions"><RouterLink v-if="canEdit" class="secondary-button" :to="`/events/${model.id}/edit`">{{ t("labels.edit") }}</RouterLink><button v-if="canDelete" class="secondary-button" type="button" @click="deleteEvent">{{ t("labels.delete") }}</button></p>
-    <p class="timeline-meta">ID: {{ model.id }}</p>
-    <p class="timeline-meta category-meta" v-if="model.raw.category">
-      <CategoryBadge :category-key="model.raw.category.key" :icon="model.raw.category.icon" :color="model.raw.category.color" :label="model.raw.category.label" />
-      <span>- {{ model.raw.category.label }}</span>
+    <h1 class="page-title page-title-inline">
+      <span v-if="model.raw.category" class="title-icon-wrap"><CategoryIcon :name="model.raw.category.icon" :size="24" :style="{ color: model.raw.category.color }" /></span>
+      <span class="title-key">{{ model.id }}</span>
+      <span class="title-text">{{ model.title }}</span>
+    </h1>
+    <div class="detail-actions-row">
+      <p class="event-status" :class="{ 'status-blocked': model.statusType === 'waiting' }"><component :is="model.statusType === 'ongoing' ? Activity : model.statusType === 'finished' ? CheckCircle2 : Hourglass" :size="16" /> {{ model.statusText ? t('labels.' + (model.statusType === 'waiting' ? 'blocked' : model.statusType)) + ' - ' + model.statusText : t('labels.' + (model.statusType === 'waiting' ? 'blocked' : model.statusType)) }}</p>
+      <p class="detail-actions"><RouterLink v-if="canEdit" class="secondary-button" :to="`/events/${model.id}/edit`"><SquarePen :size="16" /> <span class="btn-label">{{ t("labels.edit") }}</span></RouterLink><button v-if="canDelete" class="delete-button" type="button" @click="deleteEvent"><Trash2 :size="16" /> <span class="btn-label">{{ t("labels.delete") }}</span></button></p>
+    </div>
+    <p class="timeline-meta date-line">
+      <CalendarClock :size="16" />
+      <template v-if="model.startDateFormatted && model.endDateFormatted">
+        {{ model.startDateFormatted }} <ArrowRight :size="14" class="arrow-icon" /> {{ model.endDateFormatted }}
+      </template>
+      <template v-else-if="model.startDateFormatted">
+        {{ t("labels.dateStart") }} {{ model.startDateFormatted }}
+      </template>
+      <template v-else>
+        {{ t("labels.datesToBeConfirmed") }}
+      </template>
     </p>
-    <p class="timeline-meta" v-if="auditLabel">{{ auditLabel }}</p>
 
+    <p class="timeline-warning detail-warning" v-if="model.warning"><span class="warning-icon">{{ t("labels.warningPrefix") }}</span>{{ model.warning }}</p>
     <section class="timeline-card detail-block">
-      <p class="timeline-meta">{{ model.dateLabel }}</p>
-      <p class="timeline-warning" v-if="model.warning">{{ t("labels.warningPrefix") }} {{ model.warning }}</p>
-      <p class="timeline-meta" v-if="model.location">{{ model.location }}</p>
-      <p>{{ model.shortDescription }}</p>
-      <p>{{ model.longDescription }}</p>
+      <div class="rendered-description" v-html="descriptionHtml"></div>
     </section>
+    <p class="timeline-meta detail-location" v-if="model.location"><MapPin :size="16" /> {{ model.location }}</p>
+    <p class="timeline-meta audit-line" v-if="auditLabel"><UserPen :size="16" /> {{ auditLabel }}</p>
 
     <AttachmentList
       :items="model.raw.attachments"
@@ -123,6 +157,17 @@ async function deleteEvent(): Promise<void> {
       @select="handleAttachmentSelect"
     />
     <AttachmentPreview v-if="selectedAttachment" :attachment="selectedAttachment" />
+
+    <section class="timeline-section">
+      <h2>{{ t("labels.maintenanceTimeline") }}</h2>
+      <EditableTimelineList
+        :entries="model.timeline"
+        :can-edit="canEdit"
+        @add="handleTimelineAdd"
+        @update="handleTimelineUpdate"
+        @delete="handleTimelineDelete"
+      />
+    </section>
 
     <p class="back-link">
       <RouterLink class="back-link-ui" :to="{ path: '/events', query: backQuery }">
@@ -149,6 +194,19 @@ async function deleteEvent(): Promise<void> {
       </RouterLink>
     </p>
   </main>
+
+  <Teleport to="body">
+    <div v-if="showDeleteModal" class="modal-overlay" @click="cancelDelete">
+      <div class="modal-card" @click.stop>
+        <h3 class="modal-title">{{ t("labels.delete") }}</h3>
+        <p>{{ t("labels.deleteEventConfirm") }}</p>
+        <div class="modal-actions">
+          <button class="secondary-button" @click="cancelDelete">{{ t("labels.cancel") }}</button>
+          <button class="delete-button" @click="confirmDelete"><Trash2 :size="16" /> {{ t("labels.delete") }}</button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -179,7 +237,20 @@ async function deleteEvent(): Promise<void> {
   color: var(--page-fg);
 }
 
-.detail-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
-.secondary-button { border: 1px solid var(--control-border); border-radius: 0.55rem; padding: 0.45rem 0.7rem; background: var(--control-bg); color: var(--control-fg); cursor: pointer; text-decoration: none; }
-.category-meta { align-items: center; display: flex; gap: 0.35rem; }
+.event-status { font-size: 0.95rem; font-weight: 700; margin: 0; min-width: 0; }
+.event-status :deep(svg) { vertical-align: -3px; width: 18px; height: 18px; stroke-width: 2.5; margin-right: 0.35rem; }
+.event-status.status-blocked { color: #e67e22; }
+.detail-warning { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; font-size: 1.2rem; }
+.warning-icon { display: inline-flex; align-items: center; justify-content: center; width: 16px; flex-shrink: 0; }
+.rendered-description :deep(p) { margin: 0.7rem 0 0; }
+.rendered-description :deep(ul) { margin: 0.7rem 0 0; padding-left: 1.3rem; }
+.rendered-description :deep(code) { border-radius: 0.35rem; padding: 0.1rem 0.25rem; background: rgba(127, 127, 127, 0.18); }
+.detail-actions-row { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; }
+.detail-actions { display: flex; gap: 0.5rem; }
+.delete-button { display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid rgba(220, 38, 38, 0.5); border-radius: 0.55rem; padding: 0.35rem 0.6rem; background: rgba(220, 38, 38, 0.85); color: #fff; cursor: pointer; font-size: inherit; font-weight: 600; text-decoration: none; }
+.modal-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; }
+.modal-card { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 1.5rem; max-width: 400px; width: 90%; display: grid; gap: 0.75rem; }
+.modal-title { margin: 0; }
+.modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+@media (max-width: 560px) { .btn-label { display: none; } }
 </style>

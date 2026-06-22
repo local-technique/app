@@ -1,18 +1,21 @@
 use std::collections::HashSet;
 
+use chrono::{DateTime, Utc};
+
 use crate::common::error::AppError;
 use crate::common::i18n::locale_chain;
 use crate::common::validation::{
     ensure_field_key_allowed, ensure_locale_enabled, load_enabled_locales, normalize_field_key, normalize_locale,
-    normalize_text_value,
+    normalize_text_value, validate_field_map,
 };
 use crate::incidents::model::{
-    IncidentDetail, IncidentEditData, IncidentListItem, IncidentSaveRequest, IncidentTranslationMatrixRow,
-    IncidentTranslationValue,
+    IncidentDetail, IncidentEditData, IncidentListItem, IncidentSaveRequest, IncidentTimelineCreateRequest,
+    IncidentTimelineItem, IncidentTimelineUpdateRequest, IncidentTranslationMatrixRow, IncidentTranslationValue,
 };
 use crate::incidents::repository;
 
-const INCIDENT_TRANSLATION_FIELD_KEYS: [&str; 4] = ["title", "short_description", "long_description", "location"];
+const INCIDENT_STATUSES: [&str; 2] = ["waiting", "ongoing"];
+const INCIDENT_TRANSLATION_FIELD_KEYS: [&str; 4] = ["title", "description", "location", "status_text"];
 const INCIDENT_TIMELINE_TRANSLATION_FIELD_KEYS: [&str; 2] = ["title", "details"];
 
 pub async fn list(
@@ -75,7 +78,11 @@ pub async fn save_partial(
     let enabled_locales = load_enabled_locales(db).await?;
     let locale = normalize_locale(&payload.locale)?;
     ensure_locale_enabled(&locale, &enabled_locales)?;
-    let fields = validate_field_map(&payload.fields, &INCIDENT_TRANSLATION_FIELD_KEYS, &["title", "short_description", "long_description"])?;
+    let status_type = normalize_text_value(&payload.status_type).to_lowercase();
+    if !INCIDENT_STATUSES.contains(&status_type.as_str()) {
+        return Err(AppError::bad_request("unsupported incident status"));
+    }
+    let fields = validate_field_map(&payload.fields, &INCIDENT_TRANSLATION_FIELD_KEYS, &["title", "description"])?;
     let mut timeline = Vec::with_capacity(payload.timeline.len());
     for item in &payload.timeline {
         timeline.push(crate::incidents::model::IncidentTimelineSaveItem {
@@ -90,6 +97,7 @@ pub async fn save_partial(
         category_id: normalize_text_value(&payload.category_id),
         start_utc: payload.start_utc.clone(),
         end_utc: payload.end_utc.clone(),
+        status_type,
         locale,
         fields,
         replace_timeline: payload.replace_timeline,
@@ -103,6 +111,64 @@ pub async fn save_partial(
 
 pub async fn delete(db: &sqlx::PgPool, incident_id: &str) -> Result<bool, AppError> {
     repository::delete_by_code(db, incident_id).await
+}
+
+pub async fn create_timeline_entry(
+    db: &sqlx::PgPool,
+    incident_code: &str,
+    payload: &IncidentTimelineCreateRequest,
+    locale: &str,
+) -> Result<IncidentTimelineItem, AppError> {
+    let enabled_locales = load_enabled_locales(db).await?;
+    let locale = normalize_locale(locale)?;
+    ensure_locale_enabled(&locale, &enabled_locales)?;
+    let fields = validate_field_map(&payload.fields, &INCIDENT_TIMELINE_TRANSLATION_FIELD_KEYS, &["title"])?;
+    let at_utc = payload
+        .at_utc
+        .as_deref()
+        .filter(|v| !v.trim().is_empty())
+        .map(DateTime::parse_from_rfc3339)
+        .transpose()
+        .map_err(|_| AppError::bad_request("invalid at_utc"))?
+        .map(|v| v.with_timezone(&Utc));
+    repository::create_timeline_entry(db, incident_code, at_utc, payload.sort_order, &locale, &fields).await
+}
+
+pub async fn update_timeline_entry(
+    db: &sqlx::PgPool,
+    incident_code: &str,
+    entry_id: &str,
+    payload: &IncidentTimelineUpdateRequest,
+    locale: &str,
+) -> Result<IncidentTimelineItem, AppError> {
+    let enabled_locales = load_enabled_locales(db).await?;
+    let locale = normalize_locale(locale)?;
+    ensure_locale_enabled(&locale, &enabled_locales)?;
+    let fields = validate_field_map(&payload.fields, &INCIDENT_TIMELINE_TRANSLATION_FIELD_KEYS, &["title"])?;
+    let at_utc = payload
+        .at_utc
+        .as_deref()
+        .filter(|v| !v.trim().is_empty())
+        .map(DateTime::parse_from_rfc3339)
+        .transpose()
+        .map_err(|_| AppError::bad_request("invalid at_utc"))?
+        .map(|v| v.with_timezone(&Utc));
+    repository::update_timeline_entry(db, incident_code, entry_id, at_utc, payload.sort_order, &locale, &fields)
+        .await?
+        .ok_or_else(|| AppError::not_found("timeline entry not found"))
+}
+
+pub async fn delete_timeline_entry(
+    db: &sqlx::PgPool,
+    incident_code: &str,
+    entry_id: &str,
+) -> Result<(), AppError> {
+    let deleted = repository::delete_timeline_entry(db, incident_code, entry_id).await?;
+    if deleted {
+        Ok(())
+    } else {
+        Err(AppError::not_found("timeline entry not found"))
+    }
 }
 
 fn validate_translation_value(
@@ -123,25 +189,4 @@ fn validate_translation_value(
     })
 }
 
-fn validate_field_map(
-    input: &std::collections::HashMap<String, String>,
-    allowed_field_keys: &[&str],
-    required_field_keys: &[&str],
-) -> Result<std::collections::HashMap<String, String>, AppError> {
-    let mut result = std::collections::HashMap::new();
-    for (field_key, field_value) in input {
-        let field_key = normalize_field_key(field_key)?;
-        ensure_field_key_allowed(&field_key, allowed_field_keys)?;
-        let value = normalize_text_value(field_value);
-        if required_field_keys.contains(&field_key.as_str()) && value.is_empty() {
-            return Err(AppError::bad_request("required localized fields cannot be empty"));
-        }
-        result.insert(field_key, value);
-    }
-    for required in required_field_keys {
-        if !result.contains_key(*required) {
-            return Err(AppError::bad_request("required localized fields are missing"));
-        }
-    }
-    Ok(result)
-}
+

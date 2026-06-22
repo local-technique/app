@@ -8,9 +8,10 @@ describe("incident view model", () => {
       id: "INC-OPEN",
       categoryCode: "HEA",
       title: { en: "Open incident" },
-      shortDescription: { en: "Open" },
-      longDescription: { en: "Open incident without end date" },
+      description: { en: "Open" },
       startUtc: "2020-01-01T00:00:00Z",
+      statusType: "ongoing",
+      statusText: { en: "In progress" },
       timeline: [],
       attachments: [],
     };

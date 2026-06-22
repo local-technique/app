@@ -24,10 +24,12 @@ pub struct IncidentListItem {
     pub category_id: String,
     pub category: CategoryDisplay,
     pub title: String,
-    pub short_description: String,
+    pub description: String,
     pub location: String,
     pub start_utc: String,
     pub end_utc: Option<String>,
+    pub status_type: String,
+    pub status_text: String,
     pub timeline: Vec<IncidentTimelineItem>,
 }
 
@@ -45,11 +47,12 @@ pub struct IncidentDetail {
     pub category_id: String,
     pub category: CategoryDisplay,
     pub title: String,
-    pub short_description: String,
-    pub long_description: String,
+    pub description: String,
     pub location: String,
     pub start_utc: String,
     pub end_utc: Option<String>,
+    pub status_type: String,
+    pub status_text: String,
     pub timeline: Vec<IncidentTimelineItem>,
     pub last_modified_at: Option<String>,
     pub last_modified_by: Option<AuditUser>,
@@ -80,14 +83,7 @@ pub struct IncidentTranslationMatrixRow {
     pub field_value: Option<String>,
 }
 
-#[derive(serde::Serialize, ToSchema)]
-pub struct EditFieldValue {
-    pub field_key: String,
-    pub value: String,
-    pub exact_value: Option<String>,
-    pub fallback_locale: Option<String>,
-    pub fallback_value: Option<String>,
-}
+pub use crate::common::validation::EditFieldValue;
 
 #[derive(serde::Serialize, ToSchema)]
 pub struct IncidentTimelineEditItem {
@@ -103,6 +99,7 @@ pub struct IncidentEditData {
     pub category_id: String,
     pub start_utc: String,
     pub end_utc: Option<String>,
+    pub status_type: String,
     pub locale: String,
     pub enabled_locales: Vec<String>,
     pub fields: Vec<EditFieldValue>,
@@ -124,6 +121,7 @@ pub struct IncidentSaveRequest {
     pub category_id: String,
     pub start_utc: String,
     pub end_utc: Option<String>,
+    pub status_type: String,
     pub locale: String,
     pub fields: HashMap<String, String>,
     #[serde(default)]
@@ -134,4 +132,18 @@ pub struct IncidentSaveRequest {
 #[derive(serde::Serialize, ToSchema)]
 pub struct CreatedKeyResponse {
     pub key: String,
+}
+
+#[derive(serde::Deserialize, ToSchema)]
+pub struct IncidentTimelineCreateRequest {
+    pub at_utc: Option<String>,
+    pub sort_order: i32,
+    pub fields: HashMap<String, String>,
+}
+
+#[derive(serde::Deserialize, ToSchema)]
+pub struct IncidentTimelineUpdateRequest {
+    pub at_utc: Option<String>,
+    pub sort_order: i32,
+    pub fields: HashMap<String, String>,
 }

@@ -6,6 +6,7 @@ import type {
   IncidentItem,
   IncidentLocalizedText,
   IncidentSavePayload,
+  IncidentStoredStatus,
   IncidentTimelineEditItem,
   IncidentTimelineEntry,
 } from "../types";
@@ -16,10 +17,12 @@ type ApiIncidentListItem = {
   key: string;
   category_id: string;
   title: string;
-  short_description: string;
+  description: string;
   location: string;
   start_utc: string;
   end_utc?: string;
+  status_type: string;
+  status_text: string;
   timeline?: ApiIncidentTimelineItem[];
   category?: { id: string; key: string; icon: string; color: string; label: string };
 };
@@ -35,11 +38,12 @@ type ApiIncidentDetail = {
   key: string;
   category_id: string;
   title: string;
-  short_description: string;
-  long_description: string;
+  description: string;
   location: string;
   start_utc: string;
   end_utc?: string;
+  status_type: string;
+  status_text: string;
   timeline: ApiIncidentTimelineItem[];
   category?: { id: string; key: string; icon: string; color: string; label: string };
   last_modified_at?: string | null;
@@ -66,6 +70,7 @@ type ApiIncidentEditData = {
   category_id: string;
   start_utc: string;
   end_utc?: string;
+  status_type: string;
   locale: string;
   enabled_locales: string[];
   fields: ApiEditFieldValue[];
@@ -101,11 +106,12 @@ function toIncidentItem(locale: LocaleCode, value: ApiIncidentListItem | ApiInci
     categoryCode: value.category_id,
     category: value.category,
     title: localized(locale, value.title ?? ""),
-    shortDescription: localized(locale, value.short_description ?? ""),
-    longDescription: localized(locale, "long_description" in value ? (value.long_description ?? "") : ""),
+    description: localized(locale, value.description ?? ""),
     location: localized(locale, value.location ?? ""),
     startUtc: value.start_utc,
     endUtc: value.end_utc,
+    statusType: value.status_type as IncidentStoredStatus,
+    statusText: localized(locale, value.status_text ?? ""),
     timeline: "timeline" in value ? (value.timeline ?? []).map((item) => toTimelineEntry(locale, item)) : [],
     attachments: [],
     lastModifiedAt: "last_modified_at" in value ? (value.last_modified_at ?? undefined) : undefined,
@@ -138,6 +144,7 @@ function toEditData(value: ApiIncidentEditData): IncidentEditData {
     categoryId: value.category_id,
     startUtc: value.start_utc,
     endUtc: value.end_utc,
+    statusType: value.status_type as IncidentStoredStatus,
     locale: value.locale,
     enabledLocales: value.enabled_locales,
     fields: value.fields.map(toEditField),
@@ -192,6 +199,7 @@ function toApiPayload(payload: IncidentSavePayload, existingId?: string): Record
     category_id: payload.categoryId,
     start_utc: payload.startUtc,
     end_utc: payload.endUtc ?? null,
+    status_type: payload.statusType,
     locale: payload.locale,
     fields: payload.fields,
     replace_timeline: payload.replaceTimeline ?? false,
@@ -238,13 +246,14 @@ export class ApiIncidentsRepository implements IncidentsRepository {
         categoryId: item.categoryCode,
         startUtc: item.startUtc,
         endUtc: item.endUtc,
+        statusType: item.statusType,
         locale: preferredLanguage,
         enabledLocales: ["en", "fr"],
         fields: [
           { fieldKey: "title", value: item.title[preferredLanguage] ?? "" },
-          { fieldKey: "short_description", value: item.shortDescription[preferredLanguage] ?? "" },
-          { fieldKey: "long_description", value: item.longDescription[preferredLanguage] ?? "" },
+          { fieldKey: "description", value: item.description[preferredLanguage] ?? "" },
           { fieldKey: "location", value: item.location?.[preferredLanguage] ?? "" },
+          { fieldKey: "status_text", value: item.statusText?.[preferredLanguage] ?? "" },
         ],
         timeline: item.timeline.map((entry, index) => ({
           id: entry.id,
@@ -272,6 +281,35 @@ export class ApiIncidentsRepository implements IncidentsRepository {
   async delete(id: string): Promise<void> {
     if (useMockData()) return;
     await sendJson(`${apiBaseUrl()}/incidents/${encodeURIComponent(id)}`, "DELETE");
+  }
+
+  async createTimelineEntry(id: string, preferredLanguage: LocaleCode, payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<ApiIncidentTimelineItem> {
+    if (useMockData()) return { id: crypto.randomUUID(), at_utc: payload.atUtc, title: payload.fields.title ?? "", details: payload.fields.details ?? "" };
+    const params = new URLSearchParams({ locale: preferredLanguage });
+    const result = await sendJson<ApiIncidentTimelineItem>(`${apiBaseUrl()}/incidents/${encodeURIComponent(id)}/timeline?${params.toString()}`, "POST", {
+      at_utc: payload.atUtc,
+      sort_order: payload.sortOrder,
+      fields: payload.fields,
+    });
+    if (!result) throw new Error("failed to create timeline entry");
+    return result;
+  }
+
+  async updateTimelineEntry(id: string, entryId: string, preferredLanguage: LocaleCode, payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<ApiIncidentTimelineItem> {
+    if (useMockData()) return { id: entryId, at_utc: payload.atUtc, title: payload.fields.title ?? "", details: payload.fields.details ?? "" };
+    const params = new URLSearchParams({ locale: preferredLanguage });
+    const result = await sendJson<ApiIncidentTimelineItem>(`${apiBaseUrl()}/incidents/${encodeURIComponent(id)}/timeline/${encodeURIComponent(entryId)}?${params.toString()}`, "PUT", {
+      at_utc: payload.atUtc,
+      sort_order: payload.sortOrder,
+      fields: payload.fields,
+    });
+    if (!result) throw new Error("failed to update timeline entry");
+    return result;
+  }
+
+  async deleteTimelineEntry(id: string, entryId: string): Promise<void> {
+    if (useMockData()) return;
+    await sendJson(`${apiBaseUrl()}/incidents/${encodeURIComponent(id)}/timeline/${encodeURIComponent(entryId)}`, "DELETE");
   }
 }
 

@@ -6,18 +6,26 @@ export type EventLocalizedText = {
   fr?: string;
 };
 
+export type EventTimelineEntry = {
+  id: string;
+  atUtc: string | null;
+  title: EventLocalizedText;
+  details?: EventLocalizedText;
+};
+
 export type EventItem = {
   id: string;
   categoryCode: string;
   category?: Pick<CategoryItem, "id" | "key" | "icon" | "color" | "label">;
   title: EventLocalizedText;
-  shortDescription: EventLocalizedText;
-  longDescription: EventLocalizedText;
+  description: EventLocalizedText;
   warning?: EventLocalizedText;
   location?: EventLocalizedText;
   startUtc: string;
   endUtc?: string;
-  notifiedAtUtc?: string;
+  statusType: EventStoredStatus;
+  statusText: EventLocalizedText;
+  timeline: EventTimelineEntry[];
   handlers?: string[];
   attachments: AttachmentItem[];
   lastModifiedAt?: string;
@@ -32,15 +40,23 @@ export type EditFieldValue = {
   fallbackValue?: string | null;
 };
 
+export type EventTimelineEditItem = {
+  id: string;
+  atUtc: string | null;
+  sortOrder: number;
+  fields: EditFieldValue[];
+};
+
 export type EventEditData = {
   id: string;
   categoryId: string;
   startUtc: string;
   endUtc?: string;
-  notifiedAtUtc?: string;
+  statusType: EventStoredStatus;
   locale: string;
   enabledLocales: string[];
   fields: EditFieldValue[];
+  timeline: EventTimelineEditItem[];
 };
 
 export type EventSavePayload = {
@@ -48,9 +64,13 @@ export type EventSavePayload = {
   categoryId: string;
   startUtc: string;
   endUtc?: string | null;
-  notifiedAtUtc?: string | null;
+  statusType: EventStoredStatus;
   locale: string;
   fields: Record<string, string>;
+  replaceTimeline?: boolean;
+  timeline: Array<{ id: string; atUtc: string | null; sortOrder: number; fields: Record<string, string> }>;
 };
+
+export type EventStoredStatus = "waiting" | "ongoing";
 
 export type EventStatusSection = "current" | "toCome" | "past";

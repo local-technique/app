@@ -11,6 +11,7 @@ export const MOCK_PROJECTS: ProjectItem[] = [
     statusText: { en: "Installing fans", fr: "Installation des ventilateurs" },
     startUtc: undefined,
     endUtc: undefined,
+    timeline: [],
     attachments: [],
   },
   {
@@ -26,6 +27,7 @@ export const MOCK_PROJECTS: ProjectItem[] = [
     statusText: { en: "Awaiting quote", fr: "Devis en attente" },
     startUtc: undefined,
     endUtc: undefined,
+    timeline: [],
     attachments: [],
   },
   {
@@ -38,6 +40,7 @@ export const MOCK_PROJECTS: ProjectItem[] = [
     statusText: { en: "Final inspection", fr: "Inspection finale" },
     startUtc: "2020-01-01T10:00:00Z",
     endUtc: "2020-02-01T10:00:00Z",
+    timeline: [],
     attachments: [],
   },
 ];

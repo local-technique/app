@@ -18,11 +18,12 @@ export type IncidentItem = {
   categoryCode: string;
   category?: Pick<CategoryItem, "id" | "key" | "icon" | "color" | "label">;
   title: IncidentLocalizedText;
-  shortDescription: IncidentLocalizedText;
-  longDescription: IncidentLocalizedText;
+  description: IncidentLocalizedText;
   location?: IncidentLocalizedText;
   startUtc: string;
   endUtc?: string;
+  statusType: IncidentStoredStatus;
+  statusText: IncidentLocalizedText;
   timeline: IncidentTimelineEntry[];
   attachments: AttachmentItem[];
   lastModifiedAt?: string;
@@ -49,6 +50,7 @@ export type IncidentEditData = {
   categoryId: string;
   startUtc: string;
   endUtc?: string;
+  statusType: IncidentStoredStatus;
   locale: string;
   enabledLocales: string[];
   fields: EditFieldValue[];
@@ -60,10 +62,13 @@ export type IncidentSavePayload = {
   categoryId: string;
   startUtc: string;
   endUtc?: string | null;
+  statusType: IncidentStoredStatus;
   locale: string;
   fields: Record<string, string>;
   replaceTimeline?: boolean;
   timeline: Array<{ id: string; atUtc: string | null; sortOrder: number; fields: Record<string, string> }>;
 };
+
+export type IncidentStoredStatus = "waiting" | "ongoing";
 
 export type IncidentStatusSection = "current" | "past";

@@ -41,8 +41,7 @@ describe("Events listing", () => {
     expect(screen.getByRole("heading", { name: "Past" })).not.toBeNull();
     expect(screen.queryByText("No events match your search.")).toBeNull();
     expect(screen.getByText("⚠️ no hot water between 9h30 & 17h00")).not.toBeNull();
-
-    expect(screen.queryByText("HEA-001")).toBeNull();
+    expect(screen.getByText("HEA-001")).not.toBeNull();
 
     const input = screen.getByPlaceholderText("Search events");
     await fireEvent.update(input, "property");
