@@ -59,12 +59,12 @@ function formatProjectDateLabel(project: ProjectItem, locale: LocaleCode): strin
     return locale === "fr" ? "Dates à confirmer" : "Dates to be confirmed";
   }
   if (project.startUtc && project.endUtc) {
-    return `${formatLocalDateTime(parseUtc(project.startUtc), locale)} - ${formatLocalDateTime(parseUtc(project.endUtc), locale)}`;
+    return `${formatLocalDate(parseUtc(project.startUtc), locale)} - ${formatLocalDate(parseUtc(project.endUtc), locale)}`;
   }
   if (project.startUtc) {
-    return formatLocalDateTime(parseUtc(project.startUtc), locale);
+    return formatLocalDate(parseUtc(project.startUtc), locale);
   }
-  const end = formatLocalDateTime(parseUtc(project.endUtc ?? ""), locale);
+  const end = formatLocalDate(parseUtc(project.endUtc ?? ""), locale);
   return locale === "fr" ? `jusqu'au ${end}` : `until ${end}`;
 }
 

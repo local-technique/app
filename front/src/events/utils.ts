@@ -1,4 +1,4 @@
-import { classifyEventStatus, formatLocalDate, formatLocalDateTime, formatLocalDateTimeLong, parseUtc } from "../common/date";
+import { classifyEventStatus, formatLocalDate, formatLocalDateTime, parseUtc } from "../common/date";
 import type { LocaleCode } from "../common/localeContent";
 import { resolveLocalized } from "../common/localeContent";
 import { fuzzyMatch } from "../common/search";
@@ -46,11 +46,11 @@ function computeStatusType(stored: EventStoredStatus, endUtc: string | undefined
 }
 
 function formatEventDateLabel(event: EventItem, locale: LocaleCode): string {
-  const start = formatLocalDateTime(parseUtc(event.startUtc), locale);
+  const start = formatLocalDate(parseUtc(event.startUtc), locale);
   if (!event.endUtc) {
     return start;
   }
-  const end = formatLocalDateTime(parseUtc(event.endUtc), locale);
+  const end = formatLocalDate(parseUtc(event.endUtc), locale);
   return `${start} - ${end}`;
 }
 
@@ -80,8 +80,8 @@ export function toEventViewModel(event: EventItem, locale: LocaleCode): EventVie
     description: resolve(event.description, locale),
     location: resolve(event.location, locale),
     dateLabel: formatEventDateLabel(event, locale),
-    startDateFormatted: formatLocalDateTimeLong(parseUtc(event.startUtc), locale),
-    endDateFormatted: event.endUtc ? formatLocalDateTimeLong(parseUtc(event.endUtc), locale) : undefined,
+    startDateFormatted: formatLocalDate(parseUtc(event.startUtc), locale),
+    endDateFormatted: event.endUtc ? formatLocalDate(parseUtc(event.endUtc), locale) : undefined,
     timeline,
     raw: event,
   };

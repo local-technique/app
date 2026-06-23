@@ -19,10 +19,12 @@ describe("date-only input conversion", () => {
     expect(toDateLocalInput("")).toBe("");
   });
 
-  it("converts date-only value to UTC with current time", () => {
+  it("converts date-only value to UTC with current UTC time", () => {
     const now = new Date(2026, 5, 21, 14, 30, 0);
     const result = toUtcFromDateLocalInput("2026-02-01", now);
-    expect(result).toBe("2026-02-01T14:30:00.000Z");
+    const hh = String(now.getUTCHours()).padStart(2, "0");
+    const mm = String(now.getUTCMinutes()).padStart(2, "0");
+    expect(result).toBe(`2026-02-01T${hh}:${mm}:00.000Z`);
   });
 
   it("returns null for empty date input", () => {

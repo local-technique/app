@@ -1,4 +1,4 @@
-import { formatLocalDate, formatLocalDateTime, formatLocalDateTimeLong, parseUtc } from "../common/date";
+import { formatLocalDate, formatLocalDateTime, parseUtc } from "../common/date";
 import type { LocaleCode } from "../common/localeContent";
 import { resolveLocalized } from "../common/localeContent";
 import { fuzzyMatch } from "../common/search";
@@ -60,11 +60,11 @@ function toIncidentStatus(input: IncidentItem): IncidentStatusSection {
 }
 
 function formatIncidentDateLabel(incident: IncidentItem, locale: LocaleCode): string {
-  const start = formatLocalDateTime(parseUtc(incident.startUtc), locale);
+  const start = formatLocalDate(parseUtc(incident.startUtc), locale);
   if (!incident.endUtc) {
     return start;
   }
-  const end = formatLocalDateTime(parseUtc(incident.endUtc), locale);
+  const end = formatLocalDate(parseUtc(incident.endUtc), locale);
   return `${start} - ${end}`;
 }
 
@@ -94,8 +94,8 @@ export function toIncidentViewModel(incident: IncidentItem, locale: LocaleCode):
     description: resolve(incident.description, locale),
     location: resolve(incident.location, locale),
     dateLabel: formatIncidentDateLabel(incident, locale),
-    startDateFormatted: formatLocalDateTimeLong(parseUtc(incident.startUtc), locale),
-    endDateFormatted: incident.endUtc ? formatLocalDateTimeLong(parseUtc(incident.endUtc), locale) : undefined,
+    startDateFormatted: formatLocalDate(parseUtc(incident.startUtc), locale),
+    endDateFormatted: incident.endUtc ? formatLocalDate(parseUtc(incident.endUtc), locale) : undefined,
     timeline,
     raw: incident,
   };
