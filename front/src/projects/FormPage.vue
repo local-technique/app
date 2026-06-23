@@ -177,7 +177,7 @@ async function save(): Promise<void> {
 
       <span class="status-input-group">
         <StatusSelect v-model="form.statusType" />
-        <input v-model="form.statusText" required :placeholder="statusPlaceholder" :aria-label="t('labels.projectStatusText')" />
+        <input v-model="form.statusText" :required="form.statusType !== 'ongoing'" :placeholder="statusPlaceholder" :aria-label="t('labels.projectStatusText')" />
       </span>
 
       <div class="date-row">

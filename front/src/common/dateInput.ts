@@ -12,7 +12,7 @@ export function toDateLocalInput(value?: string | null): string {
 
 export function toUtcFromDateLocalInput(value: string, now: Date = new Date()): string | null {
   if (!value) return null;
-  const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:00.000Z`;
+  const time = `${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}:00.000Z`;
   return `${value}T${time}`;
 }
 
