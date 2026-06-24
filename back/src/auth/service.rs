@@ -1,6 +1,6 @@
 use std::time::{Duration, SystemTime};
 
-use axum::http::{HeaderMap, header};
+use axum::http::{HeaderMap, StatusCode, header};
 use axum::response::Redirect;
 use axum_extra::extract::PrivateCookieJar;
 use axum_extra::extract::cookie::{Cookie, SameSite};
@@ -11,11 +11,11 @@ use cookie::time::Duration as CookieDuration;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use rand::TryRng;
 use rand::rngs::SysRng;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
-use crate::app::state::{AppState, ExchangeCodeRecord};
+use crate::app::state::{AppState, ExchangeCodeRecord, OAuthStateRecord};
 use crate::auth::model::{
     AccessTokenClaims, ExchangeResponse, MeResponse, OAuthCallbackQuery, OAuthStartQuery, Provider, RefreshRequest,
     RefreshResponse,
@@ -27,26 +27,6 @@ const OAUTH_STATE_TTL: Duration = Duration::from_secs(10 * 60);
 const ACCESS_TOKEN_TTL: Duration = Duration::from_secs(15 * 60);
 const REFRESH_SESSION_TTL: Duration = Duration::from_secs(7 * 24 * 60 * 60);
 const EXCHANGE_CODE_TTL: Duration = Duration::from_secs(2 * 60);
-
-#[derive(Debug, Serialize, Deserialize)]
-struct OAuthStateCookie {
-    provider: String,
-    state: String,
-    code_verifier: Option<String>,
-    redirect_to: String,
-    issued_at_unix: u64,
-}
-
-impl OAuthStateCookie {
-    fn to_cookie_value(&self) -> Result<String, AppError> {
-        serde_json::to_string(self)
-            .map_err(|e| AppError::internal(format!("failed to serialize oauth state: {e}")))
-    }
-
-    fn from_cookie_value(value: &str) -> Result<Self, AppError> {
-        serde_json::from_str::<Self>(value).map_err(|_| AppError::bad_request("invalid oauth state cookie"))
-    }
-}
 
 pub fn decode_access_token(state: &AppState, token: &str) -> Result<AccessTokenClaims, AppError> {
     let mut validation = Validation::new(Algorithm::HS256);
@@ -61,35 +41,47 @@ pub fn decode_access_token(state: &AppState, token: &str) -> Result<AccessTokenC
     Ok(data.claims)
 }
 
-fn oauth_cookie_name(provider: Provider) -> &'static str {
-    match provider {
-        Provider::Google => "oauth_google_state",
-        Provider::Facebook => "oauth_facebook_state",
+const OAUTH_SESSION_COOKIE: &str = "oauth_session_id";
+const OAUTH_SESSION_TTL: Duration = Duration::from_secs(24 * 60 * 60);
+
+fn oauth_state_key(session_id: &str, provider: &str) -> String {
+    format!("{session_id}:{provider}")
+}
+
+fn session_id_cookie(value: String, secure: bool) -> Cookie<'static> {
+    Cookie::build((OAUTH_SESSION_COOKIE, value))
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .secure(secure)
+        .max_age(CookieDuration::seconds(OAUTH_SESSION_TTL.as_secs() as i64))
+        .build()
+}
+
+fn read_session_id(jar: &PrivateCookieJar) -> Option<String> {
+    jar.get(OAUTH_SESSION_COOKIE).map(|c| c.value().to_string())
+}
+
+fn get_or_create_session_id(mut jar: PrivateCookieJar, app_base_url: &str) -> (String, PrivateCookieJar) {
+    if let Some(id) = read_session_id(&jar) {
+        return (id, jar);
     }
-}
-
-fn oauth_state_cookie(provider: Provider, value: String, secure: bool) -> Cookie<'static> {
-    Cookie::build((oauth_cookie_name(provider), value))
-        .path("/")
-        .http_only(true)
-        .same_site(SameSite::Lax)
-        .secure(secure)
-        .max_age(CookieDuration::seconds(OAUTH_STATE_TTL.as_secs() as i64))
-        .build()
-}
-
-fn oauth_state_delete_cookie(provider: Provider, secure: bool) -> Cookie<'static> {
-    Cookie::build((oauth_cookie_name(provider), ""))
-        .path("/")
-        .http_only(true)
-        .same_site(SameSite::Lax)
-        .secure(secure)
-        .max_age(CookieDuration::seconds(0))
-        .build()
+    let id = random_urlsafe(32);
+    let secure = is_https_url(app_base_url);
+    jar = jar.add(session_id_cookie(id.clone(), secure));
+    (id, jar)
 }
 
 fn is_https_url(url: &str) -> bool {
     url.starts_with("https://")
+}
+
+pub async fn init_session(
+    state: &AppState,
+    jar: PrivateCookieJar,
+) -> Result<(PrivateCookieJar, http::StatusCode), AppError> {
+    let (_, jar) = get_or_create_session_id(jar, &state.config.app_base_url);
+    Ok((jar, StatusCode::NO_CONTENT))
 }
 
 fn frontend_callback_base(state: &AppState) -> String {
@@ -107,20 +99,34 @@ pub async fn start_oauth(
     provider: Provider,
     query: OAuthStartQuery,
 ) -> Result<(PrivateCookieJar, Redirect), AppError> {
+    let (session_id, jar) = get_or_create_session_id(jar, &state.config.app_base_url);
+
     let oauth_state = random_urlsafe(32);
     let code_verifier = random_urlsafe(64);
     let redirect_to = sanitize_redirect_path(query.redirect.as_deref().unwrap_or("/events"));
 
-    let cookie_payload = OAuthStateCookie {
-        provider: provider.as_str().to_string(),
-        state: oauth_state.clone(),
-        code_verifier: matches!(provider, Provider::Google).then_some(code_verifier.clone()),
-        redirect_to,
-        issued_at_unix: unix_ts(SystemTime::now())?,
-    };
+    let now = unix_ts(SystemTime::now())?;
+    {
+        let mut states = state.oauth_states.lock().await;
+        states.retain(|_, v| {
+            let ts = SystemTime::UNIX_EPOCH
+                .checked_add(Duration::from_secs(v.issued_at_unix))
+                .unwrap_or(SystemTime::UNIX_EPOCH);
+            !is_expired(ts, OAUTH_STATE_TTL)
+        });
+        states.insert(
+            oauth_state_key(&session_id, provider.as_str()),
+            OAuthStateRecord {
+                provider: provider.as_str().to_string(),
+                state: oauth_state.clone(),
+                code_verifier: matches!(provider, Provider::Google).then_some(code_verifier.clone()),
+                redirect_to,
+                issued_at_unix: now,
+            },
+        );
+    }
 
     let redirect_uri = format!("{}/auth/{}/callback", state.config.app_base_url, provider.as_str());
-    let secure_cookie = is_https_url(&state.config.app_base_url);
 
     let auth_url = match provider {
         Provider::Google => {
@@ -143,7 +149,6 @@ pub async fn start_oauth(
         ),
     };
 
-    let jar = jar.add(oauth_state_cookie(provider, cookie_payload.to_cookie_value()?, secure_cookie));
     Ok((jar, Redirect::temporary(&auth_url)))
 }
 
@@ -164,31 +169,34 @@ pub async fn oauth_callback(
         .code
         .ok_or_else(|| AppError::bad_request("missing oauth code"))?;
 
-    let cookie_name = oauth_cookie_name(provider);
-    let cookie_value = jar
-        .get(cookie_name)
-        .map(|cookie| cookie.value().to_string())
-        .ok_or_else(|| AppError::bad_request("missing oauth state cookie"))?;
+    let session_id = read_session_id(&jar)
+        .ok_or_else(|| AppError::bad_request("missing oauth session"))?;
 
-    let state_cookie = OAuthStateCookie::from_cookie_value(&cookie_value)?;
+    let state_record = {
+        let mut states = state.oauth_states.lock().await;
+        states.remove(&oauth_state_key(&session_id, provider.as_str())).ok_or_else(|| {
+            AppError::bad_request("missing oauth state (session not found or expired)")
+        })?
+    };
+
     let issued_at = SystemTime::UNIX_EPOCH
-        .checked_add(Duration::from_secs(state_cookie.issued_at_unix))
+        .checked_add(Duration::from_secs(state_record.issued_at_unix))
         .ok_or_else(|| AppError::bad_request("invalid oauth state timestamp"))?;
 
     if is_expired(issued_at, OAUTH_STATE_TTL) {
         return Err(AppError::bad_request("oauth state expired"));
     }
 
-    if state_cookie.provider != provider.as_str() {
+    if state_record.provider != provider.as_str() {
         return Err(AppError::bad_request("oauth provider mismatch"));
     }
 
-    if state_cookie.state != auth_state {
+    if state_record.state != auth_state {
         return Err(AppError::bad_request("invalid oauth state"));
     }
 
     let email = match provider {
-        Provider::Google => google_exchange_and_email(state, &code, state_cookie.code_verifier.as_deref()).await?,
+        Provider::Google => google_exchange_and_email(state, &code, state_record.code_verifier.as_deref()).await?,
         Provider::Facebook => facebook_exchange_and_email(state, &code).await?,
     };
 
@@ -217,7 +225,7 @@ pub async fn oauth_callback(
             ExchangeCodeRecord {
                 session_id,
                 created_at: SystemTime::now(),
-                redirect_to: state_cookie.redirect_to,
+                redirect_to: state_record.redirect_to,
                 refresh_token,
             },
         );
@@ -229,7 +237,6 @@ pub async fn oauth_callback(
         url_encode(&exchange_code)
     );
 
-    let jar = jar.remove(oauth_state_delete_cookie(provider, is_https_url(&state.config.app_base_url)));
     Ok((jar, Redirect::to(&frontend_callback)))
 }
 

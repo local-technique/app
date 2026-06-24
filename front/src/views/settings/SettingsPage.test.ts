@@ -93,6 +93,23 @@ describe("Settings page", () => {
     expect(await screen.findByText("Theme")).not.toBeNull();
   });
 
+  it("shows sign out button and calls logout on click", async () => {
+    mockMe("test@example.com");
+    vi.mocked(api.getToken).mockResolvedValue(null);
+
+    renderPage();
+
+    const btn = await screen.findByText("Sign out");
+    expect(btn).not.toBeNull();
+
+    await fireEvent.click(btn);
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/auth/logout"),
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
   it("updates injected locale and theme refs on selection change", async () => {
     mockMe("test@example.com");
     vi.mocked(api.getToken).mockResolvedValue(null);

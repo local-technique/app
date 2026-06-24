@@ -1,6 +1,8 @@
 # Agent Rules
 
-Never commit, amend, or push changes unless the user explicitly asks for that exact git action.
+- Never commit, amend, or push changes unless the user explicitly asks for that exact git action.
+- Never install new tools without the user's consent
+- Use available docker engine to run tools without installing them
 
 After any code change, run CI-equivalent checks:
 

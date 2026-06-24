@@ -11,6 +11,13 @@ use crate::auth::model::{
 use crate::auth::service;
 use crate::common::error::AppError;
 
+pub async fn init_session(
+    State(state): State<AppState>,
+    jar: PrivateCookieJar,
+) -> Result<(PrivateCookieJar, axum::http::StatusCode), AppError> {
+    service::init_session(&state, jar).await
+}
+
 pub async fn start_oauth(
     State(state): State<AppState>,
     jar: PrivateCookieJar,

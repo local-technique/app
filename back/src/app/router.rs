@@ -9,6 +9,7 @@ use crate::{admin, api_tokens, auth, categories, incidents, maintenances, projec
 pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
     Router::new()
         .route("/health", get(health))
+        .route("/auth/session", get(auth::http::init_session))
         .route("/auth/{provider}/start", get(auth::http::start_oauth))
         .route("/auth/{provider}/callback", get(auth::http::oauth_callback))
         .route("/auth/exchange", post(auth::http::exchange_session))
