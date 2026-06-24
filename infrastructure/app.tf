@@ -23,6 +23,6 @@ resource "render_web_service" "api" {
   }
 
   lifecycle {
-    ignore_changes = [maintenance_mode, env_vars]
+    ignore_changes = [maintenance_mode, env_vars, plan]
   }
 }
