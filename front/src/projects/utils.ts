@@ -49,6 +49,9 @@ function classifyProject(project: ProjectItem, now = new Date()): { section: Pro
     return { section: "finished", statusType: "finished" };
   }
   if (project.statusType === "ongoing") {
+    if (project.startUtc && Date.parse(project.startUtc) > nowMs) {
+      return { section: "ongoing", statusType: "planned" };
+    }
     return { section: "ongoing", statusType: "ongoing" };
   }
   return { section: "toCome", statusType: "waiting" };

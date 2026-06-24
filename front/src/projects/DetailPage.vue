@@ -62,6 +62,7 @@ const statusIcon = computed(() => {
   if (!model.value) return Hourglass;
   if (model.value.statusType === "finished") return CheckCircle2;
   if (model.value.statusType === "ongoing") return Activity;
+  if (model.value.statusType === "planned") return CalendarClock;
   return Hourglass;
 });
 const editPath = computed(() => (model.value ? `/projects/${encodeURIComponent(model.value.id)}/edit` : "/projects"));

@@ -18,7 +18,7 @@ export type EventTimelineEntryViewModel = {
 export type EventViewModel = {
   id: string;
   status: EventStatusSection;
-  statusType: EventStoredStatus | "finished";
+  statusType: EventStoredStatus | "finished" | "planned";
   statusText: string;
   title: string;
   warning: string;
@@ -38,9 +38,12 @@ function resolve(value: EventLocalizedText | undefined, locale: LocaleCode): str
   return resolveLocalized(value, locale);
 }
 
-function computeStatusType(stored: EventStoredStatus, endUtc: string | undefined): EventStoredStatus | "finished" {
+function computeStatusType(stored: EventStoredStatus, endUtc: string | undefined, startUtc: string): EventStoredStatus | "finished" | "planned" {
   if (endUtc && Date.parse(endUtc) < Date.now()) {
     return "finished";
+  }
+  if (stored === "ongoing" && Date.parse(startUtc) > Date.now()) {
+    return "planned";
   }
   return stored;
 }
@@ -70,10 +73,11 @@ function toTimelineEntryViewModel(entry: EventTimelineEntry, locale: LocaleCode)
 
 export function toEventViewModel(event: EventItem, locale: LocaleCode): EventViewModel {
   const timeline = event.timeline.map((entry) => toTimelineEntryViewModel(entry, locale));
+  const statusType = computeStatusType(event.statusType, event.endUtc, event.startUtc);
   return {
     id: event.id,
     status: classifyEventStatus({ startUtc: event.startUtc, endUtc: event.endUtc }),
-    statusType: computeStatusType(event.statusType, event.endUtc),
+    statusType,
     statusText: resolve(event.statusText, locale),
     title: resolve(event.title, locale),
     warning: resolve(event.warning, locale),

@@ -128,7 +128,7 @@ function cancelDelete(): void {
       <span class="title-text">{{ model.title }}</span>
     </h1>
     <div class="detail-actions-row">
-      <p class="incident-status" :class="{ 'status-blocked': model.statusType === 'waiting' }"><component :is="model.statusType === 'ongoing' ? Activity : model.statusType === 'finished' ? CheckCircle2 : Hourglass" :size="16" /> {{ model.statusText ? t('labels.' + (model.statusType === 'waiting' ? 'blocked' : model.statusType)) + ' - ' + model.statusText : t('labels.' + (model.statusType === 'waiting' ? 'blocked' : model.statusType)) }}</p>
+      <p class="incident-status" :class="{ 'status-blocked': model.statusType === 'waiting' }"><component :is="model.statusType === 'ongoing' ? Activity : model.statusType === 'planned' ? CalendarClock : model.statusType === 'finished' ? CheckCircle2 : Hourglass" :size="16" /> {{ model.statusText ? t('labels.' + (model.statusType === 'waiting' ? 'blocked' : model.statusType)) + ' - ' + model.statusText : t('labels.' + (model.statusType === 'waiting' ? 'blocked' : model.statusType)) }}</p>
       <p class="detail-actions"><RouterLink v-if="canEdit" class="secondary-button" :to="`/incidents/${model.id}/edit`"><SquarePen :size="16" /> <span class="btn-label">{{ t("labels.edit") }}</span></RouterLink><button v-if="canDelete" class="delete-button" type="button" @click="deleteIncident"><Trash2 :size="16" /> <span class="btn-label">{{ t("labels.delete") }}</span></button></p>
     </div>
     <p class="timeline-meta date-line">

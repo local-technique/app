@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Activity, CheckCircle2, Hourglass } from "@lucide/vue";
+import { Activity, CalendarClock, CheckCircle2, Hourglass } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import CategoryBadge from "../../categories/CategoryBadge.vue";
@@ -9,7 +9,7 @@ import type { LatestEntry } from "./LatestTimelineEntry.vue";
 const props = defineProps<{
   id: string;
   title: string;
-  statusType: "waiting" | "ongoing" | "finished";
+  statusType: "waiting" | "ongoing" | "finished" | "planned";
   statusText: string;
   dateLabel: string;
   to: string;
@@ -27,6 +27,7 @@ const { t } = useI18n();
 
 const iconComponent = computed(() => {
   if (props.statusType === "ongoing") return Activity;
+  if (props.statusType === "planned") return CalendarClock;
   if (props.statusType === "finished") return CheckCircle2;
   return Hourglass;
 });
@@ -34,6 +35,7 @@ const iconComponent = computed(() => {
 const showStatusLine = computed(() => {
   if (props.statusType === "finished") return false;
   if (props.statusType === "ongoing" && !props.statusText) return false;
+  if (props.statusType === "planned" && !props.statusText) return false;
   return true;
 });
 
@@ -44,6 +46,7 @@ const statusLabelKey = computed(() => props.statusType === "waiting" ? "blocked"
 const statusDisplayText = computed(() => {
   if (props.statusText) return t("labels." + statusLabelKey.value) + " - " + props.statusText;
   if (props.statusType === "finished") return t("labels.finished");
+  if (props.statusType === "planned") return "";
   return t("labels." + statusLabelKey.value);
 });
 
