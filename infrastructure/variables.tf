@@ -160,3 +160,8 @@ variable "database_role_name" {
   type        = string
   default     = "app"
 }
+
+variable "cloudflare_account_id" {
+  description = "Cloudflare Account ID (32-char hex)."
+  type        = string
+}

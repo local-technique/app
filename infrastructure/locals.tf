@@ -29,6 +29,12 @@ locals {
       ACCESS_TOKEN_JWT_SECRET = {
         value = random_id.access_token_jwt_secret_bytes.b64_std
       }
+      R2_ENDPOINT = {
+        value = "https://${var.cloudflare_account_id}.r2.cloudflarestorage.com"
+      }
+      R2_ATTACHMENTS_BUCKET = {
+        value = cloudflare_r2_bucket.attachments.name
+      }
     }
   )
 

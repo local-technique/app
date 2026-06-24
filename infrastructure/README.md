@@ -1,6 +1,6 @@
 # Infrastructure
 
-Terraform provisions a Neon database stack, a Render application stack, Better Stack monitoring, and repository-level Actions secret wiring.
+Terraform provisions a Neon database stack, a Render application stack, Better Stack monitoring, Cloudflare R2 storage, and repository-level Actions secret wiring.
 Use the `Makefile` targets for both native and Docker execution.
 
 ## What This Configuration Provisions
@@ -11,6 +11,7 @@ Use the `Makefile` targets for both native and Docker execution.
 | App | Creates one Render web service from `local-technique/app` (branch `main` by default), rooted at `back/` with Rust native runtime. Injects non-sensitive env vars from `app_plain_env_vars`, injects `DATABASE_URL` from Neon, injects generated `COOKIE_KEY_BASE64` and `ACCESS_TOKEN_JWT_SECRET`, and sets `LISTEN_ADDR` from `app_port` unless overridden. Defaults in code target low-cost setup: `frankfurt` region, `free` plan, and one instance. |
 | Repository | Creates/updates GitHub Actions secret `DATABASE_URL` and GitHub Actions variables `BACKEND_URL` and `FRONTEND_URL` in the current repository. |
 | Monitoring | Creates one Better Stack uptime monitor targeting `${render_web_service.api.url}/health`. |
+| Storage | Creates two Cloudflare R2 buckets (attachments + backups) in `weur`, configures CORS on attachments for the frontend origin, and sets 30-day expiry lifecycle on backups. |
 
 ## Inputs for CI
 
@@ -25,7 +26,9 @@ Use **Secrets** for sensitive values and **Variables** for non-sensitive values.
 | Render API token | secret | `RENDER_API_KEY` | Authenticates Render provider for web service management. | Create API key in Render account settings and store as GitHub Actions secret. |
 | Better Stack API token | secret | `BETTERUPTIME_API_TOKEN` | Authenticates Better Stack provider for uptime monitor management. | Create API token in Better Stack Uptime settings and store as GitHub Actions secret. |
 | Neon API token | secret | `TF_VAR_NEON_API_TOKEN` | Authenticates Neon resources (project/role/database/URI). | Create API key in Neon console and store as GitHub Actions secret. |
+| Cloudflare API token | secret | `CLOUDFLARE_API_TOKEN` | Authenticates Cloudflare provider for R2 bucket management. | Create API token in Cloudflare dashboard with R2 read/write permissions and store as GitHub Actions secret. |
 | OAuth/runtime app secrets | secret | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET` | Passed to Terraform as `TF_VAR_app_secret_env_values` and injected into Render runtime env vars. | Create each value as a GitHub Actions secret. |
+| R2 credentials | secret | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | S3-compatible credentials for the app to generate pre-signed URLs. Passed to Terraform as `TF_VAR_app_secret_env_values`. | Create R2 API keys in Cloudflare dashboard (`R2 > Manage R2 API Tokens`) and store as GitHub Actions secrets. |
 
 `COOKIE_KEY_BASE64` and `ACCESS_TOKEN_JWT_SECRET` are generated once by Terraform, persisted in state, and injected only into the Render service environment.
 
@@ -36,6 +39,7 @@ Use **Secrets** for sensitive values and **Variables** for non-sensitive values.
 | Repository full name | inferred | none | Repository to manage in `owner/name` format. | Automatically set from `${{ github.repository }}` in CI. |
 | Render owner id | variable | `RENDER_OWNER_ID` | Owner/team id required by Render provider (`usr-*` or `tea-*`). | Use Render Owners API/UI to get a valid id. |
 | Neon organization id | variable | `NEON_ORG_ID` | Organization id required to create Neon projects. | Copy from Neon organization settings page (`org-...`). |
+| Cloudflare account id | variable | `CLOUDFLARE_ACCOUNT_ID` | Account ID required by Cloudflare provider for R2 resources. | Copy from Cloudflare dashboard (`Account ID` in right sidebar). |
 
 ### CI workflow token behavior
 
@@ -74,6 +78,7 @@ Do not create GitHub entries for these unless you want to override defaults.
 | `app_plain_env_vars` | Non-sensitive env var map for runtime injection. | `{ NODE_ENV = "production" }` |
 | `database_branch_name` | Neon branch used for role/database resources. | `main` |
 | `database_engine_major_version` | PostgreSQL major version for Neon project. | `17` |
+| `cloudflare_account_id` | Cloudflare account ID (32-char hex) for R2 resources. | none |
 
 ## State Strategy
 

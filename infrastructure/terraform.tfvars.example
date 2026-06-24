@@ -2,6 +2,8 @@ repository_full_name = "your-org-or-user/your-repo"
 
 database_project_name         = "local-technique-db"
 database_region_id            = "aws-eu-west-2"
+database_branch_name          = "main"
+database_engine_major_version = 17
 database_history_retention_seconds = 21600
 database_name                 = "local-technique-db"
 database_role_name            = "app"
@@ -29,5 +31,14 @@ app_plain_env_vars = {
 # repository_token        = ""
 # neon_api_token          = ""
 # neon_org_id             = "org-xxxxxxxxxxxxxxxx"
+# cloudflare_account_id   = "32-char-hex-from-cloudflare-dashboard"
+# app_secret_env_values   = {
+#   GOOGLE_CLIENT_ID       = "..."
+#   GOOGLE_CLIENT_SECRET   = "..."
+#   FACEBOOK_CLIENT_ID     = "..."
+#   FACEBOOK_CLIENT_SECRET = "..."
+#   R2_ACCESS_KEY_ID       = "..."
+#   R2_SECRET_ACCESS_KEY   = "..."
+# }
 # Deployment platform token is read from RENDER_API_KEY.
 # Monitoring platform token is read from BETTERUPTIME_API_TOKEN.

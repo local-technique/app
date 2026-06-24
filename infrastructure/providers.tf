@@ -12,3 +12,5 @@ provider "neon" {
 }
 
 provider "betteruptime" {}
+
+provider "cloudflare" {}
