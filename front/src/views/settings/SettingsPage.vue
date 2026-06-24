@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { inject, onMounted, ref, type Ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { Check, Copy, RefreshCcw, Trash2 } from "@lucide/vue";
+import { Check, Copy, LogOut, RefreshCcw, Trash2 } from "@lucide/vue";
 import { createToken, getToken, revokeToken, type CreateTokenResponse, type TokenInfoResponse } from "./api";
+import { logout } from "../../auth/session";
 import type { LocaleCode } from "../../common/i18n";
 import type { ThemeMode } from "../../common/theme";
 
@@ -106,6 +107,11 @@ async function handleCopyToken(): Promise<void> {
   }
 }
 
+async function handleSignOut(): Promise<void> {
+  await logout();
+  window.location.hash = "#/login";
+}
+
 onMounted(loadData);
 </script>
 
@@ -117,7 +123,13 @@ onMounted(loadData);
 
     <section v-if="userInfo" class="settings-section">
       <h2>{{ t("labels.settingsEmail") }}</h2>
-      <p class="email-display">{{ userInfo.email }}</p>
+      <div class="email-row">
+        <p class="email-display">{{ userInfo.email }}</p>
+        <button class="danger-button" type="button" @click="handleSignOut">
+          <LogOut :size="14" />
+          {{ t("labels.signOut") }}
+        </button>
+      </div>
     </section>
 
     <section v-if="userInfo" class="settings-section">
@@ -216,6 +228,13 @@ onMounted(loadData);
   letter-spacing: 0.07em;
   color: var(--muted-fg);
   margin: 0 0 0.6rem;
+}
+
+.email-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 .email-display {

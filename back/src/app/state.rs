@@ -16,6 +16,7 @@ pub struct AppState {
     pub http_client: reqwest::Client,
     pub db: PgPool,
     pub exchange_codes: Arc<Mutex<HashMap<String, ExchangeCodeRecord>>>,
+    pub oauth_states: Arc<Mutex<HashMap<String, OAuthStateRecord>>>,
     pub openapi_spec: serde_json::Value,
 }
 
@@ -27,6 +28,7 @@ impl AppState {
             http_client: reqwest::Client::new(),
             db,
             exchange_codes: Arc::new(Mutex::new(HashMap::new())),
+            oauth_states: Arc::new(Mutex::new(HashMap::new())),
             openapi_spec,
         }
     }
@@ -44,4 +46,13 @@ pub struct ExchangeCodeRecord {
     pub created_at: SystemTime,
     pub redirect_to: String,
     pub refresh_token: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct OAuthStateRecord {
+    pub provider: String,
+    pub state: String,
+    pub code_verifier: Option<String>,
+    pub redirect_to: String,
+    pub issued_at_unix: u64,
 }

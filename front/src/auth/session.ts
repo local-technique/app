@@ -174,6 +174,7 @@ export function initAuth(): Promise<boolean> {
     authInitPromise = Promise.resolve(true);
     return authInitPromise;
   }
+  initOAuthSession();
   authInitPromise = ensureAuthenticated();
   return authInitPromise;
 }
@@ -281,6 +282,20 @@ async function fetchCurrentUserRoles(): Promise<boolean> {
     return false;
   } finally {
     currentUserRoles.loading = false;
+  }
+}
+
+export async function initOAuthSession(): Promise<void> {
+  try {
+    const res = await fetch(`${apiBaseUrl()}/auth/session`, {
+      method: "GET",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      console.warn("oauth session init failed", res.status);
+    }
+  } catch {
+    // session init is best-effort; oauth start will create one if missing
   }
 }
 
