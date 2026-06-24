@@ -11,3 +11,8 @@ After any code change, run CI-equivalent checks:
 - For dependency changes in any ecosystem, verify the latest documented version and supported config/inputs before editing; do not rely on memory.
 - Do not use older dependency versions unless user explicitly requests it or a documented incompatibility is cited.
 - No guessing protocol: if documentation is unclear after checking, stop and ask one targeted question with links.
+
+## Glossary
+
+- item, most probably referring to the 3 types of items handled by the site (maintenances, incidents and projects)
+  - when asked to do something for items, make sure to do this for the three types

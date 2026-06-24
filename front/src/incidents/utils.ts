@@ -24,7 +24,7 @@ export type IncidentTimelineEntryViewModel = {
 export type IncidentViewModel = {
   id: string;
   status: IncidentStatusSection;
-  statusType: IncidentStoredStatus | "finished";
+  statusType: IncidentStoredStatus | "finished" | "planned";
   statusText: string;
   title: string;
   description: string;
@@ -43,9 +43,12 @@ function resolve(value: IncidentLocalizedText | undefined, locale: LocaleCode): 
   return resolveLocalized(value, locale);
 }
 
-function computeStatusType(stored: IncidentStoredStatus, endUtc: string | undefined): IncidentStoredStatus | "finished" {
+function computeStatusType(stored: IncidentStoredStatus, endUtc: string | undefined, startUtc: string): IncidentStoredStatus | "finished" | "planned" {
   if (endUtc && Date.parse(endUtc) < Date.now()) {
     return "finished";
+  }
+  if (stored === "ongoing" && Date.parse(startUtc) > Date.now()) {
+    return "planned";
   }
   return stored;
 }
@@ -84,11 +87,12 @@ function toTimelineEntryViewModel(entry: IncidentTimelineEntry, locale: LocaleCo
 
 export function toIncidentViewModel(incident: IncidentItem, locale: LocaleCode): IncidentViewModel {
   const timeline = incident.timeline.map((entry) => toTimelineEntryViewModel(entry, locale));
+  const statusType = computeStatusType(incident.statusType, incident.endUtc, incident.startUtc);
 
   return {
     id: incident.id,
     status: toIncidentStatus(incident),
-    statusType: computeStatusType(incident.statusType, incident.endUtc),
+    statusType,
     statusText: resolve(incident.statusText, locale),
     title: resolve(incident.title, locale),
     description: resolve(incident.description, locale),

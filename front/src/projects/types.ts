@@ -7,7 +7,7 @@ export type ProjectLocalizedText = {
 };
 
 export type ProjectStoredStatus = "waiting" | "ongoing";
-export type ProjectDisplayStatus = "waiting" | "ongoing" | "finished";
+export type ProjectDisplayStatus = "waiting" | "ongoing" | "finished" | "planned";
 export type ProjectStatusSection = "ongoing" | "toCome" | "finished";
 
 export type ProjectTimelineEntry = {
