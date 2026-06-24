@@ -20,7 +20,10 @@ env:
       "GOOGLE_CLIENT_ID": "${{ secrets.GOOGLE_CLIENT_ID }}",
       "GOOGLE_CLIENT_SECRET": "${{ secrets.GOOGLE_CLIENT_SECRET }}",
       "FACEBOOK_CLIENT_ID": "${{ secrets.FACEBOOK_CLIENT_ID }}",
-      "FACEBOOK_CLIENT_SECRET": "${{ secrets.FACEBOOK_CLIENT_SECRET }}"
+      "FACEBOOK_CLIENT_SECRET": "${{ secrets.FACEBOOK_CLIENT_SECRET }}",
+      "R2_ACCESS_KEY_ID": "${{ secrets.R2_ACCESS_KEY_ID }}",
+      "R2_SECRET_ACCESS_KEY": "${{ secrets.R2_SECRET_ACCESS_KEY }}",
+      "R2_ACCOUNT_ID": "${{ vars.CLOUDFLARE_ACCOUNT_ID }}"
     }
   TF_VAR_repository_full_name: ${{ github.repository }}
   TF_VAR_neon_api_token: ${{ secrets.TF_VAR_NEON_API_TOKEN }}
@@ -28,6 +31,12 @@ env:
   TF_VAR_render_owner_id: ${{ vars.RENDER_OWNER_ID }}
   RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
   BETTERUPTIME_API_TOKEN: ${{ secrets.BETTERUPTIME_API_TOKEN }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+  TF_VAR_cloudflare_account_id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: auto
 
 jobs:
   lint_plan_and_comment:
@@ -56,16 +65,6 @@ jobs:
 
       - name: Setup TFLint
         uses: terraform-linters/setup-tflint@b480b8fcdaa6f2c577f8e4fa799e89e756bb7c93 # v6.2.2
-
-      - name: Restore Terraform state cache
-        uses: actions/cache/restore@v5
-        with:
-          path: |
-            infrastructure/terraform.tfstate
-            infrastructure/terraform.tfstate.backup
-          key: terraform-local-state-main-${{ github.run_id }}
-          restore-keys: |
-            terraform-local-state-main-
 
       - name: Terraform fmt check
         run: make fmt

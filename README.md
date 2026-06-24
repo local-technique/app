@@ -8,6 +8,7 @@ Local-technique is a lightweight web app for co-owners to track building events,
 - Backend: [Render.com](https://dashboard.render.com)
 - Database: [Neon](https://console.neon.tech/app)
 - Monitoring: [BetterStack](https://uptime.betterstack.com)
+- Storage: [Cloudflare R2](https://cloudflare.com)
 
 ## OAuth clients configuration
 
@@ -30,3 +31,8 @@ Local-technique is a lightweight web app for co-owners to track building events,
 | `ADMIN_EMAILS`          | Optional. Comma-separated auto-admin emails.     | empty                          | Applied only for Google users. |
 | `LISTEN_ADDR`           | Optional. Backend bind address.                  | `0.0.0.0:8080`                 | Example: `127.0.0.1:8080` |
 | `RUST_LOG`              | Optional. Rust log level/filter.                 | `info`                         | Example: `debug` |
+| `R2_ENDPOINT`           | Required. Cloudflare R2 S3-compatible endpoint.  | none                           | `https://<account-id>.r2.cloudflarestorage.com` |
+| `R2_ATTACHMENTS_BUCKET` | Required. R2 bucket for file attachments.        | none                           | Auto-provisioned via Terraform. |
+
+| `R2_ACCESS_KEY_ID`      | Required. R2 S3 credential access key.           | none                           | Keep secret. |
+| `R2_SECRET_ACCESS_KEY`  | Required. R2 S3 credential secret key.           | none                           | Keep secret. |
