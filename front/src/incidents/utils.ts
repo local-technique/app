@@ -19,6 +19,7 @@ export type IncidentTimelineEntryViewModel = {
   isPending: boolean;
   title: string;
   details: string;
+  lastModifiedBy?: { initials: string; fullName: string } | null;
 };
 
 export type IncidentViewModel = {
@@ -73,6 +74,11 @@ function formatIncidentDateLabel(incident: IncidentItem, locale: LocaleCode): st
 
 function toTimelineEntryViewModel(entry: IncidentTimelineEntry, locale: LocaleCode): IncidentTimelineEntryViewModel {
   const atDate = entry.atUtc ? parseUtc(entry.atUtc) : null;
+  const fb = entry.lastModifiedBy;
+  const firstChar = fb?.firstName?.[0] ?? fb?.lastName?.[0] ?? fb?.email?.[0] ?? null;
+  const lastChar = fb?.firstName && fb?.lastName ? fb.lastName[0] : null;
+  const initials = firstChar && lastChar ? `${firstChar}${lastChar}`.toUpperCase() : firstChar?.toUpperCase() ?? null;
+  const fullName = fb?.firstName && fb?.lastName ? `${fb.firstName} ${fb.lastName}` : (fb?.firstName ?? fb?.lastName ?? fb?.email ?? null);
   return {
     id: entry.id,
     atUtc: entry.atUtc,
@@ -82,6 +88,7 @@ function toTimelineEntryViewModel(entry: IncidentTimelineEntry, locale: LocaleCo
     isPending: !entry.atUtc,
     title: resolve(entry.title, locale),
     details: resolve(entry.details, locale),
+    lastModifiedBy: initials || fullName ? { initials: initials ?? "", fullName: fullName ?? "" } : null,
   };
 }
 

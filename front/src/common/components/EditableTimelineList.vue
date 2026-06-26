@@ -186,18 +186,21 @@ function cancelNew() {
           </div>
         </template>
         <template v-else>
-          <h3 class="timeline-card-title timeline-entry-title">
-            <CircleCheck v-if="!entry.isPending" class="timeline-entry-icon" :size="16" :stroke-width="2.4" aria-hidden="true" />
-            <span>{{ entry.title }}</span>
-          </h3>
-          <p v-if="entry.details" class="timeline-entry-details">{{ entry.details }}</p>
-          <div v-if="canEdit" class="timeline-entry-actions">
-            <button class="timeline-action-btn" style="background: rgba(72, 144, 255, 0.78)" @click="startEdit(entry)">
-              <Pencil :size="14" />
-            </button>
-            <button class="timeline-action-btn" style="background: rgba(220, 38, 38, 0.85)" @click="emit('delete', entry.id)">
-              <Trash2 :size="14" />
-            </button>
+          <span v-if="entry.lastModifiedBy" class="tl-user-avatar" :title="entry.lastModifiedBy.fullName">{{ entry.lastModifiedBy.initials }}</span>
+          <div class="tl-card-body">
+            <h3 class="timeline-card-title timeline-entry-title">
+              <CircleCheck v-if="!entry.isPending" class="timeline-entry-icon" :size="16" :stroke-width="2.4" aria-hidden="true" />
+              <span>{{ entry.title }}</span>
+            </h3>
+            <p v-if="entry.details" class="timeline-entry-details">{{ entry.details }}</p>
+            <div v-if="canEdit" class="timeline-entry-actions">
+              <button class="timeline-action-btn" style="background: rgba(72, 144, 255, 0.78)" @click="startEdit(entry)">
+                <Pencil :size="14" />
+              </button>
+              <button class="timeline-action-btn" style="background: rgba(220, 38, 38, 0.85)" @click="emit('delete', entry.id)">
+                <Trash2 :size="14" />
+              </button>
+            </div>
           </div>
         </template>
       </div>
@@ -257,13 +260,31 @@ function cancelNew() {
   z-index: 1;
 }
 
-.TimelineList .timeline-entry-card { margin-bottom: calc(0.32rem + 10px); padding: 0.32rem 0.62rem; position: relative; }
+.TimelineList .timeline-entry-card { display: flex; gap: 0.5rem; align-items: flex-start; margin-bottom: calc(0.32rem + 10px); padding: 0.32rem 0.62rem; position: relative; }
+
+.TimelineList .tl-card-body { flex: 1; min-width: 0; }
 
 .TimelineList .timeline-entry-title { align-items: center; display: flex; gap: 0.38rem; line-height: 1.15; margin: 0; }
 
 .TimelineList .timeline-entry-details { color: var(--muted-fg); font-size: 0.82rem; line-height: 1.2; margin: 0.12rem 0 0; }
 
 .TimelineList .timeline-entry-icon { color: var(--timeline-accent); flex: 0 0 auto; }
+
+.TimelineList .tl-user-avatar {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: rgba(127, 127, 127, 0.2);
+  color: var(--muted-fg);
+  cursor: default;
+  flex: 0 0 auto;
+  font-size: 0.55rem;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 
 .TimelineList .pending-badge {
   background: rgba(255, 139, 26, 0.2);
@@ -380,6 +401,7 @@ function cancelNew() {
   display: grid;
   gap: 0;
   padding-right: 0;
+  flex: 1;
 }
 
 .TimelineList .timeline-add-btn {

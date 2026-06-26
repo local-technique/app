@@ -227,7 +227,7 @@ pub async fn create_timeline(
 ) -> Result<(StatusCode, Json<IncidentTimelineItem>), AppError> {
     principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
     let locale = query.locale.unwrap_or_else(|| "en".to_string());
-    let entry = service::create_timeline_entry(&state.db, &id, &payload, &locale).await?;
+    let entry = service::create_timeline_entry(&state.db, &id, &payload, &locale, principal.user_id).await?;
     Ok((StatusCode::CREATED, Json(entry)))
 }
 
@@ -240,7 +240,7 @@ pub async fn update_timeline(
 ) -> Result<Json<IncidentTimelineItem>, AppError> {
     principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
     let locale = query.locale.unwrap_or_else(|| "en".to_string());
-    let entry = service::update_timeline_entry(&state.db, &id, &entry_id, &payload, &locale).await?;
+    let entry = service::update_timeline_entry(&state.db, &id, &entry_id, &payload, &locale, principal.user_id).await?;
     Ok(Json(entry))
 }
 

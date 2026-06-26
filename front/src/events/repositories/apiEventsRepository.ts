@@ -1,4 +1,5 @@
 import type { LocaleCode } from "../../common/localeContent";
+import { mapUserRef } from "../../common/apiMapping";
 import { getAccessToken } from "../../auth/session";
 import type { EditFieldValue, EventEditData, EventItem, EventLocalizedText, EventSavePayload, EventStoredStatus, EventTimelineEditItem, EventTimelineEntry } from "../types";
 import type { EventsRepository } from "./eventsRepository";
@@ -9,6 +10,7 @@ type ApiMaintenanceTimelineItem = {
   at_utc: string | null;
   title: string;
   details: string;
+  last_modified_by?: { id: string; email: string; first_name?: string | null; last_name?: string | null } | null;
 };
 
 type ApiMaintenanceListItem = {
@@ -40,7 +42,7 @@ type ApiMaintenanceDetail = {
   category?: { id: string; key: string; icon: string; color: string; label: string };
   timeline: ApiMaintenanceTimelineItem[];
   last_modified_at?: string | null;
-  last_modified_by?: { id: string; email: string } | null;
+  last_modified_by?: { id: string; email: string; first_name?: string | null; last_name?: string | null } | null;
 };
 
 type ApiEditFieldValue = {
@@ -90,6 +92,7 @@ function toTimelineEntry(locale: LocaleCode, item: ApiMaintenanceTimelineItem): 
     atUtc: item.at_utc,
     title: localized(locale, item.title ?? ""),
     details: localized(locale, item.details ?? ""),
+    lastModifiedBy: mapUserRef(item.last_modified_by),
   };
 }
 
@@ -109,7 +112,7 @@ function toEventItem(locale: LocaleCode, value: ApiMaintenanceListItem | ApiMain
     timeline: "timeline" in value ? (value.timeline ?? []).map((item) => toTimelineEntry(locale, item)) : [],
     attachments: [],
     lastModifiedAt: "last_modified_at" in value ? (value.last_modified_at ?? undefined) : undefined,
-    lastModifiedBy: "last_modified_by" in value ? (value.last_modified_by ?? null) : undefined,
+    lastModifiedBy: "last_modified_by" in value ? mapUserRef(value.last_modified_by) : undefined,
   };
 }
 

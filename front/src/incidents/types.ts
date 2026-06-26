@@ -11,6 +11,7 @@ export type IncidentTimelineEntry = {
   atUtc: string | null;
   title: IncidentLocalizedText;
   details?: IncidentLocalizedText;
+  lastModifiedBy?: { id: string; email: string; firstName?: string | null; lastName?: string | null } | null;
 };
 
 export type IncidentItem = {
@@ -27,7 +28,7 @@ export type IncidentItem = {
   timeline: IncidentTimelineEntry[];
   attachments: AttachmentItem[];
   lastModifiedAt?: string;
-  lastModifiedBy?: { id: string; email: string } | null;
+  lastModifiedBy?: { id: string; email: string; firstName?: string | null; lastName?: string | null } | null;
 };
 
 export type EditFieldValue = {

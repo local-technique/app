@@ -13,6 +13,7 @@ export type EventTimelineEntryViewModel = {
   isPending: boolean;
   title: string;
   details: string;
+  lastModifiedBy?: { initials: string; fullName: string } | null;
 };
 
 export type EventViewModel = {
@@ -59,6 +60,11 @@ function formatEventDateLabel(event: EventItem, locale: LocaleCode): string {
 
 function toTimelineEntryViewModel(entry: EventTimelineEntry, locale: LocaleCode): EventTimelineEntryViewModel {
   const atDate = entry.atUtc ? parseUtc(entry.atUtc) : null;
+  const fb = entry.lastModifiedBy;
+  const firstChar = fb?.firstName?.[0] ?? fb?.lastName?.[0] ?? fb?.email?.[0] ?? null;
+  const lastChar = fb?.firstName && fb?.lastName ? fb.lastName[0] : null;
+  const initials = firstChar && lastChar ? `${firstChar}${lastChar}`.toUpperCase() : firstChar?.toUpperCase() ?? null;
+  const fullName = fb?.firstName && fb?.lastName ? `${fb.firstName} ${fb.lastName}` : (fb?.firstName ?? fb?.lastName ?? fb?.email ?? null);
   return {
     id: entry.id,
     atUtc: entry.atUtc,
@@ -68,6 +74,7 @@ function toTimelineEntryViewModel(entry: EventTimelineEntry, locale: LocaleCode)
     isPending: !entry.atUtc,
     title: resolve(entry.title, locale),
     details: resolve(entry.details, locale),
+    lastModifiedBy: initials || fullName ? { initials: initials ?? "", fullName: fullName ?? "" } : null,
   };
 }
 

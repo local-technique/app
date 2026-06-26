@@ -16,6 +16,8 @@ pub struct CategoryDisplay {
 pub struct AuditUser {
     pub id: String,
     pub email: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -39,6 +41,7 @@ pub struct IncidentTimelineItem {
     pub at_utc: Option<String>,
     pub title: String,
     pub details: String,
+    pub last_modified_by: Option<AuditUser>,
 }
 
 #[derive(Serialize, ToSchema)]

@@ -118,6 +118,7 @@ pub async fn create_timeline_entry(
     incident_code: &str,
     payload: &IncidentTimelineCreateRequest,
     locale: &str,
+    user_id: uuid::Uuid,
 ) -> Result<IncidentTimelineItem, AppError> {
     let enabled_locales = load_enabled_locales(db).await?;
     let locale = normalize_locale(locale)?;
@@ -131,7 +132,7 @@ pub async fn create_timeline_entry(
         .transpose()
         .map_err(|_| AppError::bad_request("invalid at_utc"))?
         .map(|v| v.with_timezone(&Utc));
-    repository::create_timeline_entry(db, incident_code, at_utc, payload.sort_order, &locale, &fields).await
+    repository::create_timeline_entry(db, incident_code, at_utc, payload.sort_order, &locale, &fields, user_id).await
 }
 
 pub async fn update_timeline_entry(
@@ -140,6 +141,7 @@ pub async fn update_timeline_entry(
     entry_id: &str,
     payload: &IncidentTimelineUpdateRequest,
     locale: &str,
+    user_id: uuid::Uuid,
 ) -> Result<IncidentTimelineItem, AppError> {
     let enabled_locales = load_enabled_locales(db).await?;
     let locale = normalize_locale(locale)?;
@@ -153,7 +155,7 @@ pub async fn update_timeline_entry(
         .transpose()
         .map_err(|_| AppError::bad_request("invalid at_utc"))?
         .map(|v| v.with_timezone(&Utc));
-    repository::update_timeline_entry(db, incident_code, entry_id, at_utc, payload.sort_order, &locale, &fields)
+    repository::update_timeline_entry(db, incident_code, entry_id, at_utc, payload.sort_order, &locale, &fields, user_id)
         .await?
         .ok_or_else(|| AppError::not_found("timeline entry not found"))
 }

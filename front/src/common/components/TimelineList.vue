@@ -10,6 +10,7 @@ export type TimelineEntry = {
   isPending: boolean;
   title: string;
   details: string;
+  lastModifiedBy?: { initials: string; fullName: string } | null;
 };
 
 defineProps<{ entries: TimelineEntry[] }>();
@@ -27,11 +28,14 @@ defineProps<{ entries: TimelineEntry[] }>();
       </div>
       <div class="timeline-axis" aria-hidden="true"><span class="timeline-dot" /></div>
       <div class="timeline-card timeline-entry-card">
-        <h3 class="timeline-card-title timeline-entry-title">
-          <CircleCheck v-if="!entry.isPending" class="timeline-entry-icon" :size="16" :stroke-width="2.4" aria-hidden="true" />
-          <span>{{ entry.title }}</span>
-        </h3>
-        <p v-if="entry.details" class="timeline-entry-details">{{ entry.details }}</p>
+        <span v-if="entry.lastModifiedBy" class="tl-user-avatar" :title="entry.lastModifiedBy.fullName">{{ entry.lastModifiedBy.initials }}</span>
+        <div class="tl-card-body">
+          <h3 class="timeline-card-title timeline-entry-title">
+            <CircleCheck v-if="!entry.isPending" class="timeline-entry-icon" :size="16" :stroke-width="2.4" aria-hidden="true" />
+            <span>{{ entry.title }}</span>
+          </h3>
+          <p v-if="entry.details" class="timeline-entry-details">{{ entry.details }}</p>
+        </div>
       </div>
     </article>
   </div>
@@ -89,13 +93,31 @@ defineProps<{ entries: TimelineEntry[] }>();
   z-index: 1;
 }
 
-.TimelineList .timeline-entry-card { margin-bottom: calc(0.32rem + 10px); padding: 0.32rem 0.62rem; }
+.TimelineList .timeline-entry-card { display: flex; gap: 0.5rem; align-items: flex-start; margin-bottom: calc(0.32rem + 10px); padding: 0.32rem 0.62rem; }
+
+.TimelineList .tl-card-body { flex: 1; min-width: 0; }
 
 .TimelineList .timeline-entry-title { align-items: center; display: flex; gap: 0.38rem; line-height: 1.15; margin: 0; }
 
 .TimelineList .timeline-entry-details { color: var(--muted-fg); font-size: 0.82rem; line-height: 1.2; margin: 0.12rem 0 0; }
 
 .TimelineList .timeline-entry-icon { color: var(--timeline-accent); flex: 0 0 auto; }
+
+.TimelineList .tl-user-avatar {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: rgba(127, 127, 127, 0.2);
+  color: var(--muted-fg);
+  cursor: default;
+  flex: 0 0 auto;
+  font-size: 0.55rem;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 
 .TimelineList .pending-badge {
   background: rgba(255, 139, 26, 0.2);

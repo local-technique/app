@@ -11,6 +11,7 @@ export type EventTimelineEntry = {
   atUtc: string | null;
   title: EventLocalizedText;
   details?: EventLocalizedText;
+  lastModifiedBy?: { id: string; email: string; firstName?: string | null; lastName?: string | null } | null;
 };
 
 export type EventItem = {
@@ -29,7 +30,7 @@ export type EventItem = {
   handlers?: string[];
   attachments: AttachmentItem[];
   lastModifiedAt?: string;
-  lastModifiedBy?: { id: string; email: string } | null;
+  lastModifiedBy?: { id: string; email: string; firstName?: string | null; lastName?: string | null } | null;
 };
 
 export type EditFieldValue = {
