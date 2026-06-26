@@ -19,6 +19,7 @@ pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
         .route("/admin/roles", get(admin::http::roles))
         .route("/admin/users", get(admin::http::users))
         .route("/admin/users/{user_id}/roles", axum::routing::put(admin::http::update_user_roles))
+        .route("/admin/users/{user_id}/names", axum::routing::put(admin::http::update_user_names))
         .route("/categories", get(categories::http::list))
         .route("/admin/categories", get(categories::http::admin_list).post(categories::http::create))
         .route(

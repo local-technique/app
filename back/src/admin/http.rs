@@ -2,7 +2,7 @@ use axum::extract::{Path, Query, State};
 use axum::Json;
 use uuid::Uuid;
 
-use crate::admin::model::{AdminUsersQuery, UpdateUserRolesRequest};
+use crate::admin::model::{AdminUsersQuery, UpdateUserNamesRequest, UpdateUserRolesRequest};
 use crate::admin::service;
 use crate::app::state::AppState;
 use crate::common::auth::Principal;
@@ -34,5 +34,17 @@ pub async fn update_user_roles(
     principal.ensure_role(Role::Admin)?;
     Ok(Json(
         service::replace_non_admin_roles(&state.db, user_id, payload.roles).await?,
+    ))
+}
+
+pub async fn update_user_names(
+    principal: Principal,
+    State(state): State<AppState>,
+    Path(user_id): Path<Uuid>,
+    Json(payload): Json<UpdateUserNamesRequest>,
+) -> Result<Json<crate::admin::model::UpdateUserNamesResponse>, AppError> {
+    principal.ensure_role(Role::Admin)?;
+    Ok(Json(
+        service::update_user_names(&state.db, user_id, payload.first_name, payload.last_name).await?,
     ))
 }

@@ -26,6 +26,8 @@ pub struct AdminUsersQuery {
 pub struct AdminUserItem {
     pub id: String,
     pub email: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
     pub created_at: DateTime<Utc>,
     pub last_login_at: Option<DateTime<Utc>>,
     pub roles: Vec<String>,
@@ -48,4 +50,17 @@ pub struct UpdateUserRolesRequest {
 pub struct UpdateUserRolesResponse {
     pub id: String,
     pub roles: Vec<String>,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateUserNamesRequest {
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct UpdateUserNamesResponse {
+    pub id: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
 }

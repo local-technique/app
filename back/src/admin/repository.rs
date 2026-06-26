@@ -9,6 +9,8 @@ use crate::common::role::Role;
 pub struct AdminUserRow {
     pub id: Uuid,
     pub email: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
     pub created_at: DateTime<Utc>,
     pub last_login_at: Option<DateTime<Utc>>,
     pub roles: Vec<String>,
@@ -37,7 +39,7 @@ pub async fn list_users(
     let order_direction = if params.direction == "desc" { "DESC" } else { "ASC" };
     let items_sql = format!(
         r#"
-SELECT id, email::TEXT AS email, created_at, last_login_at, roles
+SELECT id, email::TEXT AS email, first_name, last_name, created_at, last_login_at, roles
 FROM users
 WHERE ($1::TEXT IS NULL OR email::TEXT ILIKE '%' || $1 || '%')
   AND (($3::BOOLEAN = TRUE AND cardinality(roles) = 0) OR ($3::BOOLEAN = FALSE AND ($2::TEXT IS NULL OR $2 = ANY(roles))))
@@ -76,6 +78,8 @@ WHERE ($1::TEXT IS NULL OR email::TEXT ILIKE '%' || $1 || '%')
             Ok(AdminUserRow {
                 id: row.try_get("id")?,
                 email: row.try_get("email")?,
+                first_name: row.try_get("first_name")?,
+                last_name: row.try_get("last_name")?,
                 created_at: row.try_get("created_at")?,
                 last_login_at: row.try_get("last_login_at")?,
                 roles: row.try_get("roles")?,
@@ -110,4 +114,35 @@ RETURNING roles
     .await?;
 
     row.map(|row| row.try_get("roles")).transpose().map_err(Into::into)
+}
+
+pub async fn update_user_names(
+    db: &sqlx::PgPool,
+    user_id: Uuid,
+    first_name: Option<String>,
+    last_name: Option<String>,
+) -> Result<Option<crate::admin::model::UpdateUserNamesResponse>, AppError> {
+    let row = sqlx::query(
+        r#"
+UPDATE users
+SET first_name = $2, last_name = $3, updated_at = now()
+WHERE id = $1
+RETURNING id, first_name, last_name
+"#,
+    )
+    .bind(user_id)
+    .bind(&first_name)
+    .bind(&last_name)
+    .fetch_optional(db)
+    .await?;
+
+    row.map(|row| -> Result<crate::admin::model::UpdateUserNamesResponse, sqlx::Error> {
+        Ok(crate::admin::model::UpdateUserNamesResponse {
+            id: row.try_get::<Uuid, _>("id")?.to_string(),
+            first_name: row.try_get("first_name")?,
+            last_name: row.try_get("last_name")?,
+        })
+    })
+    .transpose()
+    .map_err(Into::into)
 }

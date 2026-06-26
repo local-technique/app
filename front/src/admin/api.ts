@@ -8,6 +8,8 @@ export type RoleDescriptor = {
 export type AdminUser = {
   id: string;
   email: string;
+  first_name: string | null;
+  last_name: string | null;
   created_at: string;
   last_login_at: string | null;
   roles: string[];
@@ -85,4 +87,12 @@ export async function updateUserRoles(userId: string, roles: string[]): Promise<
     body: JSON.stringify({ roles }),
   });
   return payload.roles;
+}
+
+export async function updateUserNames(userId: string, firstName: string | null, lastName: string | null): Promise<{ id: string; first_name: string | null; last_name: string | null }> {
+  return fetchJson(`${apiBaseUrl()}/admin/users/${userId}/names`, {
+    method: "PUT",
+    headers: authHeaders(true),
+    body: JSON.stringify({ first_name: firstName, last_name: lastName }),
+  });
 }
