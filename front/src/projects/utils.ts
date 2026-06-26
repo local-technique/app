@@ -160,10 +160,22 @@ function bulletContent(line: string): string {
 function renderInlineMarkdown(value: string): string {
   return escapeHtml(value)
     .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/!\[([^\]]*)]\((https?:\/\/[^\s)]+)\)/g, '<img src="$2" alt="$1">')
     .replace(/\[([^\]]+)]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" rel="noopener noreferrer" target="_blank">$1</a>')
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>")
-    .replace(/_([^_]+)_/g, "<em>$1</em>");
+    .replace(/_([^_]+)_/g, "<em>$1</em>")
+    .replace(/~~([^~]+)~~/g, "<del>$1</del>")
+    .replace(/==([^=]+)==/g, "<mark>$1</mark>")
+    .replace(/(?<![~])~([^~]+)~(?!~)/g, "<sub>$1</sub>")
+    .replace(/\^([^^]+)\^/g, "<sup>$1</sup>")
+    .replace(/(https?:\/\/[^\s<>"')]+)/g, (match: string, url: string, offset: number, full: string) => {
+      const before = full.slice(0, offset);
+      if (before.lastIndexOf("<") > before.lastIndexOf(">")) {
+        return match;
+      }
+      return `<a href="${match}" rel="noopener noreferrer" target="_blank">${match}</a>`;
+    });
 }
 
 function splitTableRow(line: string): string[] {
@@ -219,39 +231,118 @@ function renderTable(lines: string[]): string | null {
   return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
 }
 
+function isOrderedLine(line: string): boolean {
+  return /^\d+\.\s/.test(line.trim());
+}
+
+function orderedStart(line: string): number {
+  const match = line.trim().match(/^\d+/);
+  return match ? parseInt(match[0], 10) : 1;
+}
+
+function orderedContent(line: string): string {
+  return line.trim().replace(/^\d+\.\s*/, "");
+}
+
+function isBlockquoteLine(line: string): boolean {
+  return line.trim().startsWith("> ");
+}
+
+interface TaskItem {
+  checked: boolean;
+  content: string;
+}
+
+function parseTaskItem(content: string): TaskItem | null {
+  const trimmed = content.trim();
+  const match = trimmed.match(/^\[([ xX])\]\s+(.*)$/);
+  if (!match) return null;
+  return { checked: match[1] !== " ", content: match[2] };
+}
+
+function renderListItem(content: string): string {
+  const task = parseTaskItem(content);
+  if (task) {
+    return `<li>${task.checked ? '<input type="checkbox" disabled checked>' : '<input type="checkbox" disabled>'} ${renderInlineMarkdown(task.content)}</li>`;
+  }
+  return `<li>${renderInlineMarkdown(content)}</li>`;
+}
+
+function extractFenceBlocks(text: string, fence: string, codeBlocks: string[]): string {
+  const pattern = new RegExp(
+    `${fence}(\\w*)\\n([\\s\\S]*?)${fence}\\s*`,
+    "g",
+  );
+  return text.replace(pattern, (_match: string, lang: string, code: string) => {
+    const index = codeBlocks.length;
+    const langAttr = lang ? ` class="language-${lang}"` : "";
+    codeBlocks.push(`<pre><code${langAttr}>${escapeHtml(code.trimEnd())}</code></pre>`);
+    return `\n\n__CODEBLOCK_${index}__\n\n`;
+  });
+}
+
 export function renderProjectMarkdown(markdown: string): string {
-  const blocks = markdown
-    .replace(/\r\n/g, "\n")
+  const normalized = markdown.replace(/\r\n/g, "\n");
+
+  const codeBlocks: string[] = [];
+  let processed = extractFenceBlocks(normalized, "```", codeBlocks);
+  processed = extractFenceBlocks(processed, "~~~", codeBlocks);
+
+  const blocks = processed
     .split(/\n{2,}/)
     .map((block) => block.trim())
     .filter(Boolean);
 
   return blocks
     .map((block) => {
+      const codeMatch = block.match(/^__CODEBLOCK_(\d+)__$/);
+      if (codeMatch) {
+        return codeBlocks[parseInt(codeMatch[1], 10)];
+      }
+
       const lines = block.split("\n");
       const heading = block.match(/^(#{1,6})\s+(.+)$/);
       if (heading) {
         const level = heading[1].length;
         return `<h${level}>${renderInlineMarkdown(heading[2])}</h${level}>`;
       }
+      if (/^(?:[-*_]){3,}\s*$/.test(block.trim())) {
+        return "<hr>";
+      }
+      if (lines.every((line) => isBlockquoteLine(line) || line.trim() === "")) {
+        const content = lines
+          .filter((line) => line.trim() !== "")
+          .map((line) => renderInlineMarkdown(line.trim().replace(/^>\s*/, "")))
+          .join("<br>");
+        return `<blockquote><p>${content}</p></blockquote>`;
+      }
       const table = renderTable(lines);
       if (table) {
         return table;
       }
-      if (lines.some((line) => isBulletLine(line))) {
+      if (lines.some((line) => isBulletLine(line) || isOrderedLine(line))) {
         let result = "";
         let i = 0;
         while (i < lines.length) {
           if (isBulletLine(lines[i])) {
             const items: string[] = [];
             while (i < lines.length && isBulletLine(lines[i])) {
-              items.push(`<li>${renderInlineMarkdown(bulletContent(lines[i]))}</li>`);
+              items.push(renderListItem(bulletContent(lines[i])));
               i++;
             }
             result += `<ul>${items.join("")}</ul>`;
+          } else if (isOrderedLine(lines[i])) {
+            const items: string[] = [];
+            const start = orderedStart(lines[i]);
+            const openTag = start !== 1 ? `<ol start="${start}">` : "<ol>";
+            while (i < lines.length && isOrderedLine(lines[i])) {
+              items.push(renderListItem(orderedContent(lines[i])));
+              i++;
+            }
+            result += `${openTag}${items.join("")}</ol>`;
           } else {
             const paraLines: string[] = [];
-            while (i < lines.length && !isBulletLine(lines[i])) {
+            while (i < lines.length && !isBulletLine(lines[i]) && !isOrderedLine(lines[i])) {
               paraLines.push(renderInlineMarkdown(lines[i].replace(/^#+\s*/, "")));
               i++;
             }

@@ -112,3 +112,104 @@ describe("project utilities", () => {
     vi.useRealTimers();
   });
 });
+
+describe("renderProjectMarkdown extended features", () => {
+  it("renders images", () => {
+    const html = renderProjectMarkdown("![logo](https://example.com/logo.png)");
+    expect(html).toContain('<img src="https://example.com/logo.png" alt="logo">');
+  });
+
+  it("renders bare URLs as auto-links", () => {
+    const html = renderProjectMarkdown("Visit https://example.com for info");
+    expect(html).toContain('<a href="https://example.com"');
+    expect(html).toContain(">https://example.com</a>");
+  });
+
+  it("renders strikethrough", () => {
+    const html = renderProjectMarkdown("This is ~~deleted~~ text");
+    expect(html).toContain("<del>deleted</del>");
+  });
+
+  it("renders highlight", () => {
+    const html = renderProjectMarkdown("This is ==highlighted== text");
+    expect(html).toContain("<mark>highlighted</mark>");
+  });
+
+  it("renders subscript", () => {
+    const html = renderProjectMarkdown("H~2~O");
+    expect(html).toContain("<sub>2</sub>");
+  });
+
+  it("renders superscript", () => {
+    const html = renderProjectMarkdown("X^2^");
+    expect(html).toContain("<sup>2</sup>");
+  });
+
+  it("renders horizontal rules from ---, ***, and ___", () => {
+    expect(renderProjectMarkdown("---")).toContain("<hr>");
+    expect(renderProjectMarkdown("***")).toContain("<hr>");
+    expect(renderProjectMarkdown("___")).toContain("<hr>");
+  });
+
+  it("renders blockquotes", () => {
+    const html = renderProjectMarkdown("> This is a quote");
+    expect(html).toContain("<blockquote>");
+    expect(html).toContain("This is a quote");
+  });
+
+  it("renders ordered lists", () => {
+    const html = renderProjectMarkdown("1. First\n2. Second\n3. Third");
+    expect(html).toContain("<ol>");
+    expect(html).toContain("<li>First</li>");
+    expect(html).toContain("<li>Second</li>");
+    expect(html).toContain("</ol>");
+  });
+
+  it("renders ordered lists with correct start attribute", () => {
+    const html = renderProjectMarkdown("3. Third\n4. Fourth");
+    expect(html).toContain('<ol start="3">');
+    expect(html).toContain("<li>Third</li>");
+    expect(html).toContain("<li>Fourth</li>");
+  });
+
+  it("renders task lists", () => {
+    const html = renderProjectMarkdown("- [ ] Todo\n- [x] Done");
+    expect(html).toContain('<input type="checkbox" disabled>');
+    expect(html).toContain('<input type="checkbox" disabled checked>');
+    expect(html).toContain("Todo");
+    expect(html).toContain("Done");
+  });
+
+  it("renders fenced code blocks", () => {
+    const html = renderProjectMarkdown("```\nconst x = 1;\n```");
+    expect(html).toContain("<pre><code>");
+    expect(html).toContain("const x = 1;");
+    expect(html).toContain("</code></pre>");
+  });
+
+  it("renders fenced code blocks with language class", () => {
+    const html = renderProjectMarkdown("```js\nconst x = 1;\n```");
+    expect(html).toContain('<pre><code class="language-js">');
+    expect(html).toContain("const x = 1;");
+  });
+
+  it("renders fenced code blocks with blank lines inside", () => {
+    const markdown = "```\nline1\n\nline2\n```";
+    const html = renderProjectMarkdown(markdown);
+    expect(html).toContain("line1");
+    expect(html).toContain("line2");
+  });
+
+  it("renders tilde-fenced code blocks", () => {
+    const html = renderProjectMarkdown("~~~\nconst x = 1;\n~~~");
+    expect(html).toContain("<pre><code>");
+    expect(html).toContain("const x = 1;");
+    expect(html).toContain("</code></pre>");
+  });
+
+  it("renders tilde-fenced code blocks with language", () => {
+    const html = renderProjectMarkdown("~~~py\nprint(1)\n~~~");
+    expect(html).toContain('<pre><code class="language-py">');
+    expect(html).toContain("print(1)");
+  });
+});
