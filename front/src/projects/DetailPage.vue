@@ -179,6 +179,48 @@ function cancelDelete(): void {
 .project-description :deep(p) { margin: 0.7rem 0 0; }
 .project-description :deep(ul) { margin: 0.7rem 0 0; padding-left: 1.3rem; }
 .project-description :deep(code) { border-radius: 0.35rem; padding: 0.1rem 0.25rem; background: rgba(127, 127, 127, 0.18); }
+.project-description :deep(pre) {
+  margin: 0.7rem 0 0;
+  border-radius: 0.35rem;
+  padding: 0.75rem 1rem;
+  background: rgba(127, 127, 127, 0.1);
+  overflow-x: auto;
+}
+.project-description :deep(pre code) {
+  background: none;
+  padding: 0;
+}
+.project-description :deep(blockquote) {
+  margin: 0.7rem 0 0;
+  padding: 0.25rem 0 0.25rem 1rem;
+  border-left: 3px solid rgba(127, 127, 127, 0.3);
+  color: rgba(127, 127, 127, 0.9);
+}
+.project-description :deep(hr) {
+  margin: 0.7rem 0;
+  border: none;
+  border-top: 1px solid rgba(127, 127, 127, 0.25);
+}
+.project-description :deep(input[type="checkbox"]) {
+  margin: 0 0.35rem 0 0;
+  pointer-events: none;
+}
+.project-description :deep(ol) {
+  margin: 0.7rem 0 0;
+  padding-left: 1.3rem;
+}
+.project-description :deep(mark) {
+  border-radius: 0.2rem;
+  padding: 0.05rem 0.15rem;
+  background: rgba(255, 230, 0, 0.35);
+}
+.project-description :deep(sub),
+.project-description :deep(sup) {
+  font-size: 0.75em;
+}
+.project-description :deep(del) {
+  text-decoration: line-through;
+}
 .detail-actions-row { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; }
 .detail-actions { display: flex; gap: 0.5rem; }
 .delete-button { display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid rgba(220, 38, 38, 0.5); border-radius: 0.55rem; padding: 0.35rem 0.6rem; background: rgba(220, 38, 38, 0.85); color: #fff; cursor: pointer; font-size: inherit; font-weight: 600; text-decoration: none; }
