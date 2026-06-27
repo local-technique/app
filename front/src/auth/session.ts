@@ -22,6 +22,7 @@ type ExchangeResponse = {
 };
 
 type MeResponse = {
+  id?: string;
   roles?: string[];
 };
 
@@ -30,6 +31,8 @@ export const currentUserRoles = reactive({
   loading: false,
   roles: [] as string[],
 });
+
+export const currentUserId = reactive<{ value: string | null }>({ value: null });
 
 const REFRESH_SKEW_SECONDS = 30;
 const REFRESH_TOKEN_STORAGE_KEY = "copro-refresh-token";
@@ -94,6 +97,7 @@ export function setSession(payload: SessionPayload): void {
 export function clearSession(): void {
   memoryAccessToken = "";
   memoryExpiresAtUnix = 0;
+  currentUserId.value = null;
   currentUserRoles.loaded = false;
   currentUserRoles.loading = false;
   currentUserRoles.roles = [];
@@ -236,6 +240,7 @@ export function hasNoRoles(): boolean {
 
 export async function ensureCurrentUserRoles(): Promise<boolean> {
   if (useMockData()) {
+    currentUserId.value = "00000000-0000-0000-0000-000000000000";
     currentUserRoles.roles = ["ADMIN", "CO_OWNER", "CO_OWNERSHIP_BOARD"];
     currentUserRoles.loaded = true;
     return true;
@@ -275,6 +280,7 @@ async function fetchCurrentUserRoles(): Promise<boolean> {
     }
 
     const payload = (await response.json()) as MeResponse;
+    currentUserId.value = payload.id ?? null;
     currentUserRoles.roles = Array.isArray(payload.roles) ? payload.roles : [];
     currentUserRoles.loaded = true;
     return true;
@@ -324,4 +330,8 @@ export async function logout(): Promise<void> {
   } finally {
     clearSession();
   }
+}
+
+export function getCurrentUserId(): string | null {
+  return currentUserId.value;
 }

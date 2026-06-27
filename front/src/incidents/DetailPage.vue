@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { Activity, ArrowLeft, ArrowRight, CalendarClock, CheckCircle2, Hourglass, MapPin, SquarePen, Trash2, UserPen } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
-import { currentUserRoles, hasAnyRole } from "../auth/session";
+import { currentUserRoles, getCurrentUserId, hasAnyRole } from "../auth/session";
 import CategoryIcon from "../categories/CategoryIcon.vue";
 import AttachmentList from "../common/components/AttachmentList.vue";
 import AttachmentPreview from "../common/components/AttachmentPreview.vue";
@@ -161,13 +161,14 @@ function cancelDelete(): void {
 
     <section class="timeline-section">
       <h2>{{ t("labels.incidentTimeline") }}</h2>
-      <EditableTimelineList
-        :entries="model.timeline"
-        :can-edit="canEdit"
-        @add="handleTimelineAdd"
-        @update="handleTimelineUpdate"
-        @delete="handleTimelineDelete"
-      />
+<EditableTimelineList
+  :entries="model.timeline"
+  :can-edit="canEdit"
+  :current-user-id="getCurrentUserId()"
+  @add="handleTimelineAdd"
+  @update="handleTimelineUpdate"
+  @delete="handleTimelineDelete"
+/>
     </section>
 
     <p class="back-link">

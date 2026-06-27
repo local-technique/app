@@ -346,6 +346,7 @@ pub async fn me(state: &AppState, headers: &HeaderMap) -> Result<MeResponse, App
         .ok_or_else(|| AppError::unauthorized("invalid user"))?;
 
     Ok(MeResponse {
+        id: user.id.to_string(),
         provider: user.provider,
         email: user.email,
         first_name: user.first_name,

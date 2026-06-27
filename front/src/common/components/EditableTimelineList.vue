@@ -4,14 +4,22 @@ import { useI18n } from "vue-i18n";
 import { Calendar, CircleCheck, Pencil, Save, Trash2, X } from "@lucide/vue";
 import type { TimelineEntry } from "./TimelineList.vue";
 import { toDateLocalInput, toUtcFromDateLocalInput, todayDateInput } from "../dateInput";
+import { hasRole } from "../../auth/session";
 const { t } = useI18n();
 
-const props = defineProps<{ entries: TimelineEntry[]; canEdit: boolean }>();
+const props = defineProps<{ entries: TimelineEntry[]; canEdit: boolean; currentUserId: string | null }>();
 const emit = defineEmits<{
   (e: "add", payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): void;
   (e: "update", entryId: string, payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): void;
   (e: "delete", entryId: string): void;
 }>();
+
+function canEditEntry(entry: TimelineEntry): boolean {
+  if (!props.currentUserId) return false;
+  if (hasRole("ADMIN") || hasRole("CO_OWNERSHIP_BOARD_OPS")) return true;
+  if (!entry.createdBy) return false;
+  return entry.createdBy.id === props.currentUserId;
+}
 
 const pad = (n: number) => n.toString().padStart(2, "0");
 const nowTime = () => `${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`;
@@ -186,21 +194,23 @@ function cancelNew() {
           </div>
         </template>
         <template v-else>
-          <span v-if="entry.lastModifiedBy" class="tl-user-avatar" :title="entry.lastModifiedBy.fullName">{{ entry.lastModifiedBy.initials }}</span>
+          <span v-if="entry.createdBy" class="tl-user-avatar" :title="entry.lastModifiedBy ? entry.createdBy.fullName + '\n' + t('labels.lastEditedBy', { name: entry.lastModifiedBy.fullName }) : entry.createdBy.fullName">
+  {{ entry.createdBy.initials }}
+</span>
           <div class="tl-card-body">
             <h3 class="timeline-card-title timeline-entry-title">
               <CircleCheck v-if="!entry.isPending" class="timeline-entry-icon" :size="16" :stroke-width="2.4" aria-hidden="true" />
               <span>{{ entry.title }}</span>
             </h3>
             <p v-if="entry.details" class="timeline-entry-details">{{ entry.details }}</p>
-            <div v-if="canEdit" class="timeline-entry-actions">
-              <button class="timeline-action-btn" style="background: rgba(72, 144, 255, 0.78)" @click="startEdit(entry)">
-                <Pencil :size="14" />
-              </button>
-              <button class="timeline-action-btn" style="background: rgba(220, 38, 38, 0.85)" @click="emit('delete', entry.id)">
-                <Trash2 :size="14" />
-              </button>
-            </div>
+<div v-if="canEditEntry(entry)" class="timeline-entry-actions">
+  <button class="timeline-action-btn" style="background: rgba(72, 144, 255, 0.78)" @click="startEdit(entry)">
+    <Pencil :size="14" />
+  </button>
+  <button class="timeline-action-btn" style="background: rgba(220, 38, 38, 0.85)" @click="emit('delete', entry.id)">
+    <Trash2 :size="14" />
+  </button>
+</div>
           </div>
         </template>
       </div>

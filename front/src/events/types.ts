@@ -11,6 +11,7 @@ export type EventTimelineEntry = {
   atUtc: string | null;
   title: EventLocalizedText;
   details?: EventLocalizedText;
+  createdBy?: { id: string; email: string; firstName?: string | null; lastName?: string | null } | null;
   lastModifiedBy?: { id: string; email: string; firstName?: string | null; lastName?: string | null } | null;
 };
 

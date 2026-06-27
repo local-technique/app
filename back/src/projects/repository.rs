@@ -154,6 +154,7 @@ fn to_list_item(row: sqlx::postgres::PgRow) -> Result<ProjectListItem, AppError>
             at_utc: latest_timeline_at_utc.map(|value| value.to_rfc3339()),
             title: row.try_get("latest_timeline_title").unwrap_or_default(),
             details: row.try_get("latest_timeline_details").unwrap_or_default(),
+            created_by: None,
             last_modified_by: None,
         }]
     });
@@ -250,6 +251,10 @@ WHERE p.key = $1
 SELECT
   t.id,
   t.at_utc,
+  cu.id AS tl_created_by_id,
+  cu.email AS tl_created_by_email,
+  cu.first_name AS tl_created_by_first_name,
+  cu.last_name AS tl_created_by_last_name,
   tu.id AS tl_user_id,
   tu.email AS tl_user_email,
   tu.first_name AS tl_user_first_name,
@@ -271,6 +276,7 @@ SELECT
     LIMIT 1
   ), '') AS details
 FROM project_timeline t
+LEFT JOIN users cu ON cu.id = t.created_by_user_id
 LEFT JOIN users tu ON tu.id = t.last_modified_by_user_id
 WHERE t.project_id = $1
 ORDER BY t.at_utc DESC NULLS FIRST, t.sort_order ASC
@@ -286,6 +292,10 @@ ORDER BY t.at_utc DESC NULLS FIRST, t.sort_order ASC
         .map(|value| {
             let id: Uuid = value.try_get("id")?;
             let at_utc: Option<DateTime<Utc>> = value.try_get("at_utc")?;
+            let tl_created_by_id: Option<Uuid> = value.try_get("tl_created_by_id")?;
+            let tl_created_by_email: Option<String> = value.try_get("tl_created_by_email")?;
+            let tl_created_by_first_name: Option<String> = value.try_get("tl_created_by_first_name")?;
+            let tl_created_by_last_name: Option<String> = value.try_get("tl_created_by_last_name")?;
             let tl_user_id: Option<Uuid> = value.try_get("tl_user_id")?;
             let tl_user_email: Option<String> = value.try_get("tl_user_email")?;
             let tl_user_first_name: Option<String> = value.try_get("tl_user_first_name")?;
@@ -295,6 +305,12 @@ ORDER BY t.at_utc DESC NULLS FIRST, t.sort_order ASC
                 at_utc: at_utc.map(|value| value.to_rfc3339()),
                 title: value.try_get("title")?,
                 details: value.try_get("details")?,
+                created_by: tl_created_by_id.zip(tl_created_by_email).map(|(id, email)| AuditUser {
+                    id: id.to_string(),
+                    email,
+                    first_name: tl_created_by_first_name.clone(),
+                    last_name: tl_created_by_last_name.clone(),
+                }),
                 last_modified_by: tl_user_id.zip(tl_user_email).map(|(id, email)| AuditUser {
                     id: id.to_string(),
                     email,
@@ -556,8 +572,8 @@ ON CONFLICT (project_id, locale, field_key) DO UPDATE SET field_value = EXCLUDED
             .map(|value| value.with_timezone(&Utc));
         sqlx::query(
             r#"
-INSERT INTO project_timeline (id, project_id, at_utc, sort_order, last_modified_by_user_id)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO project_timeline (id, project_id, at_utc, sort_order, last_modified_by_user_id, created_by_user_id)
+VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (id) DO UPDATE SET at_utc = EXCLUDED.at_utc, sort_order = EXCLUDED.sort_order, last_modified_by_user_id = EXCLUDED.last_modified_by_user_id
 WHERE project_timeline.project_id = EXCLUDED.project_id
 "#,
@@ -566,6 +582,7 @@ WHERE project_timeline.project_id = EXCLUDED.project_id
         .bind(project_id)
         .bind(at_utc)
         .bind(item.sort_order)
+        .bind(user_id)
         .bind(user_id)
         .execute(&mut *tx)
         .await?;
@@ -736,12 +753,13 @@ pub async fn create_timeline_entry(
     let mut tx = db.begin().await?;
     let timeline_id = Uuid::new_v4();
     sqlx::query(
-        "INSERT INTO project_timeline (id, project_id, at_utc, sort_order, last_modified_by_user_id) VALUES ($1, $2, $3, $4, $5)",
+        "INSERT INTO project_timeline (id, project_id, at_utc, sort_order, last_modified_by_user_id, created_by_user_id) VALUES ($1, $2, $3, $4, $5, $6)",
     )
     .bind(timeline_id)
     .bind(project_id)
     .bind(at_utc)
     .bind(sort_order)
+    .bind(user_id)
     .bind(user_id)
     .execute(&mut *tx)
     .await?;
@@ -758,11 +776,16 @@ pub async fn create_timeline_entry(
 SELECT
   coalesce((SELECT ti.field_value FROM project_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'title' ORDER BY lp.ord LIMIT 1), '') AS title,
   coalesce((SELECT ti.field_value FROM project_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'details' ORDER BY lp.ord LIMIT 1), '') AS details,
+  cu.id AS tl_created_by_id,
+  cu.email AS tl_created_by_email,
+  cu.first_name AS tl_created_by_first_name,
+  cu.last_name AS tl_created_by_last_name,
   u.id AS tu_id,
   u.email AS tu_email,
   u.first_name AS tu_first_name,
   u.last_name AS tu_last_name
 FROM project_timeline t
+LEFT JOIN users cu ON cu.id = t.created_by_user_id
 LEFT JOIN users u ON u.id = t.last_modified_by_user_id
 WHERE t.id = $1
 "#,
@@ -774,6 +797,10 @@ WHERE t.id = $1
 
     let title: String = row.try_get("title")?;
     let details: String = row.try_get("details")?;
+    let tl_created_by_id: Option<Uuid> = row.try_get("tl_created_by_id")?;
+    let tl_created_by_email: Option<String> = row.try_get("tl_created_by_email")?;
+    let tl_created_by_first_name: Option<String> = row.try_get("tl_created_by_first_name")?;
+    let tl_created_by_last_name: Option<String> = row.try_get("tl_created_by_last_name")?;
     let tu_id: Option<Uuid> = row.try_get("tu_id")?;
     let tu_email: Option<String> = row.try_get("tu_email")?;
     let tu_first_name: Option<String> = row.try_get("tu_first_name")?;
@@ -784,6 +811,12 @@ WHERE t.id = $1
         at_utc: at_utc.map(|v| v.to_rfc3339()),
         title,
         details,
+        created_by: tl_created_by_id.zip(tl_created_by_email).map(|(id, email)| AuditUser {
+            id: id.to_string(),
+            email,
+            first_name: tl_created_by_first_name,
+            last_name: tl_created_by_last_name,
+        }),
         last_modified_by: tu_id.zip(tu_email).map(|(id, email)| AuditUser {
             id: id.to_string(),
             email,
@@ -872,11 +905,16 @@ pub async fn update_timeline_entry(
 SELECT
   coalesce((SELECT ti.field_value FROM project_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'title' ORDER BY lp.ord LIMIT 1), '') AS title,
   coalesce((SELECT ti.field_value FROM project_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'details' ORDER BY lp.ord LIMIT 1), '') AS details,
+  cu.id AS tl_created_by_id,
+  cu.email AS tl_created_by_email,
+  cu.first_name AS tl_created_by_first_name,
+  cu.last_name AS tl_created_by_last_name,
   u.id AS tu_id,
   u.email AS tu_email,
   u.first_name AS tu_first_name,
   u.last_name AS tu_last_name
 FROM project_timeline t
+LEFT JOIN users cu ON cu.id = t.created_by_user_id
 LEFT JOIN users u ON u.id = t.last_modified_by_user_id
 WHERE t.id = $1
 "#,
@@ -888,6 +926,10 @@ WHERE t.id = $1
 
     let title: String = row.try_get("title")?;
     let details: String = row.try_get("details")?;
+    let tl_created_by_id: Option<Uuid> = row.try_get("tl_created_by_id")?;
+    let tl_created_by_email: Option<String> = row.try_get("tl_created_by_email")?;
+    let tl_created_by_first_name: Option<String> = row.try_get("tl_created_by_first_name")?;
+    let tl_created_by_last_name: Option<String> = row.try_get("tl_created_by_last_name")?;
     let tu_id: Option<Uuid> = row.try_get("tu_id")?;
     let tu_email: Option<String> = row.try_get("tu_email")?;
     let tu_first_name: Option<String> = row.try_get("tu_first_name")?;
@@ -898,6 +940,12 @@ WHERE t.id = $1
         at_utc: at_utc.map(|v| v.to_rfc3339()),
         title,
         details,
+        created_by: tl_created_by_id.zip(tl_created_by_email).map(|(id, email)| AuditUser {
+            id: id.to_string(),
+            email,
+            first_name: tl_created_by_first_name,
+            last_name: tl_created_by_last_name,
+        }),
         last_modified_by: tu_id.zip(tu_email).map(|(id, email)| AuditUser {
             id: id.to_string(),
             email,

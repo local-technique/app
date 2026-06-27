@@ -10,6 +10,7 @@ type ApiProjectTimelineItem = {
   at_utc: string | null;
   title: string;
   details: string;
+  created_by?: { id: string; email: string; first_name?: string | null; last_name?: string | null } | null;
   last_modified_by?: { id: string; email: string; first_name?: string | null; last_name?: string | null } | null;
 };
 
@@ -79,6 +80,7 @@ function toTimelineEntry(locale: LocaleCode, item: ApiProjectTimelineItem): Proj
     atUtc: item.at_utc,
     title: localized(locale, item.title ?? ""),
     details: localized(locale, item.details ?? ""),
+    createdBy: mapUserRef(item.created_by),
     lastModifiedBy: mapUserRef(item.last_modified_by),
   };
 }

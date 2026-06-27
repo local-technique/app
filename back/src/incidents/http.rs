@@ -240,7 +240,7 @@ pub async fn update_timeline(
 ) -> Result<Json<IncidentTimelineItem>, AppError> {
     principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
     let locale = query.locale.unwrap_or_else(|| "en".to_string());
-    let entry = service::update_timeline_entry(&state.db, &id, &entry_id, &payload, &locale, principal.user_id).await?;
+    let entry = service::update_timeline_entry(&state.db, &id, &entry_id, &payload, &locale, &principal).await?;
     Ok(Json(entry))
 }
 
@@ -250,6 +250,6 @@ pub async fn delete_timeline(
     Path((id, entry_id)): Path<(String, String)>,
 ) -> Result<StatusCode, AppError> {
     principal.ensure_any_role(&[Role::Admin, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
-    service::delete_timeline_entry(&state.db, &id, &entry_id).await?;
+    service::delete_timeline_entry(&state.db, &id, &entry_id, &principal).await?;
     Ok(StatusCode::NO_CONTENT)
 }

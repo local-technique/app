@@ -26,6 +26,7 @@ pub struct ProjectTimelineItem {
     pub at_utc: Option<String>,
     pub title: String,
     pub details: String,
+    pub created_by: Option<AuditUser>,
     pub last_modified_by: Option<AuditUser>,
 }
 

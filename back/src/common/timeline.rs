@@ -1,7 +1,9 @@
 use sqlx::Row;
 use uuid::Uuid;
 
+use crate::common::auth::Principal;
 use crate::common::error::AppError;
+use crate::common::role::Role;
 use crate::common::validation::EditFieldValue;
 
 pub async fn edit_timeline_fields(
@@ -57,4 +59,28 @@ LIMIT 1
         });
     }
     Ok(result)
+}
+
+pub async fn check_timeline_authorization(
+    db: &sqlx::PgPool,
+    table_name: &str,
+    entry_id: &str,
+    principal: &Principal,
+) -> Result<(), AppError> {
+    let query = format!("SELECT created_by_user_id FROM {} WHERE id = $1::uuid", table_name);
+    let created_by: Option<uuid::Uuid> = sqlx::query_scalar(&query)
+        .bind(entry_id)
+        .fetch_optional(db)
+        .await?
+        .flatten();
+
+    let is_admin = principal.roles.iter().any(|r| r == Role::Admin.code());
+    let is_ops = principal.roles.iter().any(|r| r == Role::CoOwnershipBoardOps.code());
+    let is_creator = created_by == Some(principal.user_id);
+
+    if is_admin || is_ops || is_creator {
+        Ok(())
+    } else {
+        Err(AppError::forbidden("not allowed to modify this timeline entry"))
+    }
 }

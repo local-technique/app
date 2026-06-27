@@ -10,6 +10,7 @@ export type TimelineEntry = {
   isPending: boolean;
   title: string;
   details: string;
+  createdBy?: { initials: string; fullName: string; id: string } | null;
   lastModifiedBy?: { initials: string; fullName: string } | null;
 };
 
@@ -28,7 +29,10 @@ defineProps<{ entries: TimelineEntry[] }>();
       </div>
       <div class="timeline-axis" aria-hidden="true"><span class="timeline-dot" /></div>
       <div class="timeline-card timeline-entry-card">
-        <span v-if="entry.lastModifiedBy" class="tl-user-avatar" :title="entry.lastModifiedBy.fullName">{{ entry.lastModifiedBy.initials }}</span>
+        <span v-if="entry.createdBy" class="tl-user-avatar"
+  :title="entry.lastModifiedBy ? entry.createdBy.fullName + '\n' + entry.lastModifiedBy.fullName : entry.createdBy.fullName">
+  {{ entry.createdBy.initials }}
+</span>
         <div class="tl-card-body">
           <h3 class="timeline-card-title timeline-entry-title">
             <CircleCheck v-if="!entry.isPending" class="timeline-entry-icon" :size="16" :stroke-width="2.4" aria-hidden="true" />

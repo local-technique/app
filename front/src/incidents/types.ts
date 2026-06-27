@@ -11,6 +11,7 @@ export type IncidentTimelineEntry = {
   atUtc: string | null;
   title: IncidentLocalizedText;
   details?: IncidentLocalizedText;
+  createdBy?: { id: string; email: string; firstName?: string | null; lastName?: string | null } | null;
   lastModifiedBy?: { id: string; email: string; firstName?: string | null; lastName?: string | null } | null;
 };
 
