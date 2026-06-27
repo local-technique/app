@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { CircleCheck } from "@lucide/vue";
+import { useI18n } from "vue-i18n";
+const { t } = useI18n();
 
 export type TimelineEntry = {
   id: string;
@@ -29,9 +31,14 @@ defineProps<{ entries: TimelineEntry[] }>();
       </div>
       <div class="timeline-axis" aria-hidden="true"><span class="timeline-dot" /></div>
       <div class="timeline-card timeline-entry-card">
-        <span v-if="entry.createdBy" class="tl-user-avatar"
-  :title="entry.lastModifiedBy ? entry.createdBy.fullName + '\n' + entry.lastModifiedBy.fullName : entry.createdBy.fullName">
-  {{ entry.createdBy.initials }}
+        <span class="tl-user-avatar"
+  :title="(entry.createdBy
+    ? t('labels.createdBy', { name: entry.createdBy.fullName })
+    : t('labels.unknownAuthor'))
+  + (entry.lastModifiedBy
+    ? '\n' + entry.lastModifiedBy.fullName
+    : '')">
+  {{ entry.createdBy?.initials ?? '?' }}
 </span>
         <div class="tl-card-body">
           <h3 class="timeline-card-title timeline-entry-title">
