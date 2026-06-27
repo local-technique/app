@@ -1,4 +1,4 @@
-import { getAccessToken } from "../auth/session";
+import { authenticatedFetch } from "../auth/authenticatedFetch";
 import type { LocaleCode } from "../common/i18n";
 import type { CategoryInput, CategoryItem } from "./types";
 
@@ -6,19 +6,8 @@ function apiBaseUrl(): string {
   return import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 }
 
-function authHeaders(json = false): HeadersInit {
-  const token = getAccessToken();
-  if (!token && import.meta.env.MODE !== "test") {
-    throw new Error("missing access token");
-  }
-  return {
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(json ? { "Content-Type": "application/json" } : {}),
-  };
-}
-
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
+  const response = await authenticatedFetch(url, init);
   if (!response.ok) {
     throw new Error(`request failed with status ${response.status}`);
   }
@@ -34,13 +23,13 @@ export async function listCategories(locale: LocaleCode, admin = false): Promise
   }
   const params = new URLSearchParams({ locale });
   const path = admin ? "/admin/categories" : "/categories";
-  return request<CategoryItem[]>(`${apiBaseUrl()}${path}?${params.toString()}`, { headers: authHeaders() });
+  return request<CategoryItem[]>(`${apiBaseUrl()}${path}?${params.toString()}`);
 }
 
 export async function createCategory(input: CategoryInput): Promise<void> {
-  const response = await fetch(`${apiBaseUrl()}/admin/categories`, {
+  const response = await authenticatedFetch(`${apiBaseUrl()}/admin/categories`, {
     method: "POST",
-    headers: authHeaders(true),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
   if (!response.ok) {
@@ -49,9 +38,9 @@ export async function createCategory(input: CategoryInput): Promise<void> {
 }
 
 export async function updateCategory(id: string, input: CategoryInput): Promise<void> {
-  const response = await fetch(`${apiBaseUrl()}/admin/categories/${encodeURIComponent(id)}`, {
+  const response = await authenticatedFetch(`${apiBaseUrl()}/admin/categories/${encodeURIComponent(id)}`, {
     method: "PUT",
-    headers: authHeaders(true),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
   if (!response.ok) {
@@ -60,9 +49,8 @@ export async function updateCategory(id: string, input: CategoryInput): Promise<
 }
 
 export async function deleteCategory(id: string): Promise<void> {
-  const response = await fetch(`${apiBaseUrl()}/admin/categories/${encodeURIComponent(id)}`, {
+  const response = await authenticatedFetch(`${apiBaseUrl()}/admin/categories/${encodeURIComponent(id)}`, {
     method: "DELETE",
-    headers: authHeaders(),
   });
   if (!response.ok) {
     throw new Error(`request failed with status ${response.status}`);

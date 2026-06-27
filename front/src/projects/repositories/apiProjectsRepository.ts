@@ -1,6 +1,6 @@
 import type { LocaleCode } from "../../common/localeContent";
 import { mapUserRef } from "../../common/apiMapping";
-import { getAccessToken } from "../../auth/session";
+import { authenticatedFetch } from "../../auth/authenticatedFetch";
 import type { EditFieldValue, ProjectEditData, ProjectItem, ProjectLocalizedText, ProjectSavePayload, ProjectTimelineEditItem, ProjectTimelineEntry } from "../types";
 import { mockProjectsRepository } from "./mockProjectsRepository";
 import type { ProjectsRepository } from "./projectsRepository";
@@ -136,16 +136,8 @@ function toEditData(value: ApiProjectEditData): ProjectEditData {
   };
 }
 
-function authHeaders(): HeadersInit {
-  const token = getAccessToken();
-  if (!token && import.meta.env.MODE !== "test") {
-    throw new Error("missing access token");
-  }
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, { headers: authHeaders() });
+  const response = await authenticatedFetch(url);
   if (!response.ok) {
     throw new Error(`request failed with status ${response.status}`);
   }
@@ -153,7 +145,7 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 async function fetchJsonOrNull<T>(url: string): Promise<T | null> {
-  const response = await fetch(url, { headers: authHeaders() });
+  const response = await authenticatedFetch(url);
   if (response.status === 404) {
     return null;
   }
@@ -164,9 +156,9 @@ async function fetchJsonOrNull<T>(url: string): Promise<T | null> {
 }
 
 async function sendJson<T>(url: string, method: string, body?: unknown): Promise<T | null> {
-  const response = await fetch(url, {
+  const response = await authenticatedFetch(url, {
     method,
-    headers: { ...authHeaders(), "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!response.ok) {
