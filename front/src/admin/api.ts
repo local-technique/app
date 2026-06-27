@@ -1,4 +1,4 @@
-import { getAccessToken } from "../auth/session";
+import { authenticatedFetch } from "../auth/authenticatedFetch";
 
 export type RoleDescriptor = {
   code: string;
@@ -34,20 +34,8 @@ function apiBaseUrl(): string {
   return import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 }
 
-function authHeaders(contentType = false): HeadersInit {
-  const token = getAccessToken();
-  if (!token) {
-    throw new Error("missing access token");
-  }
-
-  return {
-    Authorization: `Bearer ${token}`,
-    ...(contentType ? { "Content-Type": "application/json" } : {}),
-  };
-}
-
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
+  const response = await authenticatedFetch(url, init);
   if (!response.ok) {
     throw new Error(`request failed with status ${response.status}`);
   }
@@ -55,9 +43,7 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export async function listRoles(): Promise<RoleDescriptor[]> {
-  const payload = await fetchJson<{ roles: RoleDescriptor[] }>(`${apiBaseUrl()}/admin/roles`, {
-    headers: authHeaders(),
-  });
+  const payload = await fetchJson<{ roles: RoleDescriptor[] }>(`${apiBaseUrl()}/admin/roles`);
   return payload.roles;
 }
 
@@ -75,15 +61,13 @@ export async function listUsers(query: AdminUsersQuery): Promise<AdminUsersRespo
     params.set("role", query.role);
   }
 
-  return fetchJson<AdminUsersResponse>(`${apiBaseUrl()}/admin/users?${params.toString()}`, {
-    headers: authHeaders(),
-  });
+  return fetchJson<AdminUsersResponse>(`${apiBaseUrl()}/admin/users?${params.toString()}`);
 }
 
 export async function updateUserRoles(userId: string, roles: string[]): Promise<string[]> {
   const payload = await fetchJson<{ roles: string[] }>(`${apiBaseUrl()}/admin/users/${userId}/roles`, {
     method: "PUT",
-    headers: authHeaders(true),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ roles }),
   });
   return payload.roles;
@@ -92,7 +76,7 @@ export async function updateUserRoles(userId: string, roles: string[]): Promise<
 export async function updateUserNames(userId: string, firstName: string | null, lastName: string | null): Promise<{ id: string; first_name: string | null; last_name: string | null }> {
   return fetchJson(`${apiBaseUrl()}/admin/users/${userId}/names`, {
     method: "PUT",
-    headers: authHeaders(true),
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ first_name: firstName, last_name: lastName }),
   });
 }
