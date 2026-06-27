@@ -194,8 +194,13 @@ function cancelNew() {
           </div>
         </template>
         <template v-else>
-          <span v-if="entry.createdBy" class="tl-user-avatar" :title="entry.lastModifiedBy ? entry.createdBy.fullName + '\n' + t('labels.lastEditedBy', { name: entry.lastModifiedBy.fullName }) : entry.createdBy.fullName">
-  {{ entry.createdBy.initials }}
+          <span class="tl-user-avatar" :title="(entry.createdBy
+    ? t('labels.createdBy', { name: entry.createdBy.fullName })
+    : t('labels.unknownAuthor'))
+  + (entry.lastModifiedBy
+    ? '\n' + t('labels.lastEditedBy', { name: entry.lastModifiedBy.fullName })
+    : '')">
+  {{ entry.createdBy?.initials ?? '?' }}
 </span>
           <div class="tl-card-body">
             <h3 class="timeline-card-title timeline-entry-title">
