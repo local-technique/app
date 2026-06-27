@@ -46,30 +46,65 @@ pub async fn find_or_create_user(
     first_name: Option<&str>,
     last_name: Option<&str>,
 ) -> Result<DbUser, AppError> {
-    let row = sqlx::query(
-        r#"
+    for _ in 0..3 {
+        if let Some(user) = find_user_by_email(db, email).await? {
+            return Ok(user);
+        }
+
+        let result = sqlx::query(
+            r#"
 INSERT INTO users (id, email, provider, first_name, last_name)
 VALUES ($1, $2, $3, $4, $5)
-ON CONFLICT (email) DO UPDATE SET first_name = COALESCE($4, users.first_name), last_name = COALESCE($5, users.last_name), updated_at = now()
+ON CONFLICT (email) DO NOTHING
 RETURNING id, provider, email, first_name, last_name, roles
 "#,
+        )
+        .bind(Uuid::new_v4())
+        .bind(email)
+        .bind(provider.as_str())
+        .bind(first_name)
+        .bind(last_name)
+        .fetch_optional(db)
+        .await?;
+
+        if let Some(row) = result {
+            return Ok(DbUser {
+                id: row.try_get("id")?,
+                provider: row.try_get("provider")?,
+                email: row.try_get("email")?,
+                first_name: row.try_get("first_name")?,
+                last_name: row.try_get("last_name")?,
+                roles: row.try_get("roles")?,
+            });
+        }
+    }
+
+    Err(AppError::internal("failed to create user after retries"))
+}
+
+async fn find_user_by_email(db: &sqlx::PgPool, email: &str) -> Result<Option<DbUser>, AppError> {
+    let row = sqlx::query(
+        r#"
+SELECT id, provider, email, first_name, last_name, roles
+FROM users
+WHERE email = $1
+"#,
     )
-    .bind(Uuid::new_v4())
     .bind(email)
-    .bind(provider.as_str())
-    .bind(first_name)
-    .bind(last_name)
-    .fetch_one(db)
+    .fetch_optional(db)
     .await?;
 
-    Ok(DbUser {
-        id: row.try_get("id")?,
-        provider: row.try_get("provider")?,
-        email: row.try_get("email")?,
-        first_name: row.try_get("first_name")?,
-        last_name: row.try_get("last_name")?,
-        roles: row.try_get("roles")?,
-    })
+    match row {
+        Some(row) => Ok(Some(DbUser {
+            id: row.try_get("id")?,
+            provider: row.try_get("provider")?,
+            email: row.try_get("email")?,
+            first_name: row.try_get("first_name")?,
+            last_name: row.try_get("last_name")?,
+            roles: row.try_get("roles")?,
+        })),
+        None => Ok(None),
+    }
 }
 
 pub async fn ensure_admin_role(db: &sqlx::PgPool, user_id: Uuid) -> Result<(), AppError> {

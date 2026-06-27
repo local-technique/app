@@ -1,7 +1,7 @@
 import { sanitizeRedirectPath } from "./redirect";
 import { reactive } from "vue";
 
-type Provider = "google" | "facebook";
+type Provider = "google" | "microsoft";
 
 type SessionPayload = {
   accessToken: string;

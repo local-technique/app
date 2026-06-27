@@ -15,7 +15,7 @@ const redirectPath = computed(() => {
 });
 
 const googleHref = computed(() => providerStartUrl("google", redirectPath.value));
-const facebookHref = computed(() => providerStartUrl("facebook", redirectPath.value));
+const microsoftHref = computed(() => providerStartUrl("microsoft", redirectPath.value));
 </script>
 
 <template>
@@ -25,7 +25,7 @@ const facebookHref = computed(() => providerStartUrl("facebook", redirectPath.va
 
     <div class="login-actions">
       <a class="login-button" :href="googleHref">Continue with Google</a>
-      <a class="login-button" :href="facebookHref">Continue with Facebook</a>
+      <a class="login-button" :href="microsoftHref">Continue with Microsoft</a>
     </div>
   </main>
 </template>

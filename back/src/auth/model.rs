@@ -4,14 +4,14 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "lowercase")]
 pub enum Provider {
     Google,
-    Facebook,
+    Microsoft,
 }
 
 impl Provider {
     pub fn parse(raw: &str) -> Option<Self> {
         match raw {
             "google" => Some(Self::Google),
-            "facebook" => Some(Self::Facebook),
+            "microsoft" => Some(Self::Microsoft),
             _ => None,
         }
     }
@@ -19,7 +19,7 @@ impl Provider {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Google => "google",
-            Self::Facebook => "facebook",
+            Self::Microsoft => "microsoft",
         }
     }
 }

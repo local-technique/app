@@ -27,7 +27,7 @@ Use **Secrets** for sensitive values and **Variables** for non-sensitive values.
 | Better Stack API token | secret | `BETTERUPTIME_API_TOKEN` | Authenticates Better Stack provider for uptime monitor management. | Create API token in Better Stack Uptime settings and store as GitHub Actions secret. |
 | Neon API token | secret | `TF_VAR_NEON_API_TOKEN` | Authenticates Neon resources (project/role/database/URI). | Create API key in Neon console and store as GitHub Actions secret. |
 | Cloudflare API token | secret | `CLOUDFLARE_API_TOKEN` | Authenticates Cloudflare provider for R2 bucket management. | Create API token in Cloudflare dashboard with R2 read/write permissions and store as GitHub Actions secret. |
-| OAuth/runtime app secrets | secret | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET` | Passed to Terraform as `TF_VAR_app_secret_env_values` and injected into Render runtime env vars. | Create each value as a GitHub Actions secret. |
+| OAuth/runtime app secrets | secret | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` | Passed to Terraform as `TF_VAR_app_secret_env_values` and injected into Render runtime env vars. | Create each value as a GitHub Actions secret. |
 | R2 credentials | secret | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | S3-compatible credentials for the app to generate pre-signed URLs. Passed to Terraform as `TF_VAR_app_secret_env_values`. | Create R2 API keys in Cloudflare dashboard (`R2 > Manage R2 API Tokens`) and store as GitHub Actions secrets. |
 
 `COOKIE_KEY_BASE64` and `ACCESS_TOKEN_JWT_SECRET` are generated once by Terraform, persisted in state, and injected only into the Render service environment.

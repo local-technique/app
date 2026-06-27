@@ -35,8 +35,8 @@ app_plain_env_vars = {
 # app_secret_env_values   = {
 #   GOOGLE_CLIENT_ID       = "..."
 #   GOOGLE_CLIENT_SECRET   = "..."
-#   FACEBOOK_CLIENT_ID     = "..."
-#   FACEBOOK_CLIENT_SECRET = "..."
+#   MICROSOFT_CLIENT_ID     = "..."
+#   MICROSOFT_CLIENT_SECRET = "..."
 #   R2_ACCESS_KEY_ID       = "..."
 #   R2_SECRET_ACCESS_KEY   = "..."
 # }
