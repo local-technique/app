@@ -68,8 +68,11 @@ pub struct LogoutRequest {
 
 #[derive(Serialize)]
 pub struct MeResponse {
+    pub id: String,
     pub provider: String,
     pub email: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
     pub roles: Vec<String>,
 }
 
@@ -79,6 +82,8 @@ pub struct AccessTokenClaims {
     pub sid: String,
     pub provider: String,
     pub email: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
     pub roles: Vec<String>,
     pub iat: usize,
     pub exp: usize,

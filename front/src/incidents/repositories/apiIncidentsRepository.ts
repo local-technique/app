@@ -1,4 +1,5 @@
 import type { LocaleCode } from "../../common/localeContent";
+import { mapUserRef } from "../../common/apiMapping";
 import { getAccessToken } from "../../auth/session";
 import type {
   EditFieldValue,
@@ -32,6 +33,8 @@ type ApiIncidentTimelineItem = {
   at_utc: string | null;
   title: string;
   details: string;
+  created_by?: { id: string; email: string; first_name?: string | null; last_name?: string | null } | null;
+  last_modified_by?: { id: string; email: string; first_name?: string | null; last_name?: string | null } | null;
 };
 
 type ApiIncidentDetail = {
@@ -47,7 +50,7 @@ type ApiIncidentDetail = {
   timeline: ApiIncidentTimelineItem[];
   category?: { id: string; key: string; icon: string; color: string; label: string };
   last_modified_at?: string | null;
-  last_modified_by?: { id: string; email: string } | null;
+  last_modified_by?: { id: string; email: string; first_name?: string | null; last_name?: string | null } | null;
 };
 
 type ApiEditFieldValue = {
@@ -97,6 +100,8 @@ function toTimelineEntry(locale: LocaleCode, item: ApiIncidentTimelineItem): Inc
     atUtc: item.at_utc,
     title: localized(locale, item.title ?? ""),
     details: localized(locale, item.details ?? ""),
+    createdBy: mapUserRef(item.created_by),
+    lastModifiedBy: mapUserRef(item.last_modified_by),
   };
 }
 
@@ -115,7 +120,7 @@ function toIncidentItem(locale: LocaleCode, value: ApiIncidentListItem | ApiInci
     timeline: "timeline" in value ? (value.timeline ?? []).map((item) => toTimelineEntry(locale, item)) : [],
     attachments: [],
     lastModifiedAt: "last_modified_at" in value ? (value.last_modified_at ?? undefined) : undefined,
-    lastModifiedBy: "last_modified_by" in value ? (value.last_modified_by ?? null) : undefined,
+    lastModifiedBy: "last_modified_by" in value ? mapUserRef(value.last_modified_by) : undefined,
   };
 }
 

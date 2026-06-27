@@ -138,6 +138,8 @@ fn to_list_item(row: sqlx::postgres::PgRow) -> Result<IncidentListItem, AppError
             at_utc: latest_timeline_at_utc.map(|value| value.to_rfc3339()),
             title: row.try_get("latest_timeline_title").unwrap_or_default(),
             details: row.try_get("latest_timeline_details").unwrap_or_default(),
+            created_by: None,
+            last_modified_by: None,
         }]
     });
     Ok(IncidentListItem {
@@ -189,6 +191,8 @@ SELECT
   i.last_modified_at,
   u.id AS last_modified_by_user_id,
   u.email AS last_modified_by_email,
+  u.first_name AS last_modified_by_first_name,
+  u.last_name AS last_modified_by_last_name,
   coalesce((
     SELECT ii.field_value
     FROM incident_i18n ii
@@ -242,6 +246,14 @@ WHERE i.key = $1
 SELECT
   t.id,
   t.at_utc,
+  cu.id AS tl_created_by_id,
+  cu.email AS tl_created_by_email,
+  cu.first_name AS tl_created_by_first_name,
+  cu.last_name AS tl_created_by_last_name,
+  tu.id AS tl_user_id,
+  tu.email AS tl_user_email,
+  tu.first_name AS tl_user_first_name,
+  tu.last_name AS tl_user_last_name,
   coalesce((
     SELECT ti.field_value
     FROM incident_timeline_i18n ti
@@ -259,6 +271,8 @@ SELECT
     LIMIT 1
   ), '') AS details
 FROM incident_timeline t
+LEFT JOIN users cu ON cu.id = t.created_by_user_id
+LEFT JOIN users tu ON tu.id = t.last_modified_by_user_id
 WHERE t.incident_id = $1
 ORDER BY t.at_utc DESC NULLS FIRST, t.sort_order ASC
 "#,
@@ -273,11 +287,31 @@ ORDER BY t.at_utc DESC NULLS FIRST, t.sort_order ASC
         .map(|value| {
             let id: Uuid = value.try_get("id")?;
             let at_utc: Option<DateTime<Utc>> = value.try_get("at_utc")?;
+            let tl_created_by_id: Option<Uuid> = value.try_get("tl_created_by_id")?;
+            let tl_created_by_email: Option<String> = value.try_get("tl_created_by_email")?;
+            let tl_created_by_first_name: Option<String> = value.try_get("tl_created_by_first_name")?;
+            let tl_created_by_last_name: Option<String> = value.try_get("tl_created_by_last_name")?;
+            let tl_user_id: Option<Uuid> = value.try_get("tl_user_id")?;
+            let tl_user_email: Option<String> = value.try_get("tl_user_email")?;
+            let tl_user_first_name: Option<String> = value.try_get("tl_user_first_name")?;
+            let tl_user_last_name: Option<String> = value.try_get("tl_user_last_name")?;
             Ok(IncidentTimelineItem {
                 id: id.to_string(),
                 at_utc: at_utc.map(|value| value.to_rfc3339()),
                 title: value.try_get("title")?,
                 details: value.try_get("details")?,
+                created_by: tl_created_by_id.zip(tl_created_by_email).map(|(id, email)| AuditUser {
+                    id: id.to_string(),
+                    email,
+                    first_name: tl_created_by_first_name.clone(),
+                    last_name: tl_created_by_last_name.clone(),
+                }),
+                last_modified_by: tl_user_id.zip(tl_user_email).map(|(id, email)| AuditUser {
+                    id: id.to_string(),
+                    email,
+                    first_name: tl_user_first_name.clone(),
+                    last_name: tl_user_last_name.clone(),
+                }),
             })
         })
         .collect::<Result<Vec<_>, AppError>>()?;
@@ -288,6 +322,8 @@ ORDER BY t.at_utc DESC NULLS FIRST, t.sort_order ASC
     let last_modified_at: Option<DateTime<Utc>> = row.try_get("last_modified_at")?;
     let last_modified_by_user_id: Option<Uuid> = row.try_get("last_modified_by_user_id")?;
     let last_modified_by_email: Option<String> = row.try_get("last_modified_by_email")?;
+    let last_modified_by_first_name: Option<String> = row.try_get("last_modified_by_first_name")?;
+    let last_modified_by_last_name: Option<String> = row.try_get("last_modified_by_last_name")?;
     Ok(Some(IncidentDetail {
         key,
         category_id: row.try_get("category_id")?,
@@ -310,6 +346,8 @@ ORDER BY t.at_utc DESC NULLS FIRST, t.sort_order ASC
         last_modified_by: last_modified_by_user_id.zip(last_modified_by_email).map(|(id, email)| AuditUser {
             id: id.to_string(),
             email,
+            first_name: last_modified_by_first_name.clone(),
+            last_name: last_modified_by_last_name.clone(),
         }),
     }))
 }
@@ -501,6 +539,14 @@ RETURNING id, key
             .execute(&mut *tx)
             .await?;
     }
+    for (i, item) in payload.timeline.iter().enumerate() {
+        let tid = Uuid::parse_str(&item.id).map_err(|_| AppError::bad_request("invalid timeline id"))?;
+        sqlx::query("UPDATE incident_timeline SET sort_order = $1 WHERE id = $2")
+            .bind(-(i as i32 + 1))
+            .bind(tid)
+            .execute(&mut *tx)
+            .await?;
+    }
     for item in &payload.timeline {
         let timeline_id = Uuid::parse_str(&item.id).map_err(|_| AppError::bad_request("invalid timeline id"))?;
         let at_utc = item
@@ -513,9 +559,9 @@ RETURNING id, key
             .map(|value| value.with_timezone(&Utc));
         sqlx::query(
             r#"
-INSERT INTO incident_timeline (id, incident_id, at_utc, sort_order)
-VALUES ($1, $2, $3, $4)
-ON CONFLICT (id) DO UPDATE SET at_utc = EXCLUDED.at_utc, sort_order = EXCLUDED.sort_order
+INSERT INTO incident_timeline (id, incident_id, at_utc, sort_order, last_modified_by_user_id, created_by_user_id)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (id) DO UPDATE SET at_utc = EXCLUDED.at_utc, sort_order = EXCLUDED.sort_order, last_modified_by_user_id = EXCLUDED.last_modified_by_user_id
 WHERE incident_timeline.incident_id = EXCLUDED.incident_id
 "#,
         )
@@ -523,6 +569,8 @@ WHERE incident_timeline.incident_id = EXCLUDED.incident_id
         .bind(incident_id)
         .bind(at_utc)
         .bind(item.sort_order)
+        .bind(user_id)
+        .bind(user_id)
         .execute(&mut *tx)
         .await?;
         for (field_key, field_value) in &item.fields {
@@ -690,6 +738,7 @@ pub async fn delete_by_code(db: &sqlx::PgPool, incident_code: &str) -> Result<bo
     Ok(result.rows_affected() > 0)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn create_timeline_entry(
     db: &sqlx::PgPool,
     incident_code: &str,
@@ -697,6 +746,7 @@ pub async fn create_timeline_entry(
     sort_order: i32,
     locale: &str,
     fields: &HashMap<String, String>,
+    user_id: Uuid,
 ) -> Result<IncidentTimelineItem, AppError> {
     let incident_id: Uuid = sqlx::query_scalar("SELECT id FROM incidents WHERE key = $1")
         .bind(incident_code)
@@ -707,12 +757,14 @@ pub async fn create_timeline_entry(
     let mut tx = db.begin().await?;
     let timeline_id = Uuid::new_v4();
     sqlx::query(
-        "INSERT INTO incident_timeline (id, incident_id, at_utc, sort_order) VALUES ($1, $2, $3, $4)",
+        "INSERT INTO incident_timeline (id, incident_id, at_utc, sort_order, last_modified_by_user_id, created_by_user_id) VALUES ($1, $2, $3, $4, $5, $6)",
     )
     .bind(timeline_id)
     .bind(incident_id)
     .bind(at_utc)
     .bind(sort_order)
+    .bind(user_id)
+    .bind(user_id)
     .execute(&mut *tx)
     .await?;
 
@@ -722,30 +774,63 @@ pub async fn create_timeline_entry(
     tx.commit().await?;
 
     let locale_chain = crate::common::i18n::locale_chain(Some(locale));
-    let title = sqlx::query_scalar::<_, String>(
-        "SELECT coalesce((SELECT ti.field_value FROM incident_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'title' ORDER BY lp.ord LIMIT 1), '')",
+
+    let row = sqlx::query(
+        r#"
+SELECT
+  coalesce((SELECT ti.field_value FROM incident_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'title' ORDER BY lp.ord LIMIT 1), '') AS title,
+  coalesce((SELECT ti.field_value FROM incident_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'details' ORDER BY lp.ord LIMIT 1), '') AS details,
+  cu.id AS tl_created_by_id,
+  cu.email AS tl_created_by_email,
+  cu.first_name AS tl_created_by_first_name,
+  cu.last_name AS tl_created_by_last_name,
+  u.id AS tu_id,
+  u.email AS tu_email,
+  u.first_name AS tu_first_name,
+  u.last_name AS tu_last_name
+FROM incident_timeline t
+LEFT JOIN users cu ON cu.id = t.created_by_user_id
+LEFT JOIN users u ON u.id = t.last_modified_by_user_id
+WHERE t.id = $1
+"#,
     )
     .bind(timeline_id)
     .bind(&locale_chain)
     .fetch_one(db)
     .await?;
 
-    let details = sqlx::query_scalar::<_, String>(
-        "SELECT coalesce((SELECT ti.field_value FROM incident_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'details' ORDER BY lp.ord LIMIT 1), '')",
-    )
-    .bind(timeline_id)
-    .bind(&locale_chain)
-    .fetch_one(db)
-    .await?;
+    let title: String = row.try_get("title")?;
+    let details: String = row.try_get("details")?;
+    let tl_created_by_id: Option<Uuid> = row.try_get("tl_created_by_id")?;
+    let tl_created_by_email: Option<String> = row.try_get("tl_created_by_email")?;
+    let tl_created_by_first_name: Option<String> = row.try_get("tl_created_by_first_name")?;
+    let tl_created_by_last_name: Option<String> = row.try_get("tl_created_by_last_name")?;
+    let tu_id: Option<Uuid> = row.try_get("tu_id")?;
+    let tu_email: Option<String> = row.try_get("tu_email")?;
+    let tu_first_name: Option<String> = row.try_get("tu_first_name")?;
+    let tu_last_name: Option<String> = row.try_get("tu_last_name")?;
 
     Ok(IncidentTimelineItem {
         id: timeline_id.to_string(),
         at_utc: at_utc.map(|v| v.to_rfc3339()),
         title,
         details,
+        created_by: tl_created_by_id.zip(tl_created_by_email).map(|(id, email)| AuditUser {
+            id: id.to_string(),
+            email,
+            first_name: tl_created_by_first_name,
+            last_name: tl_created_by_last_name,
+        }),
+        last_modified_by: tu_id.zip(tu_email).map(|(id, email)| AuditUser {
+            id: id.to_string(),
+            email,
+            first_name: tu_first_name,
+            last_name: tu_last_name,
+        }),
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn update_timeline_entry(
     db: &sqlx::PgPool,
     incident_code: &str,
@@ -754,6 +839,7 @@ pub async fn update_timeline_entry(
     sort_order: i32,
     locale: &str,
     fields: &HashMap<String, String>,
+    user_id: Uuid,
 ) -> Result<Option<IncidentTimelineItem>, AppError> {
     let incident_id: Uuid = sqlx::query_scalar("SELECT id FROM incidents WHERE key = $1")
         .bind(incident_code)
@@ -765,12 +851,13 @@ pub async fn update_timeline_entry(
 
     let mut tx = db.begin().await?;
     let updated = sqlx::query(
-        "UPDATE incident_timeline SET at_utc = $1, sort_order = $4 WHERE id = $2 AND incident_id = $3",
+        "UPDATE incident_timeline SET at_utc = $1, sort_order = $4, last_modified_by_user_id = $5 WHERE id = $2 AND incident_id = $3",
     )
     .bind(at_utc)
     .bind(timeline_id)
     .bind(incident_id)
     .bind(sort_order)
+    .bind(user_id)
     .execute(&mut *tx)
     .await?
     .rows_affected();
@@ -784,27 +871,59 @@ pub async fn update_timeline_entry(
     tx.commit().await?;
 
     let locale_chain = crate::common::i18n::locale_chain(Some(locale));
-    let title = sqlx::query_scalar::<_, String>(
-        "SELECT coalesce((SELECT ti.field_value FROM incident_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'title' ORDER BY lp.ord LIMIT 1), '')",
+
+    let row = sqlx::query(
+        r#"
+SELECT
+  coalesce((SELECT ti.field_value FROM incident_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'title' ORDER BY lp.ord LIMIT 1), '') AS title,
+  coalesce((SELECT ti.field_value FROM incident_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'details' ORDER BY lp.ord LIMIT 1), '') AS details,
+  cu.id AS tl_created_by_id,
+  cu.email AS tl_created_by_email,
+  cu.first_name AS tl_created_by_first_name,
+  cu.last_name AS tl_created_by_last_name,
+  u.id AS tu_id,
+  u.email AS tu_email,
+  u.first_name AS tu_first_name,
+  u.last_name AS tu_last_name
+FROM incident_timeline t
+LEFT JOIN users cu ON cu.id = t.created_by_user_id
+LEFT JOIN users u ON u.id = t.last_modified_by_user_id
+WHERE t.id = $1
+"#,
     )
     .bind(timeline_id)
     .bind(&locale_chain)
     .fetch_one(db)
     .await?;
 
-    let details = sqlx::query_scalar::<_, String>(
-        "SELECT coalesce((SELECT ti.field_value FROM incident_timeline_i18n ti JOIN unnest($2::TEXT[]) WITH ORDINALITY AS lp(locale, ord) ON lp.locale = ti.locale WHERE ti.timeline_id = $1 AND ti.field_key = 'details' ORDER BY lp.ord LIMIT 1), '')",
-    )
-    .bind(timeline_id)
-    .bind(&locale_chain)
-    .fetch_one(db)
-    .await?;
+    let title: String = row.try_get("title")?;
+    let details: String = row.try_get("details")?;
+    let tl_created_by_id: Option<Uuid> = row.try_get("tl_created_by_id")?;
+    let tl_created_by_email: Option<String> = row.try_get("tl_created_by_email")?;
+    let tl_created_by_first_name: Option<String> = row.try_get("tl_created_by_first_name")?;
+    let tl_created_by_last_name: Option<String> = row.try_get("tl_created_by_last_name")?;
+    let tu_id: Option<Uuid> = row.try_get("tu_id")?;
+    let tu_email: Option<String> = row.try_get("tu_email")?;
+    let tu_first_name: Option<String> = row.try_get("tu_first_name")?;
+    let tu_last_name: Option<String> = row.try_get("tu_last_name")?;
 
     Ok(Some(IncidentTimelineItem {
         id: timeline_id.to_string(),
         at_utc: at_utc.map(|v| v.to_rfc3339()),
         title,
         details,
+        created_by: tl_created_by_id.zip(tl_created_by_email).map(|(id, email)| AuditUser {
+            id: id.to_string(),
+            email,
+            first_name: tl_created_by_first_name,
+            last_name: tl_created_by_last_name,
+        }),
+        last_modified_by: tu_id.zip(tu_email).map(|(id, email)| AuditUser {
+            id: id.to_string(),
+            email,
+            first_name: tu_first_name,
+            last_name: tu_last_name,
+        }),
     }))
 }
 

@@ -19,6 +19,8 @@ export type IncidentTimelineEntryViewModel = {
   isPending: boolean;
   title: string;
   details: string;
+  createdBy?: { initials: string; fullName: string; id: string } | null;
+  lastModifiedBy?: { initials: string; fullName: string } | null;
 };
 
 export type IncidentViewModel = {
@@ -73,6 +75,22 @@ function formatIncidentDateLabel(incident: IncidentItem, locale: LocaleCode): st
 
 function toTimelineEntryViewModel(entry: IncidentTimelineEntry, locale: LocaleCode): IncidentTimelineEntryViewModel {
   const atDate = entry.atUtc ? parseUtc(entry.atUtc) : null;
+
+  function toUserDisplay(user: { id: string; email: string; firstName?: string | null; lastName?: string | null } | null | undefined): { initials: string; fullName: string; id: string } | null {
+    if (!user) return null;
+    const firstChar = user.firstName?.[0] ?? user.lastName?.[0] ?? user.email[0] ?? '';
+    const lastChar = user.firstName && user.lastName ? user.lastName[0] : null;
+    const initials = firstChar && lastChar ? `${firstChar}${lastChar}`.toUpperCase() : firstChar.toUpperCase();
+    const fullName = user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : (user.firstName ?? user.lastName ?? user.email ?? '');
+    return { initials, fullName, id: user.id };
+  }
+
+  const displayCreatedBy = toUserDisplay(entry.createdBy);
+  const displayLastModifiedBy = toUserDisplay(entry.lastModifiedBy);
+  const differentModifier = displayLastModifiedBy && (!displayCreatedBy || displayLastModifiedBy.id !== displayCreatedBy.id)
+    ? { initials: displayLastModifiedBy.initials, fullName: displayLastModifiedBy.fullName }
+    : null;
+
   return {
     id: entry.id,
     atUtc: entry.atUtc,
@@ -82,6 +100,8 @@ function toTimelineEntryViewModel(entry: IncidentTimelineEntry, locale: LocaleCo
     isPending: !entry.atUtc,
     title: resolve(entry.title, locale),
     details: resolve(entry.details, locale),
+    createdBy: displayCreatedBy ? { initials: displayCreatedBy.initials, fullName: displayCreatedBy.fullName, id: displayCreatedBy.id } : null,
+    lastModifiedBy: differentModifier,
   };
 }
 

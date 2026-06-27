@@ -2,8 +2,10 @@ use std::collections::HashSet;
 
 use chrono::{DateTime, Utc};
 
+use crate::common::auth::Principal;
 use crate::common::error::AppError;
 use crate::common::i18n::locale_chain;
+use crate::common::timeline;
 use crate::common::validation::{
     ensure_field_key_allowed, ensure_locale_enabled, load_enabled_locales, normalize_field_key, normalize_locale,
     normalize_text_value, validate_field_map,
@@ -118,6 +120,7 @@ pub async fn create_timeline_entry(
     incident_code: &str,
     payload: &IncidentTimelineCreateRequest,
     locale: &str,
+    user_id: uuid::Uuid,
 ) -> Result<IncidentTimelineItem, AppError> {
     let enabled_locales = load_enabled_locales(db).await?;
     let locale = normalize_locale(locale)?;
@@ -131,7 +134,7 @@ pub async fn create_timeline_entry(
         .transpose()
         .map_err(|_| AppError::bad_request("invalid at_utc"))?
         .map(|v| v.with_timezone(&Utc));
-    repository::create_timeline_entry(db, incident_code, at_utc, payload.sort_order, &locale, &fields).await
+    repository::create_timeline_entry(db, incident_code, at_utc, payload.sort_order, &locale, &fields, user_id).await
 }
 
 pub async fn update_timeline_entry(
@@ -140,7 +143,9 @@ pub async fn update_timeline_entry(
     entry_id: &str,
     payload: &IncidentTimelineUpdateRequest,
     locale: &str,
+    principal: &Principal,
 ) -> Result<IncidentTimelineItem, AppError> {
+    timeline::check_timeline_authorization(db, "incident_timeline", entry_id, principal).await?;
     let enabled_locales = load_enabled_locales(db).await?;
     let locale = normalize_locale(locale)?;
     ensure_locale_enabled(&locale, &enabled_locales)?;
@@ -153,7 +158,7 @@ pub async fn update_timeline_entry(
         .transpose()
         .map_err(|_| AppError::bad_request("invalid at_utc"))?
         .map(|v| v.with_timezone(&Utc));
-    repository::update_timeline_entry(db, incident_code, entry_id, at_utc, payload.sort_order, &locale, &fields)
+    repository::update_timeline_entry(db, incident_code, entry_id, at_utc, payload.sort_order, &locale, &fields, principal.user_id)
         .await?
         .ok_or_else(|| AppError::not_found("timeline entry not found"))
 }
@@ -162,7 +167,9 @@ pub async fn delete_timeline_entry(
     db: &sqlx::PgPool,
     incident_code: &str,
     entry_id: &str,
+    principal: &Principal,
 ) -> Result<(), AppError> {
+    timeline::check_timeline_authorization(db, "incident_timeline", entry_id, principal).await?;
     let deleted = repository::delete_timeline_entry(db, incident_code, entry_id).await?;
     if deleted {
         Ok(())

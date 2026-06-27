@@ -11,7 +11,7 @@ import DateInput from "../common/components/DateInput.vue";
 import { toDateLocalInput, toUtcFromDateLocalInput, todayDateInput } from "../common/dateInput";
 import { parseUtc } from "../common/date";
 import type { LocaleCode } from "../common/i18n";
-import { currentUserRoles, hasAnyRole } from "../auth/session";
+import { currentUserRoles, getCurrentUserId, hasAnyRole } from "../auth/session";
 import EditableTimelineList from "../common/components/EditableTimelineList.vue";
 import type { TimelineEntry } from "../common/components/TimelineList.vue";
 import { apiEventsRepository } from "./repositories/apiEventsRepository";
@@ -236,13 +236,14 @@ async function save(): Promise<void> {
 
       <section class="timeline-section">
         <h2>{{ t("labels.maintenanceTimeline") }}</h2>
-        <EditableTimelineList
-          :entries="timeline"
-          :can-edit="userCanEdit"
-          @add="handleTimelineAdd"
-          @update="handleTimelineUpdate"
-          @delete="handleTimelineDelete"
-        />
+<EditableTimelineList
+  :entries="timeline"
+  :can-edit="userCanEdit"
+  :current-user-id="getCurrentUserId()"
+  @add="handleTimelineAdd"
+  @update="handleTimelineUpdate"
+  @delete="handleTimelineDelete"
+/>
       </section>
 
       <p v-if="saveFailed" class="empty-state">{{ t("labels.saveFailed") }}</p>

@@ -26,6 +26,8 @@ pub struct DbUser {
     pub id: Uuid,
     pub provider: String,
     pub email: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
     pub roles: Vec<String>,
 }
 
@@ -41,18 +43,22 @@ pub async fn find_or_create_user(
     db: &sqlx::PgPool,
     provider: Provider,
     email: &str,
+    first_name: Option<&str>,
+    last_name: Option<&str>,
 ) -> Result<DbUser, AppError> {
     let row = sqlx::query(
         r#"
-INSERT INTO users (id, email, provider)
-VALUES ($1, $2, $3)
-ON CONFLICT (email) DO UPDATE SET updated_at = now()
-RETURNING id, provider, email, roles
+INSERT INTO users (id, email, provider, first_name, last_name)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (email) DO UPDATE SET first_name = COALESCE($4, users.first_name), last_name = COALESCE($5, users.last_name), updated_at = now()
+RETURNING id, provider, email, first_name, last_name, roles
 "#,
     )
     .bind(Uuid::new_v4())
     .bind(email)
     .bind(provider.as_str())
+    .bind(first_name)
+    .bind(last_name)
     .fetch_one(db)
     .await?;
 
@@ -60,6 +66,8 @@ RETURNING id, provider, email, roles
         id: row.try_get("id")?,
         provider: row.try_get("provider")?,
         email: row.try_get("email")?,
+        first_name: row.try_get("first_name")?,
+        last_name: row.try_get("last_name")?,
         roles: row.try_get("roles")?,
     })
 }
@@ -85,7 +93,7 @@ WHERE id = $1
 }
 
 pub async fn get_user_by_id(db: &sqlx::PgPool, user_id: Uuid) -> Result<Option<DbUser>, AppError> {
-    let row = sqlx::query("SELECT id, provider, email, roles FROM users WHERE id = $1")
+    let row = sqlx::query("SELECT id, provider, email, first_name, last_name, roles FROM users WHERE id = $1")
         .bind(user_id)
         .fetch_optional(db)
         .await?;
@@ -95,6 +103,8 @@ pub async fn get_user_by_id(db: &sqlx::PgPool, user_id: Uuid) -> Result<Option<D
             id: row.try_get("id")?,
             provider: row.try_get("provider")?,
             email: row.try_get("email")?,
+            first_name: row.try_get("first_name")?,
+            last_name: row.try_get("last_name")?,
             roles: row.try_get("roles")?,
         })
     })

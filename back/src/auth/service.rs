@@ -20,6 +20,12 @@ use crate::auth::model::{
     AccessTokenClaims, ExchangeResponse, MeResponse, OAuthCallbackQuery, OAuthStartQuery, Provider, RefreshRequest,
     RefreshResponse,
 };
+
+struct ProviderUser {
+    email: String,
+    first_name: Option<String>,
+    last_name: Option<String>,
+}
 use crate::auth::repository;
 use crate::common::error::AppError;
 
@@ -195,13 +201,20 @@ pub async fn oauth_callback(
         return Err(AppError::bad_request("invalid oauth state"));
     }
 
-    let email = match provider {
+    let provider_user = match provider {
         Provider::Google => google_exchange_and_email(state, &code, state_record.code_verifier.as_deref()).await?,
         Provider::Facebook => facebook_exchange_and_email(state, &code).await?,
     };
 
-    let user = repository::find_or_create_user(&state.db, provider, &email).await?;
-    if provider == Provider::Google && is_admin_email(state, &email) {
+    let user = repository::find_or_create_user(
+        &state.db,
+        provider,
+        &provider_user.email,
+        provider_user.first_name.as_deref(),
+        provider_user.last_name.as_deref(),
+    )
+    .await?;
+    if provider == Provider::Google && is_admin_email(state, &provider_user.email) {
         repository::ensure_admin_role(&state.db, user.id).await?;
     }
     repository::mark_user_login(&state.db, user.id).await?;
@@ -333,8 +346,11 @@ pub async fn me(state: &AppState, headers: &HeaderMap) -> Result<MeResponse, App
         .ok_or_else(|| AppError::unauthorized("invalid user"))?;
 
     Ok(MeResponse {
+        id: user.id.to_string(),
         provider: user.provider,
         email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
         roles: user.roles,
     })
 }
@@ -390,6 +406,8 @@ fn issue_access_token(
         sid: session_id.to_string(),
         provider: user.provider.clone(),
         email: user.email.clone(),
+        first_name: user.first_name.clone(),
+        last_name: user.last_name.clone(),
         roles: user.roles.clone(),
         iat: now_unix as usize,
         exp: exp_unix as usize,
@@ -508,7 +526,7 @@ async fn google_exchange_and_email(
     state: &AppState,
     code: &str,
     code_verifier: Option<&str>,
-) -> Result<String, AppError> {
+) -> Result<ProviderUser, AppError> {
     #[derive(Deserialize)]
     struct GoogleTokenResponse {
         access_token: String,
@@ -518,6 +536,8 @@ async fn google_exchange_and_email(
     struct GoogleUserInfo {
         email: Option<String>,
         email_verified: Option<bool>,
+        given_name: Option<String>,
+        family_name: Option<String>,
     }
 
     let redirect_uri = format!("{}/auth/google/callback", state.config.app_base_url);
@@ -564,10 +584,14 @@ async fn google_exchange_and_email(
         return Err(AppError::bad_request("google email is not verified"));
     }
 
-    Ok(email.to_lowercase())
+    Ok(ProviderUser {
+        email: email.to_lowercase(),
+        first_name: user.given_name,
+        last_name: user.family_name,
+    })
 }
 
-async fn facebook_exchange_and_email(state: &AppState, code: &str) -> Result<String, AppError> {
+async fn facebook_exchange_and_email(state: &AppState, code: &str) -> Result<ProviderUser, AppError> {
     #[derive(Deserialize)]
     struct FacebookTokenResponse {
         access_token: String,
@@ -576,6 +600,8 @@ async fn facebook_exchange_and_email(state: &AppState, code: &str) -> Result<Str
     #[derive(Deserialize)]
     struct FacebookUser {
         email: Option<String>,
+        first_name: Option<String>,
+        last_name: Option<String>,
     }
 
     let redirect_uri = format!("{}/auth/facebook/callback", state.config.app_base_url);
@@ -601,7 +627,7 @@ async fn facebook_exchange_and_email(state: &AppState, code: &str) -> Result<Str
     let user = state
         .http_client
         .get("https://graph.facebook.com/me")
-        .query(&[("fields", "id,email")])
+        .query(&[("fields", "id,email,first_name,last_name")])
         .bearer_auth(token.access_token)
         .send()
         .await
@@ -616,5 +642,9 @@ async fn facebook_exchange_and_email(state: &AppState, code: &str) -> Result<Str
         .email
         .ok_or_else(|| AppError::bad_request("facebook did not return email (scope not granted?)"))?;
 
-    Ok(email.to_lowercase())
+    Ok(ProviderUser {
+        email: email.to_lowercase(),
+        first_name: user.first_name,
+        last_name: user.last_name,
+    })
 }

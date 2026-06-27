@@ -15,6 +15,8 @@ export type ProjectTimelineEntry = {
   atUtc: string | null;
   title: ProjectLocalizedText;
   details?: ProjectLocalizedText;
+  createdBy?: { id: string; email: string; firstName?: string | null; lastName?: string | null } | null;
+  lastModifiedBy?: { id: string; email: string; firstName?: string | null; lastName?: string | null } | null;
 };
 
 export type ProjectItem = {
@@ -30,7 +32,7 @@ export type ProjectItem = {
   timeline: ProjectTimelineEntry[];
   attachments: AttachmentItem[];
   lastModifiedAt?: string;
-  lastModifiedBy?: { id: string; email: string } | null;
+  lastModifiedBy?: { id: string; email: string; firstName?: string | null; lastName?: string | null } | null;
 };
 
 export type EditFieldValue = {

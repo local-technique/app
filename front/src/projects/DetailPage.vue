@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { Activity, ArrowLeft, ArrowRight, CalendarClock, CheckCircle2, Hourglass, SquarePen, Trash2, UserPen } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
-import { currentUserRoles, hasAnyRole } from "../auth/session";
+import { currentUserRoles, getCurrentUserId, hasAnyRole } from "../auth/session";
 import CategoryIcon from "../categories/CategoryIcon.vue";
 import AttachmentList from "../common/components/AttachmentList.vue";
 import EditableTimelineList from "../common/components/EditableTimelineList.vue";
@@ -48,9 +48,11 @@ const canEdit = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "
 const canDelete = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD_OPS"]));
 const auditLabel = computed(() => {
   if (!project.value?.lastModifiedAt) return "";
+  const user = project.value.lastModifiedBy;
+  const userName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : (user?.email ?? t("labels.unknownUser"));
   return t("labels.lastModified", {
     date: new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeStyle: "short" }).format(new Date(project.value.lastModifiedAt)),
-    user: project.value.lastModifiedBy?.email ?? t("labels.unknownUser"),
+    user: userName,
   });
 });
 const descriptionHtml = computed(() => (model.value ? renderProjectMarkdown(model.value.description) : ""));
@@ -68,15 +70,15 @@ const statusIcon = computed(() => {
 const editPath = computed(() => (model.value ? `/projects/${encodeURIComponent(model.value.id)}/edit` : "/projects"));
 
 async function handleTimelineAdd(payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<void> {
-  await apiProjectsRepository.createTimelineEntry(projectId.value, activeLocale(), payload);
+  try { await apiProjectsRepository.createTimelineEntry(projectId.value, activeLocale(), payload); } catch { /* ignore */ }
   await loadProject();
 }
 async function handleTimelineUpdate(entryId: string, payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<void> {
-  await apiProjectsRepository.updateTimelineEntry(projectId.value, entryId, activeLocale(), payload);
+  try { await apiProjectsRepository.updateTimelineEntry(projectId.value, entryId, activeLocale(), payload); } catch { /* ignore */ }
   await loadProject();
 }
 async function handleTimelineDelete(entryId: string): Promise<void> {
-  await apiProjectsRepository.deleteTimelineEntry(projectId.value, entryId);
+  try { await apiProjectsRepository.deleteTimelineEntry(projectId.value, entryId); } catch { /* ignore */ }
   await loadProject();
 }
 function deleteProject(): void {
@@ -133,13 +135,14 @@ function cancelDelete(): void {
 
     <section class="timeline-section">
       <h2>{{ t("labels.projectTimeline") }}</h2>
-      <EditableTimelineList
-        :entries="model.timeline"
-        :can-edit="canEdit"
-        @add="handleTimelineAdd"
-        @update="handleTimelineUpdate"
-        @delete="handleTimelineDelete"
-      />
+<EditableTimelineList
+  :entries="model.timeline"
+  :can-edit="canEdit"
+  :current-user-id="getCurrentUserId()"
+  @add="handleTimelineAdd"
+  @update="handleTimelineUpdate"
+  @delete="handleTimelineDelete"
+/>
     </section>
 
     <p class="back-link"><RouterLink class="back-link-ui" :to="{ path: '/projects', query: backQuery }"><ArrowLeft :size="15" :stroke-width="2" /><span>{{ t("labels.backToProjects") }}</span></RouterLink></p>

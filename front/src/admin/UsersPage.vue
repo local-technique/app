@@ -2,7 +2,7 @@
 import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { formatLocalDateTime } from "../common/date";
-import { listRoles, listUsers, updateUserRoles, type AdminUser, type AdminUsersQuery, type RoleDescriptor } from "./api";
+import { listRoles, listUsers, updateUserRoles, updateUserNames, type AdminUser, type AdminUsersQuery, type RoleDescriptor } from "./api";
 
 const PAGE_SIZE = 30;
 const ADMIN_ROLE = "ADMIN";
@@ -20,6 +20,8 @@ const saveError = ref(false);
 const saving = ref(false);
 const editingUser = ref<AdminUser | null>(null);
 const selectedRoles = ref<string[]>([]);
+const editFirstName = ref("");
+const editLastName = ref("");
 const query = reactive<AdminUsersQuery>({
   offset: 0,
   searchEmail: "",
@@ -93,6 +95,8 @@ function setSort(sort: AdminUsersQuery["sort"]): void {
 function openEditor(user: AdminUser): void {
   editingUser.value = user;
   selectedRoles.value = user.roles.filter((role) => role !== ADMIN_ROLE);
+  editFirstName.value = user.first_name ?? "";
+  editLastName.value = user.last_name ?? "";
   saveError.value = false;
 }
 
@@ -116,10 +120,13 @@ async function saveRoles(): Promise<void> {
     return;
   }
 
+  const user = editingUser.value;
   saving.value = true;
   saveError.value = false;
   try {
-    await updateUserRoles(editingUser.value.id, selectedRoles.value);
+    const firstName = editFirstName.value.trim() || null;
+    const lastName = editLastName.value.trim() || null;
+    await Promise.all([updateUserRoles(user.id, selectedRoles.value), updateUserNames(user.id, firstName, lastName)]);
     editingUser.value = null;
     await loadUserPage();
   } catch {
@@ -191,6 +198,8 @@ void loadUserPage();
           <tr>
             <th><button type="button" @click="setSort('id')">{{ t("labels.userId") }}</button></th>
             <th><button type="button" @click="setSort('email')">{{ t("labels.email") }}</button></th>
+            <th>{{ t("labels.firstName") }}</th>
+            <th>{{ t("labels.lastName") }}</th>
             <th><button type="button" @click="setSort('created_at')">{{ t("labels.createdAt") }}</button></th>
             <th><button type="button" @click="setSort('last_login_at')">{{ t("labels.lastLoginAt") }}</button></th>
             <th>{{ t("labels.roles") }}</th>
@@ -201,6 +210,8 @@ void loadUserPage();
           <tr v-for="user in users" :key="user.id">
             <td :title="user.id">{{ displayUserId(user.id) }}</td>
             <td>{{ user.email }}</td>
+            <td>{{ user.first_name ?? "" }}</td>
+            <td>{{ user.last_name ?? "" }}</td>
             <td>{{ formatDate(user.created_at) }}</td>
             <td>{{ formatDate(user.last_login_at) }}</td>
             <td>
@@ -208,7 +219,7 @@ void loadUserPage();
             </td>
             <td>
               <button class="secondary-button" type="button" @click="openEditor(user)">
-                {{ t("labels.editRoles") }}
+                {{ t("labels.edit") }}
               </button>
             </td>
           </tr>
@@ -223,8 +234,19 @@ void loadUserPage();
     </nav>
 
     <div v-if="editingUser" class="modal-backdrop" role="presentation">
-      <section class="roles-modal" role="dialog" aria-modal="true" :aria-label="t('labels.editRoles')">
-        <h2>{{ t("labels.editRolesTitle", { email: editingUser.email }) }}</h2>
+      <section class="user-modal" role="dialog" aria-modal="true" :aria-label="t('labels.editRoles')">
+        <h2>{{ t("labels.editUserTitle", { email: editingUser.email }) }}</h2>
+        <div class="name-fields">
+          <label>
+            <span>{{ t("labels.firstName") }}</span>
+            <input v-model="editFirstName" type="text" :disabled="saving" maxlength="100" />
+          </label>
+          <label>
+            <span>{{ t("labels.lastName") }}</span>
+            <input v-model="editLastName" type="text" :disabled="saving" maxlength="100" />
+          </label>
+        </div>
+        <hr />
         <div class="role-options">
           <label v-for="role in roles" :key="role.code">
             <input
@@ -236,13 +258,13 @@ void loadUserPage();
             <span>{{ roleLabel(role.code) }}</span>
           </label>
         </div>
-        <p v-if="saveError" class="modal-error">{{ t("labels.saveRolesFailed") }}</p>
+        <p v-if="saveError" class="modal-error">{{ t("labels.saveUserFailed") }}</p>
         <footer>
           <button class="secondary-button" type="button" :disabled="saving" @click="closeEditor">
             {{ t("labels.cancel") }}
           </button>
           <button class="primary-button" type="button" :disabled="saving" @click="saveRoles">
-            {{ saving ? t("labels.savingRoles") : t("labels.saveRoles") }}
+            {{ saving ? t("labels.saving") : t("labels.save") }}
           </button>
         </footer>
       </section>
@@ -365,7 +387,7 @@ button:disabled {
   background: var(--overlay-bg);
 }
 
-.roles-modal {
+.user-modal {
   width: min(480px, 100%);
   border: 1px solid var(--border-color);
   border-radius: 1rem;
@@ -374,9 +396,41 @@ button:disabled {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
 }
 
-.roles-modal h2 {
+.user-modal h2 {
   margin: 0 0 0.9rem;
   font-size: 1.2rem;
+}
+
+.user-modal hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 0.9rem 0;
+}
+
+.name-fields {
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 0.5rem;
+}
+
+.name-fields label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted-fg);
+}
+
+.name-fields input {
+  border: 1px solid var(--control-border);
+  border-radius: 0.55rem;
+  padding: 0.45rem 0.7rem;
+  background: var(--control-bg);
+  color: var(--control-fg);
+  font-size: 1rem;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .role-options {
@@ -395,7 +449,7 @@ button:disabled {
   font-weight: 700;
 }
 
-.roles-modal footer {
+.user-modal footer {
   display: flex;
   justify-content: flex-end;
   gap: 0.6rem;

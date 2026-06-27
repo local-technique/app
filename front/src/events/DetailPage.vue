@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { Activity, ArrowLeft, ArrowRight, CalendarClock, CheckCircle2, Hourglass, MapPin, SquarePen, Trash2, UserPen } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
-import { currentUserRoles, hasAnyRole } from "../auth/session";
+import { currentUserRoles, getCurrentUserId, hasAnyRole } from "../auth/session";
 import CategoryIcon from "../categories/CategoryIcon.vue";
 import AttachmentList from "../common/components/AttachmentList.vue";
 import AttachmentPreview from "../common/components/AttachmentPreview.vue";
@@ -75,9 +75,11 @@ const canEdit = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "
 const canDelete = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD_OPS"]));
 const auditLabel = computed(() => {
   if (!event.value?.lastModifiedAt) return "";
+  const user = event.value.lastModifiedBy;
+  const userName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : (user?.email ?? t("labels.unknownUser"));
   return t("labels.lastModified", {
     date: new Intl.DateTimeFormat(locale.value, { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.value.lastModifiedAt)),
-    user: event.value.lastModifiedBy?.email ?? t("labels.unknownUser"),
+    user: userName,
   });
 });
 
@@ -86,15 +88,15 @@ function handleAttachmentSelect(item: AttachmentItem): void {
 }
 
 async function handleTimelineAdd(payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<void> {
-  await apiEventsRepository.createTimelineEntry(eventId.value, activeLocale(), payload);
+  try { await apiEventsRepository.createTimelineEntry(eventId.value, activeLocale(), payload); } catch { /* ignore */ }
   await loadEvent();
 }
 async function handleTimelineUpdate(entryId: string, payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<void> {
-  await apiEventsRepository.updateTimelineEntry(eventId.value, entryId, activeLocale(), payload);
+  try { await apiEventsRepository.updateTimelineEntry(eventId.value, entryId, activeLocale(), payload); } catch { /* ignore */ }
   await loadEvent();
 }
 async function handleTimelineDelete(entryId: string): Promise<void> {
-  await apiEventsRepository.deleteTimelineEntry(eventId.value, entryId);
+  try { await apiEventsRepository.deleteTimelineEntry(eventId.value, entryId); } catch { /* ignore */ }
   await loadEvent();
 }
 function deleteEvent(): void {
@@ -160,13 +162,14 @@ function cancelDelete(): void {
 
     <section class="timeline-section">
       <h2>{{ t("labels.maintenanceTimeline") }}</h2>
-      <EditableTimelineList
-        :entries="model.timeline"
-        :can-edit="canEdit"
-        @add="handleTimelineAdd"
-        @update="handleTimelineUpdate"
-        @delete="handleTimelineDelete"
-      />
+<EditableTimelineList
+  :entries="model.timeline"
+  :can-edit="canEdit"
+  :current-user-id="getCurrentUserId()"
+  @add="handleTimelineAdd"
+  @update="handleTimelineUpdate"
+  @delete="handleTimelineDelete"
+/>
     </section>
 
     <p class="back-link">

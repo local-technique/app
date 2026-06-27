@@ -65,6 +65,8 @@ pub async fn list_users(db: &sqlx::PgPool, query: AdminUsersQuery) -> Result<Adm
             .map(|row| AdminUserItem {
                 id: row.id.to_string(),
                 email: row.email,
+                first_name: row.first_name,
+                last_name: row.last_name,
                 created_at: row.created_at,
                 last_login_at: row.last_login_at,
                 roles: row.roles,
@@ -101,6 +103,20 @@ pub async fn replace_non_admin_roles(
         id: user_id.to_string(),
         roles: updated,
     })
+}
+
+pub async fn update_user_names(
+    db: &sqlx::PgPool,
+    user_id: Uuid,
+    first_name: Option<String>,
+    last_name: Option<String>,
+) -> Result<crate::admin::model::UpdateUserNamesResponse, AppError> {
+    let first_name = first_name.map(|n| n.trim().to_string()).filter(|n| !n.is_empty());
+    let last_name = last_name.map(|n| n.trim().to_string()).filter(|n| !n.is_empty());
+
+    repository::update_user_names(db, user_id, first_name, last_name)
+        .await?
+        .ok_or_else(|| AppError::not_found("user not found"))
 }
 
 fn validate_known_role(role: &str) -> Result<(), AppError> {
