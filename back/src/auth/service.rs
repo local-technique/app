@@ -146,11 +146,11 @@ pub async fn start_oauth(
                 url_encode(&code_challenge),
             )
         }
-        Provider::Facebook => format!(
-            "https://www.facebook.com/v20.0/dialog/oauth?response_type=code&client_id={}&redirect_uri={}&scope={}&state={}",
-            url_encode(&state.config.facebook_client_id),
+        Provider::Microsoft => format!(
+            "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?response_type=code&client_id={}&redirect_uri={}&scope={}&state={}",
+            url_encode(&state.config.microsoft_client_id),
             url_encode(&redirect_uri),
-            url_encode("email"),
+            url_encode("openid profile email User.Read"),
             url_encode(&oauth_state),
         ),
     };
@@ -203,7 +203,7 @@ pub async fn oauth_callback(
 
     let provider_user = match provider {
         Provider::Google => google_exchange_and_email(state, &code, state_record.code_verifier.as_deref()).await?,
-        Provider::Facebook => facebook_exchange_and_email(state, &code).await?,
+        Provider::Microsoft => microsoft_exchange_and_email(state, &code).await?,
     };
 
     let user = repository::find_or_create_user(
@@ -591,60 +591,67 @@ async fn google_exchange_and_email(
     })
 }
 
-async fn facebook_exchange_and_email(state: &AppState, code: &str) -> Result<ProviderUser, AppError> {
+async fn microsoft_exchange_and_email(state: &AppState, code: &str) -> Result<ProviderUser, AppError> {
     #[derive(Deserialize)]
-    struct FacebookTokenResponse {
+    struct MicrosoftTokenResponse {
         access_token: String,
     }
 
     #[derive(Deserialize)]
-    struct FacebookUser {
-        email: Option<String>,
-        first_name: Option<String>,
-        last_name: Option<String>,
+    #[serde(rename_all = "camelCase")]
+    struct MicrosoftUser {
+        #[serde(default)]
+        given_name: Option<String>,
+        #[serde(default)]
+        surname: Option<String>,
+        #[serde(default)]
+        mail: Option<String>,
+        #[serde(default)]
+        user_principal_name: Option<String>,
     }
 
-    let redirect_uri = format!("{}/auth/facebook/callback", state.config.app_base_url);
+    let redirect_uri = format!("{}/auth/microsoft/callback", state.config.app_base_url);
 
     let token = state
         .http_client
-        .get("https://graph.facebook.com/v20.0/oauth/access_token")
-        .query(&[
-            ("client_id", state.config.facebook_client_id.as_str()),
-            ("client_secret", state.config.facebook_client_secret.as_str()),
-            ("redirect_uri", redirect_uri.as_str()),
+        .post("https://login.microsoftonline.com/consumers/oauth2/v2.0/token")
+        .form(&[
+            ("grant_type", "authorization_code"),
             ("code", code),
+            ("redirect_uri", redirect_uri.as_str()),
+            ("client_id", state.config.microsoft_client_id.as_str()),
+            ("client_secret", state.config.microsoft_client_secret.as_str()),
         ])
         .send()
         .await
-        .map_err(|e| AppError::bad_gateway(format!("facebook token exchange failed: {e}")))?
+        .map_err(|e| AppError::bad_gateway(format!("microsoft token exchange failed: {e}")))?
         .error_for_status()
-        .map_err(|e| AppError::bad_gateway(format!("facebook token exchange failed: {e}")))?
-        .json::<FacebookTokenResponse>()
+        .map_err(|e| AppError::bad_gateway(format!("microsoft token exchange failed: {e}")))?
+        .json::<MicrosoftTokenResponse>()
         .await
-        .map_err(|e| AppError::bad_gateway(format!("invalid facebook token response: {e}")))?;
+        .map_err(|e| AppError::bad_gateway(format!("invalid microsoft token response: {e}")))?;
 
     let user = state
         .http_client
-        .get("https://graph.facebook.com/me")
-        .query(&[("fields", "id,email,first_name,last_name")])
+        .get("https://graph.microsoft.com/v1.0/me?$select=displayName,givenName,surname,mail,userPrincipalName")
         .bearer_auth(token.access_token)
         .send()
         .await
-        .map_err(|e| AppError::bad_gateway(format!("facebook me request failed: {e}")))?
+        .map_err(|e| AppError::bad_gateway(format!("microsoft graph request failed: {e}")))?
         .error_for_status()
-        .map_err(|e| AppError::bad_gateway(format!("facebook me request failed: {e}")))?
-        .json::<FacebookUser>()
+        .map_err(|e| AppError::bad_gateway(format!("microsoft graph request failed: {e}")))?
+        .json::<MicrosoftUser>()
         .await
-        .map_err(|e| AppError::bad_gateway(format!("invalid facebook user response: {e}")))?;
+        .map_err(|e| AppError::bad_gateway(format!("invalid microsoft user response: {e}")))?;
 
     let email = user
-        .email
-        .ok_or_else(|| AppError::bad_request("facebook did not return email (scope not granted?)"))?;
+        .mail
+        .or(user.user_principal_name)
+        .ok_or_else(|| AppError::bad_request("microsoft did not return email"))?;
 
     Ok(ProviderUser {
         email: email.to_lowercase(),
-        first_name: user.first_name,
-        last_name: user.last_name,
+        first_name: user.given_name,
+        last_name: user.surname,
     })
 }
