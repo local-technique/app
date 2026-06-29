@@ -1,4 +1,6 @@
-import { classifyEventStatus, formatLocalDate, formatLocalDateTime, parseUtc } from "../common/date";
+import { formatLocalDate, formatLocalDateTime, parseUtc } from "../common/date";
+import { computeDisplayStatus, computeTimeStatus } from "../common/timeStatus";
+import type { TimeStatus } from "../common/timeStatus";
 import type { LocaleCode } from "../common/localeContent";
 import { resolveLocalized } from "../common/localeContent";
 import { fuzzyMatch } from "../common/search";
@@ -38,16 +40,6 @@ function resolve(value: EventLocalizedText | undefined, locale: LocaleCode): str
     return "";
   }
   return resolveLocalized(value, locale);
-}
-
-function computeStatusType(stored: EventStoredStatus, endUtc: string | undefined, startUtc: string): EventStoredStatus | "finished" | "planned" {
-  if (endUtc && Date.parse(endUtc) < Date.now()) {
-    return "finished";
-  }
-  if (stored === "ongoing" && Date.parse(startUtc) > Date.now()) {
-    return "planned";
-  }
-  return stored;
 }
 
 function formatEventDateLabel(event: EventItem, locale: LocaleCode): string {
@@ -91,13 +83,21 @@ function toTimelineEntryViewModel(entry: EventTimelineEntry, locale: LocaleCode)
   };
 }
 
+function toSection(status: TimeStatus): EventStatusSection {
+  switch (status) {
+    case "TO_COME": return "toCome";
+    case "ONGOING": return "current";
+    case "PAST": return "past";
+  }
+}
+
 export function toEventViewModel(event: EventItem, locale: LocaleCode): EventViewModel {
   const timeline = event.timeline.map((entry) => toTimelineEntryViewModel(entry, locale));
-  const statusType = computeStatusType(event.statusType, event.endUtc, event.startUtc);
+  const timeStatus = computeTimeStatus(event.startUtc, event.endUtc);
   return {
     id: event.id,
-    status: classifyEventStatus({ startUtc: event.startUtc, endUtc: event.endUtc }),
-    statusType,
+    status: toSection(timeStatus),
+    statusType: computeDisplayStatus(event.statusType, timeStatus),
     statusText: resolve(event.statusText, locale),
     title: resolve(event.title, locale),
     warning: resolve(event.warning, locale),

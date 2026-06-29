@@ -2,6 +2,7 @@ import { formatLocalDate, formatLocalDateTime, parseUtc } from "../common/date";
 import type { LocaleCode } from "../common/localeContent";
 import { resolveLocalized } from "../common/localeContent";
 import { fuzzyMatch } from "../common/search";
+import { computeDisplayStatus, computeTimeStatus } from "../common/timeStatus";
 import type {
   ProjectDisplayStatus,
   ProjectItem,
@@ -46,17 +47,20 @@ function resolve(value: ProjectLocalizedText | undefined, locale: LocaleCode): s
 }
 
 function classifyProject(project: ProjectItem, now = new Date()): { section: ProjectStatusSection; statusType: ProjectDisplayStatus } {
-  const nowMs = now.getTime();
-  if (project.endUtc && Date.parse(project.endUtc) < nowMs) {
+  const timeStatus = computeTimeStatus(project.startUtc, project.endUtc, now);
+
+  if (timeStatus === "PAST") {
     return { section: "finished", statusType: "finished" };
   }
-  if (project.statusType === "ongoing") {
-    if (project.startUtc && Date.parse(project.startUtc) > nowMs) {
-      return { section: "ongoing", statusType: "planned" };
-    }
-    return { section: "ongoing", statusType: "ongoing" };
+
+  if (project.statusType === "waiting") {
+    return { section: "toCome", statusType: "waiting" };
   }
-  return { section: "toCome", statusType: "waiting" };
+
+  return {
+    section: "ongoing",
+    statusType: computeDisplayStatus("ongoing", timeStatus),
+  };
 }
 
 function formatProjectDateLabel(project: ProjectItem, locale: LocaleCode): string {
