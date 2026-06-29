@@ -2,6 +2,8 @@ import { formatLocalDate, formatLocalDateTime, parseUtc } from "../common/date";
 import type { LocaleCode } from "../common/localeContent";
 import { resolveLocalized } from "../common/localeContent";
 import { fuzzyMatch } from "../common/search";
+import { computeDisplayStatus, computeTimeStatus } from "../common/timeStatus";
+import type { TimeStatus } from "../common/timeStatus";
 import type {
   IncidentItem,
   IncidentLocalizedText,
@@ -45,23 +47,12 @@ function resolve(value: IncidentLocalizedText | undefined, locale: LocaleCode): 
   return resolveLocalized(value, locale);
 }
 
-function computeStatusType(stored: IncidentStoredStatus, endUtc: string | undefined, startUtc: string): IncidentStoredStatus | "finished" | "planned" {
-  if (endUtc && Date.parse(endUtc) < Date.now()) {
-    return "finished";
+function toSection(status: TimeStatus): IncidentStatusSection {
+  switch (status) {
+    case "TO_COME":
+    case "ONGOING": return "current";
+    case "PAST": return "past";
   }
-  if (stored === "ongoing" && Date.parse(startUtc) > Date.now()) {
-    return "planned";
-  }
-  return stored;
-}
-
-function toIncidentStatus(input: IncidentItem): IncidentStatusSection {
-  const nowMs = Date.now();
-  const startMs = Date.parse(input.startUtc);
-  if (!input.endUtc) {
-    return "current";
-  }
-  return nowMs >= startMs && nowMs <= Date.parse(input.endUtc) ? "current" : "past";
 }
 
 function formatIncidentDateLabel(incident: IncidentItem, locale: LocaleCode): string {
@@ -107,12 +98,12 @@ function toTimelineEntryViewModel(entry: IncidentTimelineEntry, locale: LocaleCo
 
 export function toIncidentViewModel(incident: IncidentItem, locale: LocaleCode): IncidentViewModel {
   const timeline = incident.timeline.map((entry) => toTimelineEntryViewModel(entry, locale));
-  const statusType = computeStatusType(incident.statusType, incident.endUtc, incident.startUtc);
+  const timeStatus = computeTimeStatus(incident.startUtc, incident.endUtc);
 
   return {
     id: incident.id,
-    status: toIncidentStatus(incident),
-    statusType,
+    status: toSection(timeStatus),
+    statusType: computeDisplayStatus(incident.statusType, timeStatus),
     statusText: resolve(incident.statusText, locale),
     title: resolve(incident.title, locale),
     description: resolve(incident.description, locale),
