@@ -2,6 +2,8 @@ import { createRouter, createWebHashHistory } from "vue-router";
 import { sanitizeRedirectPath } from "../auth/redirect";
 import { currentUserRoles, ensureAuthenticated, ensureCurrentUserRoles, hasAnyRole, hasRole, hasNoRoles } from "../auth/session";
 
+const CHUNK_LOAD_ERROR_RE = /dynamically imported|module script/i;
+
 const LoginPage = () => import("../auth/LoginPage.vue");
 const OAuthCallbackPage = () => import("../auth/OAuthCallbackPage.vue");
 const EventsPage = () => import("../events/ListingPage.vue");
@@ -92,6 +94,15 @@ router.beforeEach(async (to) => {
   }
 
   return { path: "/access-denied" };
+});
+
+router.onError((error) => {
+  if (error instanceof TypeError && CHUNK_LOAD_ERROR_RE.test(error.message)) {
+    console.warn("Chunk load error, reloading:", error.message);
+    const u = new URL(window.location.href);
+    u.searchParams.set("_t", Date.now().toString());
+    window.location.href = u.href;
+  }
 });
 
 export default router;
