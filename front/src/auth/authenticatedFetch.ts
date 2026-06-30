@@ -1,10 +1,6 @@
-import { getAccessToken, isAccessTokenUsable, ensureAuthenticated, refreshAccessToken } from "./session";
+import { getAccessToken, isAccessTokenUsable, ensureAuthenticated } from "./session";
 
 export async function authenticatedFetch(url: string, options?: RequestInit): Promise<Response> {
-  return doFetch(url, options, false);
-}
-
-async function doFetch(url: string, options?: RequestInit, retried?: boolean): Promise<Response> {
   if (!isAccessTokenUsable()) {
     const ok = await ensureAuthenticated();
     if (!ok) {
@@ -21,14 +17,9 @@ async function doFetch(url: string, options?: RequestInit, retried?: boolean): P
     headers,
   });
 
-  if (response.status === 401 && !retried) {
-    const refreshed = await refreshAccessToken();
-    if (!refreshed) {
-      redirectToLogin();
-      throw new Error("session expired");
-    }
-
-    return doFetch(url, options, true);
+  if (response.status === 401) {
+    redirectToLogin();
+    throw new Error("session expired");
   }
 
   return response;

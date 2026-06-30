@@ -19,6 +19,11 @@ pub struct DbSession {
 pub struct RotatedSession {
     pub id: Uuid,
     pub user_id: Uuid,
+    pub provider: String,
+    pub email: String,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub roles: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -254,24 +259,33 @@ pub async fn rotate_session_refresh_token(
 ) -> Result<Option<RotatedSession>, AppError> {
     let row = sqlx::query(
         r#"
-UPDATE auth_sessions
-SET previous_refresh_token_hashes = (
-      CASE
-        WHEN array_length(previous_refresh_token_hashes, 1) IS NULL
-          THEN ARRAY[refresh_token_hash]
-        WHEN array_length(previous_refresh_token_hashes, 1) >= 8
-          THEN previous_refresh_token_hashes[2:8] || refresh_token_hash
-        ELSE previous_refresh_token_hashes || refresh_token_hash
-      END
-    ),
-    refresh_token_hash = $2,
-    expires_at = $3,
-    updated_at = now()
-WHERE refresh_token_hash = $1
-  AND revoked_at IS NULL
-  AND compromised_at IS NULL
-  AND expires_at > now()
-RETURNING id, user_id
+WITH rotated AS (
+  UPDATE auth_sessions s
+  SET previous_refresh_token_hashes = (
+        CASE
+          WHEN array_length(previous_refresh_token_hashes, 1) IS NULL
+            THEN ARRAY[refresh_token_hash]
+          WHEN array_length(previous_refresh_token_hashes, 1) >= 8
+            THEN previous_refresh_token_hashes[2:8] || refresh_token_hash
+          ELSE previous_refresh_token_hashes || refresh_token_hash
+        END
+      ),
+      refresh_token_hash = $2,
+      expires_at = $3,
+      updated_at = now()
+  FROM users u
+  WHERE s.refresh_token_hash = $1
+    AND s.user_id = u.id
+    AND s.revoked_at IS NULL
+    AND s.compromised_at IS NULL
+    AND s.expires_at > now()
+  RETURNING s.id, s.user_id, u.provider, u.email, u.first_name, u.last_name, u.roles
+),
+_logged AS (
+  UPDATE users SET last_login_at = now(), updated_at = now()
+  WHERE id = (SELECT user_id FROM rotated)
+)
+SELECT id, user_id, provider, email, first_name, last_name, roles FROM rotated
 "#,
     )
     .bind(incoming_refresh_hash)
@@ -284,6 +298,11 @@ RETURNING id, user_id
         Ok(RotatedSession {
             id: row.try_get("id")?,
             user_id: row.try_get("user_id")?,
+            provider: row.try_get("provider")?,
+            email: row.try_get("email")?,
+            first_name: row.try_get("first_name")?,
+            last_name: row.try_get("last_name")?,
+            roles: row.try_get("roles")?,
         })
     })
     .transpose()
