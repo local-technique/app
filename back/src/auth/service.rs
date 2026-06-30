@@ -317,11 +317,16 @@ pub async fn refresh(
         return Err(AppError::unauthorized("invalid refresh token"));
     };
 
-    let user = repository::get_user_by_id(&state.db, rotated.user_id)
-        .await?
-        .ok_or_else(|| AppError::unauthorized("invalid user"))?;
     repository::mark_user_login(&state.db, rotated.user_id).await?;
 
+    let user = repository::DbUser {
+        id: rotated.user_id,
+        provider: rotated.provider,
+        email: rotated.email,
+        first_name: rotated.first_name,
+        last_name: rotated.last_name,
+        roles: rotated.roles,
+    };
     let (access_token, expires_at) = issue_access_token(state, rotated.id, &user)?;
     Ok(RefreshResponse {
         access_token,
