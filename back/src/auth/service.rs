@@ -317,8 +317,6 @@ pub async fn refresh(
         return Err(AppError::unauthorized("invalid refresh token"));
     };
 
-    repository::mark_user_login(&state.db, rotated.user_id).await?;
-
     let user = repository::DbUser {
         id: rotated.user_id,
         provider: rotated.provider,

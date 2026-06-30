@@ -1,36 +1,55 @@
-import { defineConfig, type Plugin } from "vite";
+﻿import { defineConfig, type Plugin } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { configDefaults } from "vitest/config";
 
 function routeChunkPreload(): Plugin {
+  let base = "/";
+
   return {
     name: "route-chunk-preload",
     enforce: "post",
+    configResolved(config) {
+      base = config.base;
+    },
     generateBundle(_, bundle) {
       const htmlAsset = Object.values(bundle).find(
         (v) => v.type === "asset" && v.fileName === "index.html",
       );
       if (!htmlAsset || typeof htmlAsset.source !== "string") return;
 
-      const listingChunks: string[] = [];
-      const otherChunks: string[] = [];
+      const listingFormPages = [
+        "/events/ListingPage.vue",
+        "/incidents/ListingPage.vue",
+        "/projects/ListingPage.vue",
+        "/events/FormPage.vue",
+        "/incidents/FormPage.vue",
+        "/projects/FormPage.vue",
+      ];
+      const detailPages = [
+        "/events/DetailPage.vue",
+        "/incidents/DetailPage.vue",
+        "/projects/DetailPage.vue",
+      ];
+
+      const earlyChunks: string[] = [];
+      const lateChunks: string[] = [];
 
       for (const [, chunk] of Object.entries(bundle)) {
         if (chunk.type !== "chunk" || chunk.isEntry) continue;
-        const fileName = chunk.fileName;
-        if (!fileName.endsWith(".js")) continue;
-        if (fileName.includes("scalar") || fileName.includes("Setting") || fileName.includes("ApiDoc")) continue;
+        const facade = (chunk as any).facadeModuleId;
+        if (typeof facade !== "string") continue;
 
-        if (fileName.includes("ListingPage")) {
-          listingChunks.push(fileName);
-        } else if (fileName.includes("DetailPage") || fileName.includes("FormPage")) {
-          otherChunks.push(fileName);
+        const normalized = facade.replace(/\\/g, "/");
+        if (listingFormPages.some((p) => normalized.includes(p))) {
+          earlyChunks.push(chunk.fileName);
+        } else if (detailPages.some((p) => normalized.includes(p))) {
+          lateChunks.push(chunk.fileName);
         }
       }
 
       const links = [
-        ...listingChunks.map((c) => `<link rel="modulepreload" crossorigin href="/${c}" />`),
-        ...otherChunks.map((c) => `<link rel="prefetch" crossorigin href="/${c}" />`),
+        ...earlyChunks.map((c) => `<link rel="modulepreload" crossorigin href="${base}${c}" />`),
+        ...lateChunks.map((c) => `<link rel="prefetch" crossorigin href="${base}${c}" />`),
       ].join("\n    ");
 
       if (!links) return;

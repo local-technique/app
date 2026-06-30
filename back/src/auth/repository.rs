@@ -259,26 +259,33 @@ pub async fn rotate_session_refresh_token(
 ) -> Result<Option<RotatedSession>, AppError> {
     let row = sqlx::query(
         r#"
-UPDATE auth_sessions s
-SET previous_refresh_token_hashes = (
-      CASE
-        WHEN array_length(previous_refresh_token_hashes, 1) IS NULL
-          THEN ARRAY[refresh_token_hash]
-        WHEN array_length(previous_refresh_token_hashes, 1) >= 8
-          THEN previous_refresh_token_hashes[2:8] || refresh_token_hash
-        ELSE previous_refresh_token_hashes || refresh_token_hash
-      END
-    ),
-    refresh_token_hash = $2,
-    expires_at = $3,
-    updated_at = now()
-FROM users u
-WHERE s.refresh_token_hash = $1
-  AND s.user_id = u.id
-  AND s.revoked_at IS NULL
-  AND s.compromised_at IS NULL
-  AND s.expires_at > now()
-RETURNING s.id, s.user_id, u.provider, u.email, u.first_name, u.last_name, u.roles
+WITH rotated AS (
+  UPDATE auth_sessions s
+  SET previous_refresh_token_hashes = (
+        CASE
+          WHEN array_length(previous_refresh_token_hashes, 1) IS NULL
+            THEN ARRAY[refresh_token_hash]
+          WHEN array_length(previous_refresh_token_hashes, 1) >= 8
+            THEN previous_refresh_token_hashes[2:8] || refresh_token_hash
+          ELSE previous_refresh_token_hashes || refresh_token_hash
+        END
+      ),
+      refresh_token_hash = $2,
+      expires_at = $3,
+      updated_at = now()
+  FROM users u
+  WHERE s.refresh_token_hash = $1
+    AND s.user_id = u.id
+    AND s.revoked_at IS NULL
+    AND s.compromised_at IS NULL
+    AND s.expires_at > now()
+  RETURNING s.id, s.user_id, u.provider, u.email, u.first_name, u.last_name, u.roles
+),
+_logged AS (
+  UPDATE users SET last_login_at = now(), updated_at = now()
+  WHERE id = (SELECT user_id FROM rotated)
+)
+SELECT id, user_id, provider, email, first_name, last_name, roles FROM rotated
 "#,
     )
     .bind(incoming_refresh_hash)

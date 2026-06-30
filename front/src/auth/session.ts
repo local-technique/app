@@ -101,6 +101,7 @@ export function clearSession(): void {
   currentUserRoles.loaded = false;
   currentUserRoles.loading = false;
   currentUserRoles.roles = [];
+  currentUserRolesRequest = null;
   clearRefreshToken();
 }
 
