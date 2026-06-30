@@ -178,7 +178,6 @@ export function initAuth(): Promise<boolean> {
     authInitPromise = Promise.resolve(true);
     return authInitPromise;
   }
-  initOAuthSession();
   authInitPromise = ensureAuthenticated();
   return authInitPromise;
 }
@@ -243,6 +242,10 @@ export async function ensureCurrentUserRoles(): Promise<boolean> {
     currentUserId.value = "00000000-0000-0000-0000-000000000000";
     currentUserRoles.roles = ["ADMIN", "CO_OWNER", "CO_OWNERSHIP_BOARD"];
     currentUserRoles.loaded = true;
+    return true;
+  }
+
+  if (currentUserRoles.loaded) {
     return true;
   }
 
