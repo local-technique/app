@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { sanitizeRedirectPath } from "./redirect";
-import { providerStartUrl } from "./session";
+import { initOAuthSession, providerStartUrl } from "./session";
 
 const route = useRoute();
 
@@ -16,6 +16,9 @@ const redirectPath = computed(() => {
 
 const googleHref = computed(() => providerStartUrl("google", redirectPath.value));
 const microsoftHref = computed(() => providerStartUrl("microsoft", redirectPath.value));
+onMounted(() => {
+  initOAuthSession();
+});
 </script>
 
 <template>
