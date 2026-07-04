@@ -55,7 +55,7 @@ describe("computeDisplayStatus", () => {
     expect(computeDisplayStatus("ongoing", "ONGOING")).toBe("ongoing");
   });
 
-  it("waiting + ONGOING -> waiting", () => {
-    expect(computeDisplayStatus("waiting", "ONGOING")).toBe("waiting");
+  it("waiting + ONGOING -> ongoing", () => {
+    expect(computeDisplayStatus("waiting", "ONGOING")).toBe("ongoing");
   });
 });

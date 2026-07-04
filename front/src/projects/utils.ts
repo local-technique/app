@@ -53,14 +53,9 @@ function classifyProject(project: ProjectItem, now = new Date()): { section: Pro
     return { section: "finished", statusType: "finished" };
   }
 
-  if (project.statusType === "waiting") {
-    return { section: "toCome", statusType: "waiting" };
-  }
-
-  return {
-    section: "ongoing",
-    statusType: computeDisplayStatus("ongoing", timeStatus),
-  };
+  const displayStatus = computeDisplayStatus(project.statusType, timeStatus);
+  const section = displayStatus === "waiting" ? "toCome" : "ongoing";
+  return { section, statusType: displayStatus };
 }
 
 function formatProjectDateLabel(project: ProjectItem, locale: LocaleCode): string {
