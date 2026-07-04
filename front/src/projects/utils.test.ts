@@ -41,13 +41,13 @@ describe("project utilities", () => {
     vi.useRealTimers();
   });
 
-  it("keeps waiting projects in to-come even when their start date has passed", () => {
+  it("marks waiting projects as ongoing when their start date has passed", () => {
     vi.setSystemTime(new Date("2026-06-01T12:00:00Z"));
 
     const waiting = toProjectViewModel(project({ startUtc: "2026-05-30T12:00:00Z", statusType: "waiting" }), "en");
 
-    expect(waiting.status).toBe("toCome");
-    expect(waiting.statusType).toBe("waiting");
+    expect(waiting.status).toBe("ongoing");
+    expect(waiting.statusType).toBe("ongoing");
     vi.useRealTimers();
   });
 

@@ -7,8 +7,10 @@ export function computeDisplayStatus(
   timeStatus: TimeStatus,
 ): DisplayStatus {
   if (timeStatus === "PAST") return "finished";
-  if (stored === "ongoing" && timeStatus === "TO_COME") return "planned";
-  return stored;
+  if (timeStatus === "ONGOING") return "ongoing";
+  // Only TO_COME remains at this point
+  if (stored === "ongoing") return "planned";
+  return "waiting";
 }
 
 export function computeTimeStatus(
