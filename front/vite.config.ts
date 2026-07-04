@@ -49,7 +49,7 @@ function routeChunkPreload(): Plugin {
 
       const links = [
         ...earlyChunks.map((c) => `<link rel="modulepreload" crossorigin href="${base}${c}" />`),
-        ...lateChunks.map((c) => `<link rel="prefetch" crossorigin href="${base}${c}" />`),
+        ...lateChunks.map((c) => `<link rel="modulepreload" crossorigin href="${base}${c}" />`),
       ].join("\n    ");
 
       if (!links) return;
@@ -64,17 +64,7 @@ function routeChunkPreload(): Plugin {
 
 export default defineConfig({
   plugins: [vue(), routeChunkPreload()],
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks(id: string) {
-          if (id.includes("@scalar/api-reference")) {
-            return "scalar";
-          }
-        },
-      },
-    },
-  },
+  build: {},
   test: {
     environment: "jsdom",
     setupFiles: [],
