@@ -4,6 +4,7 @@ import { authenticatedFetch } from "../../auth/authenticatedFetch";
 import type { EditFieldValue, ProjectEditData, ProjectItem, ProjectLocalizedText, ProjectSavePayload, ProjectTimelineEditItem, ProjectTimelineEntry } from "../types";
 import { mockProjectsRepository } from "./mockProjectsRepository";
 import type { ProjectsRepository } from "./projectsRepository";
+import type { AttachmentItem } from "../../common/attachments";
 
 type ApiProjectTimelineItem = {
   id: string;
@@ -27,10 +28,21 @@ type ApiProjectListItem = {
   timeline?: ApiProjectTimelineItem[];
 };
 
+type ApiAttachmentItem = {
+  id: string;
+  file_name: string;
+  mime_type: string;
+  size_bytes: number;
+  url: string;
+  download_url: string;
+  uploaded_by?: { id: string; email: string } | null;
+};
+
 type ApiProjectDetail = ApiProjectListItem & {
   timeline: ApiProjectTimelineItem[];
   last_modified_at?: string | null;
   last_modified_by?: { id: string; email: string; first_name?: string | null; last_name?: string | null } | null;
+  attachments: ApiAttachmentItem[];
 };
 
 type ApiEditFieldValue = {
@@ -85,6 +97,18 @@ function toTimelineEntry(locale: LocaleCode, item: ApiProjectTimelineItem): Proj
   };
 }
 
+function toAttachmentItem(item: ApiAttachmentItem): AttachmentItem {
+  return {
+    id: item.id,
+    fileName: item.file_name,
+    mimeType: item.mime_type,
+    sizeBytes: item.size_bytes,
+    url: item.url,
+    downloadUrl: `${apiBaseUrl()}${item.download_url}`,
+    uploadedBy: item.uploaded_by,
+  };
+}
+
 function toProjectItem(locale: LocaleCode, value: ApiProjectListItem | ApiProjectDetail): ProjectItem {
   return {
     id: value.key,
@@ -97,7 +121,9 @@ function toProjectItem(locale: LocaleCode, value: ApiProjectListItem | ApiProjec
     statusType: value.status_type,
     statusText: localized(locale, value.status_text ?? ""),
     timeline: "timeline" in value ? (value.timeline ?? []).map((item) => toTimelineEntry(locale, item)) : [],
-    attachments: [],
+    attachments: "attachments" in value
+      ? (value.attachments ?? []).map(toAttachmentItem)
+      : [],
     lastModifiedAt: "last_modified_at" in value ? (value.last_modified_at ?? undefined) : undefined,
     lastModifiedBy: "last_modified_by" in value ? mapUserRef(value.last_modified_by) : undefined,
   };
@@ -254,6 +280,11 @@ export class ApiProjectsRepository implements ProjectsRepository {
   async delete(id: string): Promise<void> {
     if (useMockData()) return;
     await sendJson(`${apiBaseUrl()}/projects/${encodeURIComponent(id)}`, "DELETE");
+  }
+
+  async deleteAttachment(itemId: string, attachmentId: string): Promise<void> {
+    if (useMockData()) return;
+    await sendJson(`${apiBaseUrl()}/projects/${encodeURIComponent(itemId)}/attachments/${encodeURIComponent(attachmentId)}`, "DELETE");
   }
 
   async createTimelineEntry(id: string, preferredLanguage: LocaleCode, payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<ApiProjectTimelineItem> {

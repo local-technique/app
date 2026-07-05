@@ -82,6 +82,7 @@ export const MOCK_INCIDENTS: IncidentItem[] = [
         mimeType: "application/pdf",
         sizeBytes: 1210,
         url: invoicePdfUrl,
+        downloadUrl: invoicePdfUrl,
       },
     ],
   },
@@ -133,6 +134,7 @@ export const MOCK_INCIDENTS: IncidentItem[] = [
         mimeType: "application/pdf",
         sizeBytes: 1324,
         url: elevatorInterventionPdfUrl,
+        downloadUrl: elevatorInterventionPdfUrl,
       },
       {
         id: "INC-002-A2",
@@ -140,6 +142,7 @@ export const MOCK_INCIDENTS: IncidentItem[] = [
         mimeType: "image/jpeg",
         sizeBytes: 982,
         url: elevatorCheckPhotoUrl,
+        downloadUrl: elevatorCheckPhotoUrl,
       },
     ],
   },

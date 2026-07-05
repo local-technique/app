@@ -23,6 +23,8 @@ mod maintenances;
 mod projects;
 mod api_doc;
 mod api_tokens;
+mod attachments;
+mod s3;
 mod translations;
 
 #[tokio::main]

@@ -5,9 +5,7 @@ import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { currentUserRoles, getCurrentUserId, hasAnyRole } from "../auth/session";
 import CategoryIcon from "../categories/CategoryIcon.vue";
-import AttachmentList from "../common/components/AttachmentList.vue";
-import AttachmentPreview from "../common/components/AttachmentPreview.vue";
-import type { AttachmentItem } from "../common/attachments";
+import AttachmentSection from "../common/components/AttachmentSection.vue";
 import type { LocaleCode } from "../common/localeContent";
 import EditableTimelineList from "../common/components/EditableTimelineList.vue";
 import { renderProjectMarkdown } from "../projects/utils";
@@ -20,7 +18,6 @@ const route = useRoute();
 const incidentId = ref(typeof route.params.id === "string" ? route.params.id : "");
 const incident = ref<Awaited<ReturnType<typeof apiIncidentsRepository.byId>>>(null);
 const loadFailed = ref(false);
-const selectedAttachmentId = ref("");
 const showDeleteModal = ref(false);
 
 function activeLocale(): LocaleCode {
@@ -35,7 +32,6 @@ async function loadIncident(): Promise<void> {
     incident.value = null;
     loadFailed.value = true;
   }
-  selectedAttachmentId.value = incident.value?.attachments[0]?.id ?? "";
 }
 
 onMounted(async () => {
@@ -63,16 +59,9 @@ const backQuery = computed(() => {
   const q = route.query.q;
   return typeof q === "string" && q.length > 0 ? { q } : {};
 });
-const selectedAttachment = computed<AttachmentItem | null>(() => {
-  const attachments = model.value?.raw.attachments ?? [];
-  if (attachments.length === 0) {
-    return null;
-  }
-
-  return attachments.find((item) => item.id === selectedAttachmentId.value) ?? attachments[0] ?? null;
-});
 const canEdit = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD", "CO_OWNERSHIP_BOARD_OPS"]));
 const canDelete = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD_OPS"]));
+const canDeleteAnyAttachment = canDelete;
 const auditLabel = computed(() => {
   if (!incident.value?.lastModifiedAt) return "";
   const user = incident.value.lastModifiedBy;
@@ -82,10 +71,6 @@ const auditLabel = computed(() => {
     user: userName,
   });
 });
-
-function handleAttachmentSelect(item: AttachmentItem): void {
-  selectedAttachmentId.value = item.id;
-}
 
 async function handleTimelineAdd(payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<void> {
   try { await apiIncidentsRepository.createTimelineEntry(incidentId.value, activeLocale(), payload); } catch { /* ignore */ }
@@ -152,12 +137,13 @@ function cancelDelete(): void {
     <p class="timeline-meta detail-location" v-if="model.location"><MapPin :size="16" /> {{ model.location }}</p>
     <p class="timeline-meta audit-line" v-if="auditLabel"><UserPen :size="16" /> {{ auditLabel }}</p>
 
-    <AttachmentList
-      :items="model.raw.attachments"
-      :selected-id="selectedAttachment?.id"
-      @select="handleAttachmentSelect"
+    <AttachmentSection
+      item-type="incidents"
+      :item-id="incidentId"
+      :attachments="model.raw.attachments"
+      :can-delete-any="canDeleteAnyAttachment"
+      @refresh="loadIncident"
     />
-    <AttachmentPreview v-if="selectedAttachment" :attachment="selectedAttachment" />
 
     <section class="timeline-section">
       <h2>{{ t("labels.incidentTimeline") }}</h2>
@@ -290,7 +276,7 @@ function cancelDelete(): void {
 .detail-actions-row { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; }
 .detail-actions { display: flex; gap: 0.5rem; }
 .delete-button { display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid rgba(220, 38, 38, 0.5); border-radius: 0.55rem; padding: 0.35rem 0.6rem; background: rgba(220, 38, 38, 0.85); color: #fff; cursor: pointer; font-size: inherit; font-weight: 600; text-decoration: none; }
-.modal-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; }
+.modal-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; font-family: Inter, "Segoe UI", system-ui, sans-serif; }
 .modal-card { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 1.5rem; max-width: 400px; width: 90%; display: grid; gap: 0.75rem; }
 .modal-title { margin: 0; }
 .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }

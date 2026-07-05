@@ -1,0 +1,1 @@
+ALTER TABLE attachments ALTER COLUMN item_id TYPE TEXT;

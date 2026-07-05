@@ -8,6 +8,9 @@ anyhow = "1"
 axum = "0.8"
 axum-extra = { version = "0.12", features = ["cookie-private"] }
 base64 = "0.22"
+hex = "0.4"
+http-body-util = "0.1"
+hmac = "0.13"
 cookie = "0.18"
 chrono = { version = "0.4", features = ["serde"] }
 dotenvy = "0.15"
@@ -22,7 +25,7 @@ sha2 = "0.11"
 argon2 = "0.5"
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
-tower-http = { version = "0.7", features = ["cors"] }
+tower-http = { version = "0.7", features = ["cors", "trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 url = "2"

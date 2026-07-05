@@ -13,6 +13,7 @@ Local-technique is a lightweight web app for co-owners to track building events,
 ## OAuth clients configuration
 
 - Google Console: https://console.cloud.google.com
+- Azure console: https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade
 
 ## Environment variables
 
@@ -33,6 +34,5 @@ Local-technique is a lightweight web app for co-owners to track building events,
 | `RUST_LOG`              | Optional. Rust log level/filter.                 | `info`                         | Example: `debug` |
 | `R2_ENDPOINT`           | Required. Cloudflare R2 S3-compatible endpoint.  | none                           | `https://<account-id>.r2.cloudflarestorage.com` |
 | `R2_ATTACHMENTS_BUCKET` | Required. R2 bucket for file attachments.        | none                           | Auto-provisioned via Terraform. |
-
 | `R2_ACCESS_KEY_ID`      | Required. R2 S3 credential access key.           | none                           | Keep secret. |
 | `R2_SECRET_ACCESS_KEY`  | Required. R2 S3 credential secret key.           | none                           | Keep secret. |

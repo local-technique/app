@@ -13,6 +13,7 @@ import type {
 } from "../types";
 import type { IncidentsRepository } from "./incidentsRepository";
 import { mockIncidentsRepository } from "./mockIncidentsRepository";
+import type { AttachmentItem } from "../../common/attachments";
 
 type ApiIncidentListItem = {
   key: string;
@@ -37,6 +38,16 @@ type ApiIncidentTimelineItem = {
   last_modified_by?: { id: string; email: string; first_name?: string | null; last_name?: string | null } | null;
 };
 
+type ApiAttachmentItem = {
+  id: string;
+  file_name: string;
+  mime_type: string;
+  size_bytes: number;
+  url: string;
+  download_url: string;
+  uploaded_by?: { id: string; email: string } | null;
+};
+
 type ApiIncidentDetail = {
   key: string;
   category_id: string;
@@ -51,6 +62,7 @@ type ApiIncidentDetail = {
   category?: { id: string; key: string; icon: string; color: string; label: string };
   last_modified_at?: string | null;
   last_modified_by?: { id: string; email: string; first_name?: string | null; last_name?: string | null } | null;
+  attachments: ApiAttachmentItem[];
 };
 
 type ApiEditFieldValue = {
@@ -105,6 +117,18 @@ function toTimelineEntry(locale: LocaleCode, item: ApiIncidentTimelineItem): Inc
   };
 }
 
+function toAttachmentItem(item: ApiAttachmentItem): AttachmentItem {
+  return {
+    id: item.id,
+    fileName: item.file_name,
+    mimeType: item.mime_type,
+    sizeBytes: item.size_bytes,
+    url: item.url,
+    downloadUrl: `${apiBaseUrl()}${item.download_url}`,
+    uploadedBy: item.uploaded_by,
+  };
+}
+
 function toIncidentItem(locale: LocaleCode, value: ApiIncidentListItem | ApiIncidentDetail): IncidentItem {
   return {
     id: value.key,
@@ -118,7 +142,9 @@ function toIncidentItem(locale: LocaleCode, value: ApiIncidentListItem | ApiInci
     statusType: value.status_type as IncidentStoredStatus,
     statusText: localized(locale, value.status_text ?? ""),
     timeline: "timeline" in value ? (value.timeline ?? []).map((item) => toTimelineEntry(locale, item)) : [],
-    attachments: [],
+    attachments: "attachments" in value
+      ? (value.attachments ?? []).map(toAttachmentItem)
+      : [],
     lastModifiedAt: "last_modified_at" in value ? (value.last_modified_at ?? undefined) : undefined,
     lastModifiedBy: "last_modified_by" in value ? mapUserRef(value.last_modified_by) : undefined,
   };
@@ -276,6 +302,11 @@ export class ApiIncidentsRepository implements IncidentsRepository {
   async delete(id: string): Promise<void> {
     if (useMockData()) return;
     await sendJson(`${apiBaseUrl()}/incidents/${encodeURIComponent(id)}`, "DELETE");
+  }
+
+  async deleteAttachment(itemId: string, attachmentId: string): Promise<void> {
+    if (useMockData()) return;
+    await sendJson(`${apiBaseUrl()}/incidents/${encodeURIComponent(itemId)}/attachments/${encodeURIComponent(attachmentId)}`, "DELETE");
   }
 
   async createTimelineEntry(id: string, preferredLanguage: LocaleCode, payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<ApiIncidentTimelineItem> {

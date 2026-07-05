@@ -4,6 +4,7 @@ import { authenticatedFetch } from "../../auth/authenticatedFetch";
 import type { EditFieldValue, EventEditData, EventItem, EventLocalizedText, EventSavePayload, EventStoredStatus, EventTimelineEditItem, EventTimelineEntry } from "../types";
 import type { EventsRepository } from "./eventsRepository";
 import { mockEventsRepository } from "./mockEventsRepository";
+import type { AttachmentItem } from "../../common/attachments";
 
 type ApiMaintenanceTimelineItem = {
   id: string;
@@ -29,6 +30,16 @@ type ApiMaintenanceListItem = {
   timeline?: ApiMaintenanceTimelineItem[];
 };
 
+type ApiAttachmentItem = {
+  id: string;
+  file_name: string;
+  mime_type: string;
+  size_bytes: number;
+  url: string;
+  download_url: string;
+  uploaded_by?: { id: string; email: string } | null;
+};
+
 type ApiMaintenanceDetail = {
   key: string;
   category_id: string;
@@ -44,6 +55,7 @@ type ApiMaintenanceDetail = {
   timeline: ApiMaintenanceTimelineItem[];
   last_modified_at?: string | null;
   last_modified_by?: { id: string; email: string; first_name?: string | null; last_name?: string | null } | null;
+  attachments: ApiAttachmentItem[];
 };
 
 type ApiEditFieldValue = {
@@ -98,6 +110,18 @@ function toTimelineEntry(locale: LocaleCode, item: ApiMaintenanceTimelineItem): 
   };
 }
 
+function toAttachmentItem(item: ApiAttachmentItem): AttachmentItem {
+  return {
+    id: item.id,
+    fileName: item.file_name,
+    mimeType: item.mime_type,
+    sizeBytes: item.size_bytes,
+    url: item.url,
+    downloadUrl: `${apiBaseUrl()}${item.download_url}`,
+    uploadedBy: item.uploaded_by,
+  };
+}
+
 function toEventItem(locale: LocaleCode, value: ApiMaintenanceListItem | ApiMaintenanceDetail): EventItem {
   return {
     id: value.key,
@@ -112,7 +136,9 @@ function toEventItem(locale: LocaleCode, value: ApiMaintenanceListItem | ApiMain
     statusType: value.status_type as EventStoredStatus,
     statusText: localized(locale, value.status_text ?? ""),
     timeline: "timeline" in value ? (value.timeline ?? []).map((item) => toTimelineEntry(locale, item)) : [],
-    attachments: [],
+    attachments: "attachments" in value
+      ? (value.attachments ?? []).map(toAttachmentItem)
+      : [],
     lastModifiedAt: "last_modified_at" in value ? (value.last_modified_at ?? undefined) : undefined,
     lastModifiedBy: "last_modified_by" in value ? mapUserRef(value.last_modified_by) : undefined,
   };
@@ -270,6 +296,11 @@ export class ApiEventsRepository implements EventsRepository {
   async delete(id: string): Promise<void> {
     if (useMockData()) return;
     await sendJson(`${apiBaseUrl()}/maintenances/${encodeURIComponent(id)}`, "DELETE");
+  }
+
+  async deleteAttachment(itemId: string, attachmentId: string): Promise<void> {
+    if (useMockData()) return;
+    await sendJson(`${apiBaseUrl()}/maintenances/${encodeURIComponent(itemId)}/attachments/${encodeURIComponent(attachmentId)}`, "DELETE");
   }
 
   async createTimelineEntry(id: string, preferredLanguage: LocaleCode, payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<ApiMaintenanceTimelineItem> {

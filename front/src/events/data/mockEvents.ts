@@ -56,6 +56,7 @@ export const MOCK_EVENTS: EventItem[] = [
         mimeType: "application/pdf",
         sizeBytes: 1210,
         url: invoicePdfUrl,
+        downloadUrl: invoicePdfUrl,
       },
     ],
   },
@@ -90,6 +91,7 @@ export const MOCK_EVENTS: EventItem[] = [
         mimeType: "application/pdf",
         sizeBytes: 1324,
         url: elevatorInterventionPdfUrl,
+        downloadUrl: elevatorInterventionPdfUrl,
       },
       {
         id: "ELV-002-A2",
@@ -97,6 +99,7 @@ export const MOCK_EVENTS: EventItem[] = [
         mimeType: "image/jpg",
         sizeBytes: 982,
         url: elevatorCheckPhotoUrl,
+        downloadUrl: elevatorCheckPhotoUrl,
       },
     ],
   },

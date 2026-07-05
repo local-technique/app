@@ -60,6 +60,7 @@ pub struct IncidentDetail {
     pub timeline: Vec<IncidentTimelineItem>,
     pub last_modified_at: Option<String>,
     pub last_modified_by: Option<AuditUser>,
+    pub attachments: Vec<crate::attachments::model::AttachmentItem>,
 }
 
 #[derive(serde::Deserialize, IntoParams)]

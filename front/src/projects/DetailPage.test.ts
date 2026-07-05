@@ -30,7 +30,8 @@ describe("Projects detail", () => {
     expect(container.querySelector(".title-icon-wrap svg")?.getAttribute("style")).toContain("rgb(3, 102, 214)");
     expect(container.querySelector(".project-description h1")?.textContent).toBe("Bike shelter");
     expect(screen.getByText("Blocked - Awaiting quote")).not.toBeNull();
-    expect(screen.getByText("No attachments available.")).not.toBeNull();
+    expect(screen.getByText("Attachments")).not.toBeNull();
+    expect(container.querySelector(".upload-card")).not.toBeNull();
     expect(screen.getByText("Edit")).not.toBeNull();
     expect(screen.getByText("Edit").closest("a")?.getAttribute("href")).toContain("PRJ%2FBIKE%3F1");
     expect(screen.getByText("Delete")).not.toBeNull();

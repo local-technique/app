@@ -56,7 +56,7 @@ pub async fn detail(
     Query(query): Query<MaintenanceListQuery>,
 ) -> Result<Json<crate::maintenances::model::MaintenanceDetail>, AppError> {
     principal.ensure_any_role(&[Role::Admin, Role::CoOwner, Role::CoOwnershipBoard, Role::CoOwnershipBoardOps])?;
-    let Some(value) = service::by_id(&state.db, &id, query.locale.as_deref()).await? else {
+    let Some(value) = service::by_id(&state.db, &state.s3, &id, query.locale.as_deref()).await? else {
         return Err(AppError::not_found("maintenance not found"));
     };
     Ok(Json(value))

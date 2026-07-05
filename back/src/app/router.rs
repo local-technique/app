@@ -1,10 +1,41 @@
 use axum::{
     Router,
+    body::Body,
+    middleware,
+    response::Response,
     routing::{get, post},
 };
+use http_body_util::BodyExt;
+use tower_http::trace::TraceLayer;
 
 use crate::app::state::AppState;
-use crate::{admin, api_tokens, auth, categories, incidents, maintenances, projects, translations};
+use crate::{admin, api_tokens, attachments, auth, categories, incidents, maintenances, projects, translations};
+
+async fn log_5xx_error(
+    request: axum::extract::Request,
+    next: middleware::Next,
+) -> Response {
+    let method = request.method().clone();
+    let uri = request.uri().clone();
+    let response = next.run(request).await;
+
+    if response.status().is_server_error() {
+        let (parts, body) = response.into_parts();
+        let bytes = match body.collect().await {
+            Ok(c) => c.to_bytes(),
+            Err(_) => return Response::from_parts(parts, Body::empty()),
+        };
+        let text = String::from_utf8_lossy(&bytes);
+        let error = serde_json::from_str::<serde_json::Value>(&text)
+            .ok()
+            .and_then(|v| v.get("error").and_then(|e| e.as_str()).map(|s| s.to_owned()))
+            .unwrap_or_else(|| text.to_string());
+        tracing::error!(%method, %uri, %error, "request failed");
+        Response::from_parts(parts, Body::from(bytes))
+    } else {
+        response
+    }
+}
 
 pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
     Router::new()
@@ -95,6 +126,18 @@ pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
             "/projects/{id}/translations/replace",
             post(projects::http::replace_translations),
         )
+        .route(
+            "/{item_type}/{item_id}/attachments",
+            get(attachments::http::list).post(attachments::http::create),
+        )
+        .route(
+            "/{item_type}/{item_id}/attachments/{attachment_id}",
+            axum::routing::delete(attachments::http::delete),
+        )
+        .route(
+            "/{item_type}/{item_id}/attachments/{attachment_id}/download",
+            get(attachments::http::download),
+        )
         .route("/translations", get(translations::http::list_matrix))
         .route("/translations/bulk", post(translations::http::upsert_bulk))
         .route(
@@ -104,6 +147,8 @@ pub fn build(state: AppState, cors: tower_http::cors::CorsLayer) -> Router {
                 .delete(api_tokens::http::revoke_token),
         )
         .route("/openapi.json", get(crate::api_doc::get_openapi_json))
+        .layer(TraceLayer::new_for_http().on_failure(()).on_eos(()))
+        .layer(middleware::from_fn(log_5xx_error))
         .layer(cors)
         .with_state(state)
 }

@@ -52,9 +52,11 @@ impl AppError {
     }
 
     pub fn internal(message: impl Into<String>) -> Self {
+        let message = message.into();
+        tracing::error!(%message, "internal server error");
         Self {
             status: StatusCode::INTERNAL_SERVER_ERROR,
-            message: message.into(),
+            message,
         }
     }
 }

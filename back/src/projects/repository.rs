@@ -353,6 +353,7 @@ ORDER BY t.at_utc DESC NULLS FIRST, t.sort_order ASC
             first_name: last_modified_by_first_name.clone(),
             last_name: last_modified_by_last_name.clone(),
         }),
+        attachments: vec![],
     }))
 }
 
