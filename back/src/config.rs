@@ -14,6 +14,10 @@ pub struct Config {
     pub database_url: String,
     pub admin_emails: Option<String>,
     pub listen_addr: Option<String>,
+    pub r2_endpoint: String,
+    pub r2_attachments_bucket: String,
+    pub r2_access_key_id: String,
+    pub r2_secret_access_key: String,
 }
 
 impl Config {

@@ -4,6 +4,8 @@ export type AttachmentItem = {
   mimeType: string;
   sizeBytes: number;
   url: string;
+  downloadUrl: string;
+  uploadedBy?: { id: string; email: string } | null;
 };
 
 export function formatAttachmentSize(sizeBytes: number): string {

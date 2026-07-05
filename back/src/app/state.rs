@@ -8,6 +8,7 @@ use sqlx::PgPool;
 use tokio::sync::Mutex;
 
 use crate::config::Config;
+use crate::s3::S3Signer;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -18,18 +19,25 @@ pub struct AppState {
     pub exchange_codes: Arc<Mutex<HashMap<String, ExchangeCodeRecord>>>,
     pub oauth_states: Arc<Mutex<HashMap<String, OAuthStateRecord>>>,
     pub openapi_spec: serde_json::Value,
+    pub s3: S3Signer,
 }
 
 impl AppState {
     pub fn new(config: Config, cookie_key: Key, db: PgPool, openapi_spec: serde_json::Value) -> Self {
         Self {
-            config,
+            config: config.clone(),
             cookie_key,
             http_client: reqwest::Client::new(),
             db,
             exchange_codes: Arc::new(Mutex::new(HashMap::new())),
             oauth_states: Arc::new(Mutex::new(HashMap::new())),
             openapi_spec,
+            s3: S3Signer::new(
+                config.r2_endpoint,
+                config.r2_attachments_bucket,
+                config.r2_access_key_id,
+                config.r2_secret_access_key,
+            ),
         }
     }
 }

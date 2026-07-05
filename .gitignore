@@ -12,6 +12,7 @@ back/target/
 
 # Docker
 postgres-data/
+minio-data/
 
 # Terraform
 .terraform/

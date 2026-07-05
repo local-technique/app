@@ -5,7 +5,7 @@ import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
 import { currentUserRoles, getCurrentUserId, hasAnyRole } from "../auth/session";
 import CategoryIcon from "../categories/CategoryIcon.vue";
-import AttachmentList from "../common/components/AttachmentList.vue";
+import AttachmentSection from "../common/components/AttachmentSection.vue";
 import EditableTimelineList from "../common/components/EditableTimelineList.vue";
 import type { LocaleCode } from "../common/localeContent";
 import { apiProjectsRepository } from "./repositories/apiProjectsRepository";
@@ -46,6 +46,7 @@ const backQuery = computed(() => {
 });
 const canEdit = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD", "CO_OWNERSHIP_BOARD_OPS"]));
 const canDelete = computed(() => currentUserRoles.loaded && hasAnyRole(["ADMIN", "CO_OWNERSHIP_BOARD_OPS"]));
+const canDeleteAnyAttachment = canDelete;
 const auditLabel = computed(() => {
   if (!project.value?.lastModifiedAt) return "";
   const user = project.value.lastModifiedBy;
@@ -68,6 +69,8 @@ const statusIcon = computed(() => {
   return Hourglass;
 });
 const editPath = computed(() => (model.value ? `/projects/${encodeURIComponent(model.value.id)}/edit` : "/projects"));
+
+
 
 async function handleTimelineAdd(payload: { atUtc: string | null; sortOrder: number; fields: Record<string, string> }): Promise<void> {
   try { await apiProjectsRepository.createTimelineEntry(projectId.value, activeLocale(), payload); } catch { /* ignore */ }
@@ -131,7 +134,13 @@ function cancelDelete(): void {
     </section>
     <p v-if="auditLabel" class="timeline-meta audit-line"><UserPen :size="16" /> {{ auditLabel }}</p>
 
-    <AttachmentList :items="model.raw.attachments" />
+    <AttachmentSection
+      item-type="projects"
+      :item-id="projectId"
+      :attachments="model.raw.attachments"
+      :can-delete-any="canDeleteAnyAttachment"
+      @refresh="loadProject"
+    />
 
     <section class="timeline-section">
       <h2>{{ t("labels.projectTimeline") }}</h2>
@@ -227,7 +236,7 @@ function cancelDelete(): void {
 .detail-actions-row { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; }
 .detail-actions { display: flex; gap: 0.5rem; }
 .delete-button { display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid rgba(220, 38, 38, 0.5); border-radius: 0.55rem; padding: 0.35rem 0.6rem; background: rgba(220, 38, 38, 0.85); color: #fff; cursor: pointer; font-size: inherit; font-weight: 600; text-decoration: none; }
-.modal-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; }
+.modal-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; font-family: Inter, "Segoe UI", system-ui, sans-serif; }
 .modal-card { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 1.5rem; max-width: 400px; width: 90%; display: grid; gap: 0.75rem; }
 .modal-title { margin: 0; }
 .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }

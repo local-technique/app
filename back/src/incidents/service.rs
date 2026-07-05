@@ -31,11 +31,18 @@ pub async fn list(
 
 pub async fn by_id(
     db: &sqlx::PgPool,
+    s3: &crate::s3::S3Signer,
     incident_id: &str,
     requested_locale: Option<&str>,
 ) -> Result<Option<IncidentDetail>, AppError> {
     let chain = locale_chain(requested_locale);
-    repository::by_id(db, incident_id, &chain).await
+    let mut detail = match repository::by_id(db, incident_id, &chain).await? {
+        Some(d) => d,
+        None => return Ok(None),
+    };
+    let attachments = crate::attachments::service::list(db, s3, "incident", incident_id).await?;
+    detail.attachments = attachments;
+    Ok(Some(detail))
 }
 
 pub async fn list_translations(

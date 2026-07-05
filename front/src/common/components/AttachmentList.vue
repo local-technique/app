@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { Trash2 } from "@lucide/vue";
 import type { AttachmentItem } from "../attachments";
 import { formatAttachmentSize } from "../attachments";
 
 const props = defineProps<{
   items: AttachmentItem[];
   selectedId?: string;
+  currentUserId?: string | null;
+  canDeleteAny?: boolean;
 }>();
 
 const emit = defineEmits<{
   (event: "select", attachment: AttachmentItem): void;
+  (event: "delete", attachment: AttachmentItem): void;
 }>();
 
 const rows = computed(() =>
@@ -21,6 +25,13 @@ const rows = computed(() =>
 );
 
 const { t } = useI18n();
+
+function canDelete(item: AttachmentItem): boolean {
+  if (props.canDeleteAny) return true;
+  if (!props.currentUserId) return false;
+  const uploadedById = item.uploadedBy?.id;
+  return uploadedById === props.currentUserId;
+}
 
 function selectAttachment(item: AttachmentItem): void {
   emit("select", item);
@@ -41,6 +52,14 @@ function selectAttachment(item: AttachmentItem): void {
           @click="selectAttachment(item)"
         >
           {{ item.fileName }}
+        </button>
+        <button
+          v-if="canDelete(item)"
+          class="delete-attachment"
+          @click.stop="emit('delete', item)"
+          :title="t('labels.delete')"
+        >
+          <Trash2 :size="14" />
         </button>
         <span class="timeline-meta">{{ item.mimeType }} - {{ item.sizeLabel }}</span>
       </li>
@@ -75,5 +94,15 @@ function selectAttachment(item: AttachmentItem): void {
   cursor: pointer;
   font-size: 0.94rem;
   font-weight: 600;
+}
+.delete-attachment {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted-fg);
+  padding: 0.2rem;
+}
+.delete-attachment:hover {
+  color: #dc2626;
 }
 </style>
