@@ -7,7 +7,7 @@ edition = "2024"
 anyhow = "1"
 axum = "0.8"
 axum-extra = { version = "0.12", features = ["cookie-private"] }
-base64 = "0.22"
+base64 = "0.23"
 hex = "0.4"
 http-body-util = "0.1"
 hmac = "0.13"
@@ -16,7 +16,7 @@ chrono = { version = "0.4", features = ["serde"] }
 dotenvy = "0.15"
 envy = "0.4"
 http = "1"
-jsonwebtoken = { version = "10", features = ["rust_crypto"] }
+jsonwebtoken = { version = "11", features = ["rust_crypto"] }
 rand = "0.10"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
